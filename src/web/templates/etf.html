@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>指数ETF分析 - ATMstockMarket</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/tokens-wiki.css">
+    <link rel="stylesheet" href="/static/css/style-wiki.css">
+    <link rel="stylesheet" href="/static/css/components-wiki.css">
+    <script>window.addEventListener("unhandledrejection",function(e){e.preventDefault();console.warn("Unhandled rejection:",e.reason);});window.onerror=function(){document.getElementById('nav-container')&&document.getElementById('nav-container').insertAdjacentHTML('afterend','<div style="background:#fff3cd;color:#856404;padding:12px;text-align:center;font-size:14px;border-bottom:1px solid #ffc107">⚠️ 页面部分功能加载异常，请刷新重试</div>');};</script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="/static/js/tailwind-config.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/nav.js"></script>
+    <script src="/static/js/cache.js"></script>
+    <script src="/static/js/perf.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"
+            onerror="console.warn('ECharts CDN failed; charts will be unavailable')"></script>
+    <script src="/static/js/chart-loader.js"></script>
+    <script>
+        document.documentElement.dataset.theme = 'light';
+    </script>
+    <style>
+        @media (max-width: 640px) {
+            .etf-info-grid { flex-direction: column; gap: 0.75rem; }
+            .etf-stats { flex-wrap: wrap; gap: 0.75rem !important; }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div id="nav-container"></div>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 stagger-children">
+        <div class="flex gap-2 sm:gap-3 flex-wrap">
+            <button class="tab-btn active glass rounded-lg px-4 sm:px-5 py-2.5 text-sm font-semibold" style="min-height:44px;"
+                    data-code="510300.SH" onclick="switchETF(this)">沪深300ETF</button>
+            <button class="tab-btn glass rounded-lg px-4 sm:px-5 py-2.5 text-sm" style="min-height:44px;"
+                    data-code="510500.SH" onclick="switchETF(this)">中证500ETF</button>
+            <button class="tab-btn glass rounded-lg px-4 sm:px-5 py-2.5 text-sm" style="min-height:44px;"
+                    data-code="510050.SH" onclick="switchETF(this)">上证50ETF</button>
+        </div>
+
+        <div id="etf-info" class="glass rounded-xl p-4 sm:p-6">
+            <div class="flex items-center justify-between etf-info-grid">
+                <div>
+                    <span id="etf-name" class="text-xl font-bold">沪深300ETF</span>
+                    <span id="etf-code" class="text-sm ml-2" style="color:var(--c-muted);">510300.SH</span>
+                </div>
+                <div class="flex gap-4 sm:gap-6 text-sm etf-stats">
+                    <div><span style="color:var(--c-muted);">最新价(元)</span> <span id="etf-price" class="text-xl font-bold ml-1 num-mono font-mono">--</span></div>
+                    <div><span style="color:var(--c-muted);">涨跌幅</span> <span id="etf-pct" class="text-xl font-bold ml-1 num-mono font-mono">--</span></div>
+                    <div><span style="color:var(--c-muted);">成交额(万)</span> <span id="etf-vol" class="text-xl font-bold ml-1 num-mono font-mono">--</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass rounded-xl p-4 sm:p-6">
+            <h3 class="font-bold mb-3 flex items-center gap-2">
+                <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
+                K线走势
+                <span class="text-xs" style="color:var(--c-muted);">（红色标记 = 异常涨跌幅）</span>
+            </h3>
+            <div id="kline-chart" class="chart-main" style="height: 380px;">
+                <div class="skeleton skeleton-chart"></div>
+            </div>
+        </div>
+
+        <div class="glass rounded-xl p-4 sm:p-6">
+            <h3 class="font-bold mb-3 flex items-center gap-2">
+                <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
+                份额变化
+                <span class="text-xs" style="color:var(--c-muted);">（蓝色标记 = 份额异常变动）</span>
+            </h3>
+            <div id="share-chart" class="chart-sub" style="height: 320px;">
+                <div class="skeleton skeleton-chart"></div>
+            </div>
+        </div>
+
+        <div class="glass rounded-xl p-4 sm:p-6">
+            <h3 class="font-bold mb-4 flex items-center gap-2">
+                <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
+                异常事件标记
+                <span class="text-xs" style="color:var(--c-muted);">（超过2倍标准差）</span>
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 stagger-children">
+                <div>
+                    <h4 class="text-sm mb-2" style="color:var(--c-muted);">价格异常</h4>
+                    <div id="price-anomalies" class="space-y-2 text-sm">
+                        <div class="skeleton skeleton-text"><span class="spinner inline-block mr-2"></span></div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-sm mb-2" style="color:var(--c-muted);">份额异常</h4>
+                    <div id="share-anomalies" class="space-y-2 text-sm">
+                        <div class="skeleton skeleton-text"><span class="spinner inline-block mr-2"></span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-center text-xs py-6 border-t mt-12" style="color:var(--c-muted);border-color:var(--c-border);">
+        ATMstockMarket &mdash; 数据来源: Tushare | 仅供学习研究，不构成投资建议
+    </footer>
+
+    <script>
+    try {
+    ATMNav.insert('nav-container', 'etf');
+
+    var currentCode = '510300.SH';
+    var klineChart = null;
+    var shareChart = null;
+
+    function switchETF(btn) {
+        document.querySelectorAll('.tab-btn').forEach(function(b) {
+            b.classList.remove('active');
+        });
+        btn.classList.add('active');
+        currentCode = btn.dataset.code;
+        loadData(currentCode);
+    }
+
+    async function loadData(code) {
+        try {
+            var resp = await fetch('/api/index-etf/' + code);
+            var data = await resp.json();
+            updateInfo(data);
+            try { await ATMChart.load(); } catch(e) { console.warn('ECharts load failed:', e); }
+            renderKline(data);
+            renderShares(data);
+            renderAnomalies(data);
+        } catch(e) {
+            console.error('加载失败:', e);
+        }
+    }
+
+    function updateInfo(data) {
+        document.getElementById('etf-name').textContent = data.name;
+        document.getElementById('etf-code').textContent = currentCode;
+        var kline = data.kline;
+        if (kline && kline.length > 0) {
+            var last = kline[kline.length - 1];
+            document.getElementById('etf-price').textContent = ATM.formatNum(last.close);
+            var pct = parseFloat(last.pct_chg || 0);
+            var pctEl = document.getElementById('etf-pct');
+            pctEl.textContent = ATM.pctText(pct);
+            pctEl.style.color = ATM.pctColor(pct);
+            document.getElementById('etf-vol').textContent = ATM.formatNum((parseFloat(last.amount || 0) / 10000).toFixed(0), 0) + '万';
+        }
+    }
+
+    function renderKline(data) {
+        var el = document.getElementById('kline-chart');
+        if (klineChart && !klineChart.isDisposed()) klineChart.dispose();
+        el.innerHTML = '';
+        klineChart = echarts.init(el);
+        var kline = data.kline || [];
+        if (kline.length === 0) return;
+
+        var th = ATM.getChartTheme();
+        var dates = kline.map(function(k) { return k.trade_date; });
+        var ohlc = kline.map(function(k) { return [parseFloat(k.open||0), parseFloat(k.close||0), parseFloat(k.low||0), parseFloat(k.high||0)]; });
+        var volumes = kline.map(function(k) { return parseFloat(k.vol || 0); });
+        var pcts = kline.map(function(k) { return parseFloat(k.pct_chg || 0); });
+
+        var sortedVols = volumes.slice().sort(function(a, b) { return a - b; });
+        var volPercentiles = volumes.map(function(v) {
+            if (sortedVols.length === 0) return 0;
+            var rank = sortedVols.filter(function(x) { return x <= v; }).length;
+            return Math.round(rank / sortedVols.length * 100);
+        });
+
+        var anomalyDates = new Set((data.anomalies && data.anomalies.price || []).map(function(a) { return a.trade_date; }));
+        var markPoints = kline.filter(function(k) { return anomalyDates.has(k.trade_date); }).map(function(k) {
+            return {
+                name: k.trade_date + ' ' + ATM.pctText(k.pct_chg),
+                coord: [k.trade_date, parseFloat(k.high || 0)],
+                symbolSize: 8,
+                itemStyle: { color: th.upColor }
+            };
+        });
+
+        klineChart.setOption({
+            backgroundColor: 'transparent',
+            textStyle: th.textStyle,
+            title: {
+                text: 'K线走势',
+                left: '3%',
+                top: '2%',
+                textStyle: {
+                    color: '#2C2C2C',
+                    fontWeight: 600,
+                    fontSize: 14,
+                    fontFamily: "'Noto Serif SC', serif"
+                }
+            },
+            tooltip: {
+                backgroundColor: th.tooltip.backgroundColor,
+                borderColor: th.tooltip.borderColor,
+                textStyle: th.tooltip.textStyle,
+                formatter: function(params) {
+                    var result = '<b>' + params[0].axisValue + '</b><br/>';
+                    params.forEach(function(p) {
+                        var val = p.value;
+                        if (Array.isArray(val)) {
+                            result += p.marker + ' 开盘: ' + val[1].toFixed(2) + ', 收盘: ' + val[2].toFixed(2) + ', 最低: ' + val[3].toFixed(2) + ', 最高: ' + val[4].toFixed(2) + '<br/>';
+                        } else {
+                            result += p.marker + ' ' + p.seriesName + ': ' + val + '%<br/>';
+                        }
+                    });
+                    return result;
+                }
+            },
+            legend: { 
+                data: ['K线', '成交量百分位'], 
+                textStyle: th.legend.textStyle,
+                top: '2%',
+                right: '3%',
+                align: 'right'
+            },
+            grid: [
+                { left: '8%', right: '3%', top: '12%', height: '50%' },
+                { left: '8%', right: '3%', top: '68%', height: '20%' }
+            ],
+            xAxis: [
+                { type: 'category', data: dates, gridIndex: 0, axisLabel: { color: th.axisLabelColor, fontSize: 10 }, boundaryGap: true },
+                { type: 'category', data: dates, gridIndex: 1, axisLabel: { show: false }, boundaryGap: true }
+            ],
+            yAxis: [
+                { scale: true, gridIndex: 0, splitLine: { lineStyle: { color: th.splitLineColor } }, axisLabel: { color: th.axisLabelColor } },
+                { scale: true, gridIndex: 1, splitLine: { show: false }, axisLabel: { color: th.axisLabelColor, formatter: '{value}%' }, min: 0, max: 100 }
+            ],
+            dataZoom: [
+                { type: 'inside', xAxisIndex: [0, 1], start: 60, end: 100 },
+                { show: true, xAxisIndex: [0, 1], type: 'slider', bottom: '2%', start: 60, end: 100 }
+            ],
+            series: [
+                {
+                    name: 'K线', type: 'candlestick', data: ohlc, xAxisIndex: 0, yAxisIndex: 0,
+                    itemStyle: { color: th.upColor, color0: th.downColor, borderColor: th.upColor, borderColor0: th.downColor },
+                    markPoint: { data: markPoints, symbol: 'pin', symbolSize: 30, label: { show: false } }
+                },
+                {
+                    name: '成交量百分位', type: 'bar',
+                    data: volPercentiles.map(function(pct, i) {
+                        return {
+                            value: pct,
+                            itemStyle: { color: pcts[i] >= 0 ? th.upColor + '66' : th.downColor + '66' }
+                        };
+                    }),
+                    xAxisIndex: 1, yAxisIndex: 1,
+                    label: { show: true, position: 'top', color: th.axisLabelColor, fontSize: 8, formatter: '{c}%' }
+                }
+            ]
+        }, true);
+    }
+
+    function renderShares(data) {
+        var el = document.getElementById('share-chart');
+        if (shareChart && !shareChart.isDisposed()) shareChart.dispose();
+        el.innerHTML = '';
+        shareChart = echarts.init(el);
+        var shares = data.shares || [];
+        if (shares.length === 0) return;
+
+        var th = ATM.getChartTheme();
+        var recent = shares.slice(-20);
+        var dates = recent.map(function(s) { return s.trade_date; });
+        var allValues = shares.map(function(s) { return parseFloat(s.fd_share || 0); });
+        var sortedAll = allValues.slice().sort(function(a, b) { return a - b; });
+
+        function toPercentile(val) {
+            if (sortedAll.length === 0) return 50;
+            var rank = sortedAll.filter(function(v) { return v <= val; }).length;
+            return Math.round(rank / sortedAll.length * 100);
+        }
+        var pctValues = recent.map(function(s) { return toPercentile(parseFloat(s.fd_share || 0)); });
+
+        var anomalyDates = new Set((data.anomalies && data.anomalies.share || []).map(function(a) { return a.trade_date; }));
+        var markPoints = recent.filter(function(s) { return anomalyDates.has(s.trade_date); }).map(function(s) {
+            return {
+                name: s.trade_date,
+                coord: [s.trade_date, toPercentile(parseFloat(s.fd_share || 0))],
+                symbolSize: 8,
+                itemStyle: { color: th.upColor }
+            };
+        });
+
+        shareChart.setOption({
+            backgroundColor: 'transparent',
+            textStyle: th.textStyle,
+            tooltip: {
+                trigger: 'axis',
+                backgroundColor: th.tooltip.backgroundColor,
+                borderColor: th.tooltip.borderColor,
+                textStyle: th.tooltip.textStyle,
+                formatter: function(params) {
+                    var p = params[0];
+                    if (!p) return '';
+                    var idx = p.dataIndex;
+                    var rawVal = parseFloat(recent[idx] && recent[idx].fd_share || 0);
+                    var pct = p.value;
+                    var date = p.axisValueLabel;
+                    return '<b>' + date + '</b><br/>历史百分位: <b>' + pct + '%</b><br/>份额: ' + (rawVal / 100000000).toFixed(2) + '亿份';
+                }
+            },
+            grid: { left: '10%', right: '3%', top: '10%', bottom: '15%' },
+            xAxis: { type: 'category', data: dates, axisLabel: { color: th.axisLabelColor, fontSize: 10 } },
+            yAxis: {
+                type: 'value', min: 0, max: 100,
+                axisLabel: { color: th.axisLabelColor, formatter: '{value}%' },
+                splitLine: { lineStyle: { color: th.splitLineColor } }
+            },
+            series: [{
+                name: '份额百分位', type: 'scatter',
+                data: pctValues.map(function(v) {
+                    return { value: v, itemStyle: { color: th.upColor } };
+                }),
+                symbolSize: 10,
+                markPoint: { data: markPoints, symbol: 'diamond', symbolSize: 16, label: { show: false } },
+                markLine: {
+                    silent: true,
+                    lineStyle: { color: th.splitLineColor, type: 'dashed', width: 1 },
+                    label: { position: 'insideEndTop', fontSize: 10, color: th.axisLabelColor },
+                    data: [
+                        { yAxis: 80, label: { formatter: '高位 80%' } },
+                        { yAxis: 50, label: { formatter: '中位 50%' } },
+                        { yAxis: 20, label: { formatter: '低位 20%' } }
+                    ]
+                }
+            }]
+        }, true);
+    }
+
+    function renderAnomalies(data) {
+        var priceEl = document.getElementById('price-anomalies');
+        var shareEl = document.getElementById('share-anomalies');
+        var priceAnom = (data.anomalies && data.anomalies.price) || [];
+        var shareAnom = (data.anomalies && data.anomalies.share) || [];
+
+        if (priceAnom.length === 0) {
+            priceEl.innerHTML = '<div style="color:var(--c-muted);">暂无价格异常事件</div>';
+        } else {
+            priceEl.innerHTML = priceAnom.slice(-10).reverse().map(function(a) {
+                var pct = parseFloat(a.pct_chg || 0);
+                return '<div class="flex items-center justify-between glass rounded px-3 py-2">' +
+                    '<span><span class="pulse-dot"></span> ' + a.trade_date + '</span>' +
+                    '<span class="font-bold num-mono font-mono" style="color:' + ATM.pctColor(pct) + '">' + ATM.pctText(pct) + '</span></div>';
+            }).join('');
+        }
+
+        if (shareAnom.length === 0) {
+            shareEl.innerHTML = '<div style="color:var(--c-muted);">暂无份额异常事件</div>';
+        } else {
+            shareEl.innerHTML = shareAnom.slice(-10).reverse().map(function(a) {
+                var chgPct = parseFloat(a.chg_pct || 0);
+                var zScore = parseFloat(a.z_score || 0);
+                var clr = chgPct >= 0 ? 'var(--c-up)' : 'var(--c-down)';
+                var sign = chgPct >= 0 ? '+' : '';
+                return '<div class="flex items-center justify-between glass rounded px-3 py-2">' +
+                    '<span><span class="pulse-dot"></span> ' + a.trade_date + '</span>' +
+                    '<div class="flex items-center gap-3">' +
+                        '<span class="font-bold num-mono font-mono" style="color:' + clr + '">' + sign + chgPct.toFixed(2) + '%</span>' +
+                        '<span class="text-xs num-mono font-mono px-1.5 py-0.5 rounded" style="background:var(--c-accent-bg);color:var(--c-accent);">' + zScore.toFixed(1) + 'σ</span>' +
+                    '</div></div>';
+            }).join('');
+        }
+    }
+
+    ATMChart.initPage();
+
+    window.addEventListener('theme-changed', function() {
+        loadData(currentCode);
+    });
+
+    ATMPerf.VisibilityManager.register(
+        function() {
+            if (klineChart) { klineChart.resize(); }
+            if (shareChart) { shareChart.resize(); }
+        },
+        function() {
+            setTimeout(function() {
+                if (klineChart) klineChart.resize();
+                if (shareChart) shareChart.resize();
+            }, 200);
+        }
+    );
+
+    window.addEventListener('beforeunload', function() {
+        if (klineChart && !klineChart.isDisposed()) klineChart.dispose();
+        if (shareChart && !shareChart.isDisposed()) shareChart.dispose();
+    });
+
+    loadData(currentCode);
+    } catch(e) { console.error('ETF page init error:', e); }
+    </script>
+</body>
+</html>

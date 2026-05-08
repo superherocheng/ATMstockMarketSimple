@@ -1,0 +1,186 @@
+@import "tailwindcss";
+
+/* ── Design Tokens (ported from original tokens-wiki.css) ── */
+:root {
+  /* Colors */
+  --c-accent: #3366cc;
+  --c-accent-bg: rgba(51, 102, 204, 0.08);
+  --c-ink: #2C2C2C;
+  --c-bg-primary: #FAF6F0;
+  --c-bg-secondary: #F5F0E8;
+  --c-bg-tertiary: #EDE6D8;
+  --c-border: rgba(60, 60, 60, 0.12);
+  --c-text-primary: #2C2C2C;
+  --c-text-secondary: #5C5C5C;
+  --c-text-tertiary: #8C8C8C;
+  --c-muted: #8C8C8C;
+  --c-up: #D4726A;
+  --c-down: #6AAF7C;
+  --c-gold: #D4A017;
+
+  /* Watercolor palette */
+  --c-watercolor-terracotta: #D4A574;
+  --c-watercolor-terracotta-bg: rgba(212, 165, 116, 0.12);
+  --c-watercolor-green: #8BC9A0;
+  --c-watercolor-green-bg: rgba(139, 201, 160, 0.12);
+  --c-watercolor-blue: #7EB8C9;
+  --c-watercolor-blue-bg: rgba(126, 184, 201, 0.12);
+  --c-watercolor-lavender: #B8A9C9;
+  --c-watercolor-lavender-bg: rgba(184, 169, 201, 0.12);
+
+  /* Typography */
+  --font-serif: 'Noto Serif SC', Georgia, serif;
+  --font-sans: 'Noto Sans SC', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+
+  /* Layout */
+  --bottom-nav-height: 56px;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Shadows */
+  --shadow-glass: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Tailwind v4 Theme Extensions ── */
+@theme {
+  --font-serif: 'Noto Serif SC', Georgia, serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --breakpoint-mobile: 375px;
+  --breakpoint-tablet: 768px;
+  --breakpoint-desktop: 1024px;
+  --breakpoint-wide: 1440px;
+
+  --color-accent: var(--c-accent);
+  --color-up: var(--c-up);
+  --color-down: var(--c-down);
+}
+
+/* ── Global Reset & Base ── */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+/* ── Glass card utility ── */
+.glass {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--c-border);
+  box-shadow: var(--shadow-glass);
+}
+
+/* ── Touch-friendly ── */
+@media (hover: none) and (pointer: coarse) {
+  .touch-ripple {
+    touch-action: manipulation;
+  }
+  .touch-ripple:active {
+    transform: scale(0.97);
+    transition: transform 100ms ease;
+  }
+}
+
+/* ── Scrollbar styling ── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Focus visible ── */
+:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
+
+/* ── Mobile-specific improvements ── */
+@media (max-width: 768px) {
+  /* Prevent 300ms tap delay */
+  button, a, .touch-ripple {
+    touch-action: manipulation;
+  }
+
+  /* Better tap highlights */
+  button:active, a:active, .touch-ripple:active {
+    opacity: 0.8;
+    transition: opacity 100ms ease;
+  }
+
+  /* Ensure bottom nav doesn't overlap content */
+  .app-shell {
+    padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
+  }
+
+  /* Prevent text size adjustment on orientation change */
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Improve readability on small screens */
+  body {
+    word-break: break-word;
+  }
+
+  /* Table horizontal scroll on very small screens */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Better spacing for stacked items */
+  .stack-mobile > * + * {
+    margin-top: 0.75rem;
+  }
+}
+
+/* ── Safe area insets for modern phones ── */
+@supports (padding: max(0px)) {
+  .safe-area-bottom {
+    padding-bottom: max(0px, env(safe-area-inset-bottom, 0px));
+  }
+  .safe-area-top {
+    padding-top: max(0px, env(safe-area-inset-top, 0px));
+  }
+}
+
+/* ── Prevent pull-to-refresh interference ── */
+body {
+  overscroll-behavior-y: contain;
+}
+
+/* ── Smooth scrolling ── */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

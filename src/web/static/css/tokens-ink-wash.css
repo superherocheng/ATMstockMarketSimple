@@ -1,0 +1,301 @@
+/* ══════════════════════════════════════════════════
+   ATMstockMarket — 江南水墨风格设计令牌
+   Ink Wash Painting Style Design Tokens
+   ══════════════════════════════════════════════════ */
+
+:root {
+    /* ══════════════════════════════════════════════════
+       色彩系统 — 水墨为魂
+       ══════════════════════════════════════════════════ */
+    
+    /* 水墨色系 - 黑白灰的万千层次 */
+    --c-ink-deep: #1a1a1a;           /* 浓墨 - 最深的墨色 */
+    --c-ink: #2d2d2d;                /* 墨色 - 主要文本色 */
+    --c-ink-light: #4a4a4a;          /* 淡墨 - 次要文本色 */
+    --c-ink-lighter: #6b6b6b;        /* 清墨 - 辅助文本色 */
+    --c-ink-muted: #9e9e9e;          /* 灰墨 - 禁用状态 */
+    
+    /* 宣纸色系 - 温暖的纸色 */
+    --c-paper-warm: #faf8f3;         /* 宣纸米白 - 页面背景 */
+    --c-paper: #f5f2eb;              /* 宣纸色 - 卡片背景 */
+    --c-paper-aged: #e8e4da;         /* 古宣纸 - 次要背景 */
+    --c-paper-dark: #d9d4c7;         /* 深宣纸 - 边框、分割线 */
+    
+    /* 花青色系 - 江南水色 */
+    --c-cyan: #3d7a8c;               /* 花青 - 主色调 */
+    --c-cyan-light: #5a9aad;         /* 浅花青 */
+    --c-cyan-dark: #2d5d6b;          /* 深花青 */
+    --c-cyan-muted: #7ab5c4;         /* 淡花青 */
+    
+    /* 赭石色系 - 山石之色 */
+    --c-ochre: #a67c52;              /* 赭石 - 辅助色 */
+    --c-ochre-light: #c4a574;        /* 浅赭石 */
+    --c-ochre-dark: #8a6340;         /* 深赭石 */
+    --c-ochre-muted: #d4b896;        /* 淡赭石 */
+    
+    /* 朱砂色系 - 印章之红 */
+    --c-cinnabar: #c24b3f;           /* 朱砂 - 强调色 */
+    --c-cinnabar-light: #d66b60;     /* 浅朱砂 */
+    --c-cinnabar-dark: #a13a30;      /* 深朱砂 */
+    --c-cinnabar-muted: #e08a82;     /* 淡朱砂 */
+    
+    /* 市场涨跌色 - 保留中国股市惯例 */
+    --c-up: #c24b3f;                 /* 上涨红 - 朱砂红 */
+    --c-up-bg: rgba(194, 75, 63, 0.08);
+    --c-up-bg-strong: rgba(194, 75, 63, 0.15);
+    
+    --c-down: #3d7a8c;               /* 下跌绿 - 花青色 */
+    --c-down-bg: rgba(61, 122, 140, 0.08);
+    --c-down-bg-strong: rgba(61, 122, 140, 0.15);
+    
+    /* 功能色 */
+    --c-success: #5a8a5a;            /* 成功 - 青绿 */
+    --c-warning: #c4a574;            /* 警告 - 赭石 */
+    --c-error: #c24b3f;              /* 错误 - 朱砂 */
+    --c-info: #5a9aad;               /* 信息 - 花青 */
+    
+    /* ══════════════════════════════════════════════════
+       背景与表面
+       ══════════════════════════════════════════════════ */
+    
+    --c-bg: var(--c-paper-warm);
+    --c-bg-secondary: var(--c-paper);
+    --c-bg-tertiary: var(--c-paper-aged);
+    
+    --c-card: rgba(255, 255, 255, 0.75);
+    --c-card-hover: rgba(255, 255, 255, 0.9);
+    
+    --c-overlay: rgba(26, 26, 26, 0.4);
+    
+    /* 水墨晕染背景 */
+    --wash-ink: radial-gradient(ellipse at 30% 30%, rgba(45, 45, 45, 0.03) 0%, transparent 50%);
+    --wash-cyan: radial-gradient(ellipse at 70% 70%, rgba(61, 122, 140, 0.05) 0%, transparent 50%);
+    --wash-ochre: radial-gradient(ellipse at 50% 50%, rgba(166, 124, 82, 0.04) 0%, transparent 60%);
+    
+    /* ══════════════════════════════════════════════════
+       边框与分割线
+       ══════════════════════════════════════════════════ */
+    
+    --c-border: var(--c-paper-dark);
+    --c-border-light: rgba(217, 212, 199, 0.5);
+    --c-border-strong: var(--c-ink-light);
+    
+    /* 水墨边框 - 模拟毛笔笔触 */
+    --ink-border: 1px solid var(--c-ink-lighter);
+    --ink-border-light: 1px solid var(--c-paper-dark);
+    --ink-border-strong: 2px solid var(--c-ink-light);
+    
+    /* ══════════════════════════════════════════════════
+       文本色彩
+       ══════════════════════════════════════════════════ */
+    
+    --c-text: var(--c-ink);
+    --c-text-secondary: var(--c-ink-light);
+    --c-text-tertiary: var(--c-ink-lighter);
+    --c-text-muted: var(--c-ink-muted);
+    
+    /* ══════════════════════════════════════════════════
+       强调色
+       ══════════════════════════════════════════════════ */
+    
+    --c-accent: var(--c-cyan);
+    --c-accent-light: var(--c-cyan-light);
+    --c-accent-dark: var(--c-cyan-dark);
+    --c-accent-bg: rgba(61, 122, 140, 0.1);
+    --c-accent-bg-strong: rgba(61, 122, 140, 0.2);
+    
+    --c-secondary: var(--c-ochre);
+    --c-secondary-light: var(--c-ochre-light);
+    --c-secondary-dark: var(--c-ochre-dark);
+    --c-secondary-bg: rgba(166, 124, 82, 0.1);
+    
+    --c-highlight: var(--c-cinnabar);
+    --c-highlight-light: var(--c-cinnabar-light);
+    --c-highlight-bg: rgba(194, 75, 63, 0.1);
+    
+    /* ══════════════════════════════════════════════════
+       字体系统
+       ══════════════════════════════════════════════════ */
+    
+    /* 标题字体 - 书法风格 */
+    --font-display: 'Noto Serif SC', 'Source Han Serif CN', 'STSong', 'SimSun', Georgia, serif;
+    
+    /* 正文字体 - 易读无衬线 */
+    --font-body: 'Noto Sans SC', 'Source Han Sans CN', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    
+    /* 等宽字体 - 数据展示 */
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Consolas', monospace;
+    
+    /* 通用字体栈 */
+    --font-sans: var(--font-body);
+    --font-serif: var(--font-display);
+    
+    /* ══════════════════════════════════════════════════
+       字体大小
+       ══════════════════════════════════════════════════ */
+    
+    --text-xs: 0.75rem;      /* 12px */
+    --text-sm: 0.875rem;     /* 14px */
+    --text-base: 1rem;       /* 16px */
+    --text-lg: 1.125rem;     /* 18px */
+    --text-xl: 1.25rem;      /* 20px */
+    --text-2xl: 1.5rem;      /* 24px */
+    --text-3xl: 1.875rem;    /* 30px */
+    --text-4xl: 2.25rem;     /* 36px */
+    --text-5xl: 3rem;        /* 48px */
+    
+    /* ══════════════════════════════════════════════════
+       间距系统 - 8px基础单位
+       ══════════════════════════════════════════════════ */
+    
+    --space-0-5: 0.25rem;    /* 4px */
+    --space-1: 0.5rem;       /* 8px */
+    --space-1-5: 0.75rem;    /* 12px */
+    --space-2: 1rem;         /* 16px */
+    --space-3: 1.5rem;       /* 24px */
+    --space-4: 2rem;         /* 32px */
+    --space-5: 2.5rem;       /* 40px */
+    --space-6: 3rem;         /* 48px */
+    --space-8: 4rem;         /* 64px */
+    --space-10: 5rem;        /* 80px */
+    --space-12: 6rem;        /* 96px */
+    --space-16: 8rem;        /* 128px */
+    
+    /* ══════════════════════════════════════════════════
+       圆角
+       ══════════════════════════════════════════════════ */
+    
+    --radius-sm: 0.25rem;    /* 4px - 小元素 */
+    --radius-md: 0.5rem;     /* 8px - 按钮、输入框 */
+    --radius-lg: 0.75rem;    /* 12px - 卡片 */
+    --radius-xl: 1rem;       /* 16px - 大卡片 */
+    --radius-2xl: 1.5rem;    /* 24px - 特殊元素 */
+    --radius-full: 9999px;   /* 圆形 */
+    
+    /* ══════════════════════════════════════════════════
+       阴影 - 水墨晕染效果
+       ══════════════════════════════════════════════════ */
+    
+    --shadow-sm: 0 1px 3px rgba(45, 45, 45, 0.08), 0 1px 2px rgba(45, 45, 45, 0.06);
+    --shadow-md: 0 4px 6px rgba(45, 45, 45, 0.1), 0 2px 4px rgba(45, 45, 45, 0.08);
+    --shadow-lg: 0 10px 15px rgba(45, 45, 45, 0.12), 0 4px 6px rgba(45, 45, 45, 0.1);
+    --shadow-xl: 0 20px 25px rgba(45, 45, 45, 0.15), 0 10px 10px rgba(45, 45, 45, 0.12);
+    
+    /* 水墨阴影 - 模拟墨迹扩散 */
+    --shadow-ink: 
+        0 2px 8px rgba(45, 45, 45, 0.12),
+        0 8px 24px rgba(45, 45, 45, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    
+    /* 悬停阴影 - 墨迹加深 */
+    --shadow-hover: 
+        0 4px 12px rgba(45, 45, 45, 0.15),
+        0 12px 32px rgba(45, 45, 45, 0.1);
+    
+    /* ══════════════════════════════════════════════════
+       过渡与动画
+       ══════════════════════════════════════════════════ */
+    
+    --transition-fast: 150ms ease;
+    --transition-normal: 250ms ease;
+    --transition-slow: 400ms ease;
+    
+    /* 水墨晕染缓动 */
+    --ease-ink: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-ink-in: cubic-bezier(0.4, 0, 1, 1);
+    --ease-ink-out: cubic-bezier(0, 0, 0.2, 1);
+    --ease-ink-spread: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    
+    /* ══════════════════════════════════════════════════
+       Z-index 层级
+       ══════════════════════════════════════════════════ */
+    
+    --z-base: 0;
+    --z-dropdown: 10;
+    --z-sticky: 20;
+    --z-fixed: 30;
+    --z-overlay: 40;
+    --z-modal: 50;
+    --z-popover: 60;
+    --z-tooltip: 70;
+    
+    /* ══════════════════════════════════════════════════
+       渐变
+       ══════════════════════════════════════════════════ */
+    
+    /* 水墨渐变 */
+    --gradient-ink: linear-gradient(135deg, var(--c-ink) 0%, var(--c-ink-light) 100%);
+    --gradient-cyan: linear-gradient(135deg, var(--c-cyan-dark) 0%, var(--c-cyan) 100%);
+    --gradient-ochre: linear-gradient(135deg, var(--c-ochre-dark) 0%, var(--c-ochre) 100%);
+    --gradient-cinnabar: linear-gradient(135deg, var(--c-cinnabar-dark) 0%, var(--c-cinnabar) 100%);
+    
+    /* 市场渐变 */
+    --gradient-up: linear-gradient(135deg, var(--c-cinnabar-dark) 0%, var(--c-cinnabar) 100%);
+    --gradient-down: linear-gradient(135deg, var(--c-cyan-dark) 0%, var(--c-cyan) 100%);
+    
+    /* ══════════════════════════════════════════════════
+       表格与数据
+       ══════════════════════════════════════════════════ */
+    
+    --c-table-header: rgba(245, 242, 235, 0.8);
+    --c-table-stripe: rgba(217, 212, 199, 0.2);
+    --c-table-hover: rgba(61, 122, 140, 0.05);
+    
+    /* ══════════════════════════════════════════════════
+       输入框
+       ══════════════════════════════════════════════════ */
+    
+    --c-input-bg: var(--c-card);
+    --c-input-focus-ring: rgba(61, 122, 140, 0.2);
+    
+    /* ══════════════════════════════════════════════════
+       滚动条
+       ══════════════════════════════════════════════════ */
+    
+    --c-scrollbar-track: var(--c-paper-aged);
+    --c-scrollbar-thumb: var(--c-paper-dark);
+    --c-scrollbar-thumb-hover: var(--c-ink-lighter);
+    
+    /* ══════════════════════════════════════════════════
+       骨架屏
+       ══════════════════════════════════════════════════ */
+    
+    --c-skeleton: var(--c-paper-aged);
+    --c-skeleton-shine: var(--c-paper);
+    
+    /* ══════════════════════════════════════════════════
+       焦点环
+       ══════════════════════════════════════════════════ */
+    
+    --focus-ring: 0 0 0 3px var(--c-input-focus-ring);
+}
+
+/* ══════════════════════════════════════════════════
+   深色模式 (可选)
+   ══════════════════════════════════════════════════ */
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --c-bg: #1a1a1a;
+        --c-bg-secondary: #242424;
+        --c-bg-tertiary: #2d2d2d;
+        
+        --c-card: rgba(45, 45, 45, 0.75);
+        --c-card-hover: rgba(45, 45, 45, 0.9);
+        
+        --c-paper-warm: #1a1a1a;
+        --c-paper: #242424;
+        --c-paper-aged: #2d2d2d;
+        --c-paper-dark: #3a3a3a;
+        
+        --c-text: #f5f2eb;
+        --c-text-secondary: #d9d4c7;
+        --c-text-tertiary: #b8b3a6;
+        
+        --c-border: #3a3a3a;
+        --c-border-light: rgba(58, 58, 58, 0.5);
+        
+        --c-accent-bg: rgba(90, 154, 173, 0.2);
+        --c-accent-bg-strong: rgba(90, 154, 173, 0.3);
+    }
+}

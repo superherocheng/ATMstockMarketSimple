@@ -1,0 +1,105 @@
+# Data - Runtime (不提交)
+*.db
+*.duckdb
+*.sqlite
+*.sqlite3
+data/database/
+
+# 但排除其他位置的 CSV
+*.csv
+
+# Data - External (提交)
+# 允许 external_data 目录中的数据文件被 Git 跟踪
+!data/external/
+!data/external/*.csv
+!data/external/*.json
+!data/external/*.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+venv/
+ENV/
+env/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Tushare 配置保护
+src/core/config.py
+config/config.py
+
+# Lock files (optional)
+uv.lock
+Pipfile.lock
+
+# Archive (本地 zip 不提交)
+*.zip
+*.tar.gz
+*.rar
+
+# Sensitive
+.github_token
+*.pem
+*.key
+
+# Runtime
+web.log
+*.log
+logs/
+*.pid
+
+# Docker
+.docker/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp

@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ATMstockMarket - A股市场分析平台">
+    <meta name="theme-color" content="#3366cc">
+    <title>ATMstockMarket - A股市场分析</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/tokens-wiki.css">
+    <link rel="stylesheet" href="/static/css/style-wiki.css">
+    <link rel="stylesheet" href="/static/css/components-wiki.css">
+    <script>window.addEventListener('unhandledrejection',function(e){e.preventDefault();console.warn('Unhandled rejection:',e.reason);});window.onerror=function(){document.getElementById('nav-container')&&document.getElementById('nav-container').insertAdjacentHTML('afterend','<div style="background:#fff3cd;color:#856404;padding:12px;text-align:center;font-size:14px;border-bottom:1px solid #ffc107">⚠️ 页面部分功能加载异常，请刷新重试</div>');};</script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="/static/js/tailwind-config.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script src="/static/js/nav.js"></script>
+    <script src="/static/js/cache.js"></script>
+    <script src="/static/js/perf.js"></script>
+    <script defer src="/static/js/mobile.js"></script>
+    <script defer src="/static/js/gestures.js"></script>
+    <script defer src="/static/js/performance.js"></script>
+    <script src="/static/js/chart-loader.js"></script>
+</head>
+<body class="min-h-screen">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg" style="background:var(--c-accent);color:white;">跳转到主要内容</a>
+    <div id="nav-container"></div>
+
+    <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4">
+        <section class="mb-4">
+            <h2 class="text-lg font-semibold mb-3 flex items-center gap-3">
+                <svg class="w-5 h-5" style="color:var(--c-accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                三大指数ETF
+            </h2>
+            <div id="index-cards" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+        </section>
+
+        <section class="mb-4">
+            <h2 class="text-lg font-semibold mb-3 flex items-center gap-3">
+                <svg class="w-5 h-5" style="color:var(--c-accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                行业板块热力图
+            </h2>
+            <div class="glass rounded-xl p-5">
+                <div id="heatmap" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2"></div>
+            </div>
+        </section>
+
+        <section id="update-section" class="mb-4">
+            <div class="glass rounded-xl p-4">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                    <h2 class="text-lg font-semibold flex items-center gap-2">
+                        <svg class="w-5 h-5" style="color:var(--c-accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+                        数据管理
+                    </h2>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="fetchTushare()" id="btn-tushare" class="btn btn-secondary">Tushare数据</button>
+                        <button onclick="fetchAkshare()" id="btn-akshare" class="btn btn-secondary">AKShare数据</button>
+                        <button onclick="oneClickUpdate()" id="btn-update" class="btn btn-primary">全部数据</button>
+                    </div>
+                </div>
+                <div id="data-status" class="mb-2"><div class="skeleton skeleton-card"></div></div>
+                <div id="fetch-progress" class="hidden border-t pt-3 mt-3 space-y-2" style="border-color:var(--c-border);">
+                    <div class="flex items-center gap-3">
+                        <div id="fetch-spinner" class="spinner spinner-sm"></div>
+                        <span id="fetch-status-text" class="text-sm font-semibold" style="color:var(--c-accent);">准备中...</span>
+                        <span id="fetch-current-step" class="text-sm" style="color:var(--c-text-tertiary);"></span>
+                    </div>
+                    <div class="progress-bar-track">
+                        <div id="progress-fill" class="progress-bar-fill running" style="width:0%"></div>
+                    </div>
+                    <details>
+                        <summary class="text-sm cursor-pointer" style="color:var(--c-text-tertiary);">实时日志</summary>
+                        <div id="fetch-log" class="rounded-lg p-4 mt-3 max-h-56 overflow-y-auto text-xs" style="background:var(--c-bg-secondary);font-family:var(--font-mono);border:1px solid var(--c-border);"></div>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <a href="/etf" class="glass rounded-xl p-5 hover:border-accent transition-all block group">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3 transition-all group-hover:scale-105" style="background:var(--c-watercolor-terracotta-bg);">
+                    <svg class="w-5 h-5" style="color:var(--c-watercolor-terracotta);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                </div>
+                <h3 class="font-semibold mb-1">指数ETF分析</h3>
+                <p class="text-sm" style="color:var(--c-text-tertiary);">沪深300 / 中证500 / 上证50</p>
+            </a>
+            <a href="/sector" class="glass rounded-xl p-5 hover:border-accent transition-all block group">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3 transition-all group-hover:scale-105" style="background:var(--c-watercolor-green-bg);">
+                    <svg class="w-5 h-5" style="color:var(--c-watercolor-green);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                </div>
+                <h3 class="font-semibold mb-1">行业ETF轮动</h3>
+                <p class="text-sm" style="color:var(--c-text-tertiary);">板块资金流向，横向对比</p>
+            </a>
+            <a href="/stocks" class="glass rounded-xl p-5 hover:border-accent transition-all block group">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3 transition-all group-hover:scale-105" style="background:var(--c-watercolor-blue-bg);">
+                    <svg class="w-5 h-5" style="color:var(--c-watercolor-blue);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+                </div>
+                <h3 class="font-semibold mb-1">个股排行榜</h3>
+                <p class="text-sm" style="color:var(--c-text-tertiary);">波动率 / 涨跌幅 TOP10</p>
+            </a>
+            <a href="/barra" class="glass rounded-xl p-5 hover:border-accent transition-all block group">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3 transition-all group-hover:scale-105" style="background:var(--c-watercolor-lavender-bg);">
+                    <svg class="w-5 h-5" style="color:var(--c-watercolor-lavender);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                </div>
+                <h3 class="font-semibold mb-1">BARRA因子分析</h3>
+                <p class="text-sm" style="color:var(--c-text-tertiary);">行业/量价/市值/成长价值</p>
+            </a>
+        </section>
+    </main>
+
+    <footer>
+        <p>ATMstockMarket — 数据来源: Tushare / AKShare | 仅供学习研究，不构成投资建议</p>
+    </footer>
+
+    <script>
+    try {
+    ATMNav.insert('nav-container', 'home');
+
+    async function loadDataRange() {
+        try {
+            var resp = await fetch('/api/data-range');
+            if (!resp.ok) {
+                throw new Error('HTTP ' + resp.status);
+            }
+            var info = await resp.json();
+            renderDataStatus(info);
+        } catch(e) {
+            document.getElementById('data-status').innerHTML = '<div class="error-message"><div class="error-message-content"><div class="error-message-title">数据加载失败</div><div class="error-message-detail">' + e.message + '</div></div></div>';
+        }
+    }
+
+    function renderDataStatus(info) {
+        var rows = [
+            { group: '股票分类', items: ['stock_info','concept_dict'] },
+            { group: 'ETF数据', items: ['index_etf_daily','sector_etf_daily','etf_share'] },
+            { group: '个股数据', items: ['stock_daily','stock_basic'] },
+            { group: '基本面数据', items: ['stock_daily_basic','stock_fina_indicator'] },
+            { group: 'AKShare数据', items: ['lhb','institute'] },
+        ];
+        var anyNeedUpdate = false;
+        var html = '<div class="overflow-x-auto" style="-webkit-overflow-scrolling:touch;overflow-x:auto;"><table class="w-full text-sm zebra-table" style="min-width:520px;">';
+        html += '<thead><tr><th class="px-3 py-2 text-left whitespace-nowrap">数据类型</th><th class="px-3 py-2 text-left whitespace-nowrap">数据表</th><th class="px-3 py-2 text-center whitespace-nowrap">记录数</th><th class="px-3 py-2 text-left hidden sm:table-cell whitespace-nowrap">日期范围</th><th class="px-3 py-2 text-center whitespace-nowrap">状态</th></tr></thead><tbody>';
+
+        rows.forEach(function(section) {
+            section.items.forEach(function(key) {
+                var d = info[key];
+                if (!d) return;
+                var st = ATM.dataStatus(d);
+                if (st.need) anyNeedUpdate = true;
+                var cnt = d.count > 0 ? d.count.toLocaleString() : '-';
+                var range = (d.min_date && d.max_date) ? ATM.fmtDate(d.min_date) + ' ~ ' + ATM.fmtDate(d.max_date) : '-';
+                html += '<tr>';
+                html += '<td class="px-3 py-2 align-middle"><span class="font-semibold">' + section.group + '</span></td>';
+                html += '<td class="px-3 py-2 align-middle" style="color:var(--c-text-secondary);">' + d.display_name + '</td>';
+                html += '<td class="px-3 py-2 text-center align-middle font-mono" style="color:var(--c-ink);">' + cnt + '</td>';
+                html += '<td class="px-3 py-2 text-xs font-mono hidden sm:table-cell align-middle" style="color:var(--c-text-tertiary);">' + range + '</td>';
+                html += '<td class="px-3 py-2 text-center align-middle"><span class="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full" style="background:' + st.color + '15;color:' + st.color + '"><span class="w-1.5 h-1.5 rounded-full" style="background:' + st.color + ';"></span>' + st.tag + '</span></td>';
+                html += '</tr>';
+            });
+        });
+
+        html += '</tbody></table></div>';
+        document.getElementById('data-status').innerHTML = html;
+
+        var btn = document.getElementById('btn-update');
+        if (btn && !btn.disabled) {
+            if (Object.values(info).every(function(d) { return !d.exists || d.count === 0; })) {
+                btn.innerHTML = '首次获取全部数据';
+            } else if (anyNeedUpdate) {
+                btn.innerHTML = '一键更新全部数据';
+            } else {
+                btn.innerHTML = '数据已是最新';
+            }
+        }
+    }
+
+    async function oneClickUpdate() {
+        disableAllButtons();
+        setButtonLoading('btn-update', '启动中...');
+        try {
+            var resp = await fetch('/api/fetch/all', { method: 'POST' });
+            if (resp.status === 409) {
+                setButtonLoading('btn-update', '获取中...');
+                document.getElementById('fetch-progress').classList.remove('hidden');
+                if (!pollTimer) { pollTimer = setInterval(pollStatus, 1500); pollStatus(); }
+                return;
+            }
+            document.getElementById('fetch-progress').classList.remove('hidden');
+            document.getElementById('fetch-log').innerHTML = '<div style="color:var(--c-watercolor-terracotta);">正在启动全量数据获取...</div>';
+            updateProgressBar(0, 'running');
+            document.getElementById('fetch-status-text').textContent = '获取中...';
+            setButtonLoading('btn-update', '获取中...');
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = setInterval(pollStatus, 1500);
+            setTimeout(pollStatus, 800);
+        } catch(e) {
+            alert('启动失败: ' + e.message);
+            enableAllButtons();
+            resetButtonAll();
+        }
+    }
+
+    function updateProgressBar(pct, state) {
+        var fill = document.getElementById('progress-fill');
+        fill.style.width = Math.max(pct, 2) + '%';
+        fill.className = 'progress-bar-fill ' + state;
+    }
+
+    function disableAllButtons() {
+        document.getElementById("btn-tushare").disabled = true;
+        document.getElementById("btn-akshare").disabled = true;
+        document.getElementById("btn-update").disabled = true;
+    }
+
+    function enableAllButtons() {
+        document.getElementById("btn-tushare").disabled = false;
+        document.getElementById("btn-akshare").disabled = false;
+        document.getElementById("btn-update").disabled = false;
+    }
+
+    function setButtonLoading(btnId, text) {
+        var btn = document.getElementById(btnId);
+        btn.innerHTML = '<span class="spinner spinner-sm"></span> ' + text;
+    }
+
+    function resetButtonTushare() { document.getElementById("btn-tushare").innerHTML = 'Tushare数据'; }
+    function resetButtonAkshare() { document.getElementById("btn-akshare").innerHTML = 'AKShare数据'; }
+    function resetButtonAll() { document.getElementById("btn-update").innerHTML = '全部数据'; }
+
+    async function fetchTushare() {
+        disableAllButtons();
+        setButtonLoading("btn-tushare", "获取中...");
+        try {
+            var resp = await fetch("/api/fetch/tushare", { method: "POST" });
+            if (resp.status === 409) {
+                setButtonLoading("btn-tushare", "获取中...");
+                document.getElementById("fetch-progress").classList.remove("hidden");
+                if (!pollTimer) { pollTimer = setInterval(pollStatus, 1500); pollStatus(); }
+                return;
+            }
+            document.getElementById("fetch-progress").classList.remove("hidden");
+            document.getElementById("fetch-log").innerHTML = '<div style="color:var(--c-watercolor-terracotta);">正在启动 Tushare 数据获取...</div>';
+            updateProgressBar(0, "running");
+            document.getElementById("fetch-status-text").textContent = "获取中...";
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = setInterval(pollStatus, 1500);
+            setTimeout(pollStatus, 800);
+        } catch(e) {
+            alert("启动失败: " + e.message);
+            enableAllButtons();
+            resetButtonTushare();
+        }
+    }
+
+    async function fetchAkshare() {
+        disableAllButtons();
+        setButtonLoading("btn-akshare", "获取中...");
+        try {
+            var resp = await fetch("/api/fetch/akshare", { method: "POST" });
+            if (resp.status === 409) {
+                setButtonLoading("btn-akshare", "获取中...");
+                document.getElementById("fetch-progress").classList.remove("hidden");
+                if (!pollTimer) { pollTimer = setInterval(pollStatus, 1500); pollStatus(); }
+                return;
+            }
+            document.getElementById("fetch-progress").classList.remove("hidden");
+            document.getElementById("fetch-log").innerHTML = '<div style="color:var(--c-watercolor-terracotta);">正在启动 AKShare 数据获取...</div>';
+            updateProgressBar(0, "running");
+            document.getElementById("fetch-status-text").textContent = "获取中...";
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = setInterval(pollStatus, 1500);
+            setTimeout(pollStatus, 800);
+        } catch(e) {
+            alert("启动失败: " + e.message);
+            enableAllButtons();
+            resetButtonAkshare();
+        }
+    }
+
+    var pollTimer = null;
+
+    async function pollStatus() {
+        try {
+            var resp = await fetch('/api/fetch/status');
+            var st = await resp.json();
+            var logEl = document.getElementById('fetch-log');
+            logEl.innerHTML = st.log.map(function(line) {
+                if (line.startsWith('[ERROR]') || line.startsWith('[ERR')) return '<div style="color:var(--c-up);">' + line + '</div>';
+                if (line.startsWith('[OK]') || line.startsWith('[DONE]')) return '<div style="color:var(--c-down);font-weight:600;">' + line + '</div>';
+                if (line.startsWith('$')) return '<div style="color:var(--c-watercolor-terracotta);">' + line + '</div>';
+                return '<div style="color:var(--c-text-secondary);">' + line + '</div>';
+            }).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+            document.getElementById('fetch-current-step').textContent = st.current_step || '';
+            if (st.running) {
+                updateProgressBar(st.progress || 0, 'running');
+                document.getElementById('fetch-status-text').textContent = '获取中...';
+            } else if (st.finished_at) {
+                var hasError = st.log.some(function(l) { return l.startsWith('[ERROR]'); });
+                updateProgressBar(hasError ? st.progress : 100, hasError ? 'error' : 'done');
+                document.getElementById('fetch-status-text').textContent = hasError ? '部分出错' : '已完成';
+                document.getElementById('fetch-status-text').style.color = hasError ? 'var(--c-up)' : 'var(--c-down)';
+                if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+                enableAllButtons();
+                resetButtonTushare();
+                resetButtonAkshare();
+                resetButtonAll();
+                loadDataRange();
+                loadOverview();
+            }
+        } catch(e) { console.error('轮询失败:', e); }
+    }
+
+    async function loadFetchStatus() {
+        try {
+            var resp = await fetch('/api/fetch/status');
+            var st = await resp.json();
+            if (st.running) {
+                document.getElementById('fetch-progress').classList.remove('hidden');
+                disableAllButtons();
+                if (!pollTimer) { pollTimer = setInterval(pollStatus, 1500); }
+                pollStatus();
+            }
+        } catch(e) {}
+    }
+
+    async function loadOverview() {
+        loadDataRange();
+        loadFetchStatus();
+        try {
+            var resp = await fetch('/api/overview');
+            if (!resp.ok) {
+                throw new Error('HTTP ' + resp.status);
+            }
+            var data = await resp.json();
+            renderIndexCards(data.index_etf);
+            renderHeatmap(data.sector_summary);
+        } catch(e) { console.warn('概览数据加载失败:', e.message); }
+    }
+
+    function renderIndexCards(etfs) {
+        var c = document.getElementById('index-cards');
+        if (!etfs || etfs.length === 0) {
+            c.innerHTML = '<div class="col-span-1 sm:col-span-3 empty-state"><div class="empty-state-title">暂无数据</div><div class="empty-state-description">请点击「全部数据」获取</div></div>';
+            return;
+        }
+        c.innerHTML = etfs.map(function(etf) {
+            var pct = parseFloat(etf.pct_chg || 0);
+            return '<div class="glass rounded-xl p-6 cursor-pointer" onclick="location.href=\'/etf\'">' +
+                '<div class="flex justify-between items-start mb-3">' +
+                    '<div><div class="font-semibold" style="color:var(--c-ink);">' + etf.name + '</div><div class="text-xs mt-1 font-mono" style="color:var(--c-text-tertiary);">' + etf.ts_code + '</div></div>' +
+                    '<div class="text-xs font-mono" style="color:var(--c-text-tertiary);">' + (etf.trade_date || '') + '</div>' +
+                '</div>' +
+                '<div class="text-2xl font-bold font-mono mb-2" style="color:' + ATM.pctColor(pct) + '">' + ATM.formatNum(etf.close) + '</div>' +
+                '<div class="flex items-center gap-4">' +
+                    '<span class="text-sm font-semibold font-mono" style="color:' + ATM.pctColor(pct) + '">' + ATM.pctText(pct) + '</span>' +
+                    '<span class="text-xs" style="color:var(--c-text-tertiary);">成交额: <span class="font-mono" style="color:var(--c-ink);">' + ATM.formatNum((parseFloat(etf.amount||0)/10000).toFixed(0),0) + '</span>万</span>' +
+                '</div></div>';
+        }).join('');
+    }
+
+    function renderHeatmap(sectors) {
+        var c = document.getElementById('heatmap');
+        if (!sectors || sectors.length === 0) {
+            c.innerHTML = '<div class="col-span-2 sm:col-span-5 empty-state"><div class="empty-state-title">暂无板块数据</div></div>';
+            return;
+        }
+        var sortedSectors = sectors.slice().sort(function(a, b) {
+            return parseFloat(b.pct_chg || 0) - parseFloat(a.pct_chg || 0);
+        });
+        c.innerHTML = sortedSectors.map(function(s) {
+            var pct = parseFloat(s.pct_chg || 0);
+            var intensity = Math.min(Math.abs(pct) / 3, 1);
+            var bg = pct > 0 ? 'rgba(212, 114, 106, ' + (0.08 + intensity * 0.12) + ')'
+                    : pct < 0 ? 'rgba(106, 175, 124, ' + (0.08 + intensity * 0.12) + ')'
+                    : 'var(--c-bg-tertiary)';
+            return '<div class="heat-cell rounded-lg p-4 cursor-pointer" style="background:' + bg + '" onclick="location.href=\'/sector?code=' + s.ts_code + '\'" title="' + s.name + ': ' + ATM.pctText(pct) + '">' +
+                '<div class="font-medium text-sm mb-1" style="color:var(--c-ink);">' + s.name + '</div>' +
+                '<div class="text-lg font-bold font-mono" style="color:' + ATM.pctColor(pct) + '">' + ATM.pctText(pct) + '</div></div>';
+        }).join('');
+    }
+
+    ATMPerf.VisibilityManager.register(
+        function() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } },
+        function() { loadOverview(); }
+    );
+
+    loadOverview();
+    } catch(e) { console.error('Page init error:', e);
+        document.getElementById('data-status').innerHTML = '<div class="error-message"><div class="error-message-title">页面加载错误</div><div class="error-message-detail">' + e.message + '</div></div>';
+    }
+    </script>
+</body>
+</html>

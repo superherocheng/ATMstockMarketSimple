@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>概念分析 - ATMstockMarket</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/tokens-wiki.css">
+    <link rel="stylesheet" href="/static/css/style-wiki.css">
+    <link rel="stylesheet" href="/static/css/components-wiki.css">
+    <script>window.addEventListener("unhandledrejection",function(e){e.preventDefault();console.warn("Unhandled rejection:",e.reason);});window.onerror=function(){document.getElementById('nav-container')&&document.getElementById('nav-container').insertAdjacentHTML('afterend','<div style="background:#fff3cd;color:#856404;padding:12px;text-align:center;font-size:14px;border-bottom:1px solid #ffc107">⚠️ 页面部分功能加载异常，请刷新重试</div>');};</script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="/static/js/tailwind-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"
+            onerror="console.warn('ECharts CDN failed; charts will be unavailable')"></script>
+    <script src="/static/js/utils.js"></script>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/nav.js"></script>
+    <script src="/static/js/cache.js"></script>
+    <script src="/static/js/perf.js"></script>
+    <script src="/static/js/chart-loader.js"></script>
+</head>
+<body class="min-h-screen">
+    <div id="nav-container"></div>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h2 class="text-xl font-bold mb-6 flex items-center gap-3">
+            <svg class="w-5 h-5" style="color:var(--c-accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+            概念板块分析
+            <span class="text-sm font-normal hidden sm:inline" style="color:var(--c-text-tertiary);">基于概念标签与量价数据</span>
+        </h2>
+
+        <div id="status-message" class="hidden mb-6"></div>
+
+        <div id="main-content" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="glass rounded-xl p-6">
+                    <h3 class="font-bold mb-4 flex items-center gap-3">
+                        <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
+                        概念板块股票数量分布
+                    </h3>
+                    <div id="concept-dist-chart" class="chart-sub" style="height: 320px;"></div>
+                </div>
+                <div class="glass rounded-xl p-6">
+                    <h3 class="font-bold mb-4 flex items-center gap-3">
+                        <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
+                        热门概念板块 TOP 20
+                    </h3>
+                    <div id="concept-bar-chart" class="chart-sub" style="height: 320px;"></div>
+                </div>
+            </div>
+
+            <div class="glass rounded-xl overflow-hidden">
+                <div class="px-6 py-4 border-b flex items-center justify-between flex-wrap gap-4" style="border-color:var(--c-border);">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-4 h-4" style="color:var(--c-accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+                        <h3 class="font-bold">概念板块详情</h3>
+                    </div>
+                    <div class="flex gap-3 items-center">
+                        <label for="concept-search" class="sr-only">搜索概念</label>
+                        <input id="concept-search" type="text" placeholder="搜索概念..." 
+                               class="px-3 py-2 rounded-lg text-sm w-48" 
+                               oninput="filterConcepts(this.value)">
+                    </div>
+                </div>
+                <div id="concepts-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-6">
+                    <div class="col-span-full loading-state">
+                        <div class="spinner spinner-lg loading-state-spinner"></div>
+                        <div class="loading-state-text">加载中...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>ATMstockMarket — 数据来源: Tushare / AKShare | 仅供学习研究，不构成投资建议</p>
+    </footer>
+
+    <script>
+    try {
+    ATMNav.insert('nav-container', 'concept');
+
+    var conceptDistChart = null;
+    var conceptBarChart = null;
+    var allConcepts = [];
+
+    async function loadConceptAnalysis() {
+        var statusEl = document.getElementById('status-message');
+        var mainContent = document.getElementById('main-content');
+        
+        try {
+            var resp = await fetch('/api/concept/analysis');
+            
+            if (!resp.ok) {
+                var errorData = null;
+                try {
+                    errorData = await resp.json();
+                } catch(e) {}
+                
+                var errorMsg = '加载失败';
+                if (resp.status === 404) {
+                    errorMsg = '概念分析接口未找到，请检查后端服务是否正常运行';
+                } else if (errorData && errorData.detail) {
+                    errorMsg = errorData.detail;
+                } else {
+                    errorMsg = 'HTTP ' + resp.status + ': ' + (errorData ? JSON.stringify(errorData) : '未知错误');
+                }
+                
+                statusEl.innerHTML = '<div class="error-message"><div class="error-message-content"><div class="error-message-title">数据加载失败</div><div class="error-message-detail">' + errorMsg + '</div></div></div>';
+                statusEl.classList.remove('hidden');
+                mainContent.classList.add('hidden');
+                return;
+            }
+            
+            var data = await resp.json();
+
+            if (data.error) {
+                statusEl.innerHTML = '<div class="warning-message">' + data.error + '</div>';
+                statusEl.classList.remove('hidden');
+                mainContent.classList.add('hidden');
+                return;
+            }
+            
+            statusEl.classList.add('hidden');
+            mainContent.classList.remove('hidden');
+
+            allConcepts = data.concepts || [];
+            
+            if (allConcepts.length === 0) {
+                document.getElementById('concepts-container').innerHTML = '<div class="col-span-full empty-state"><div class="empty-state-title">暂无概念数据</div><div class="empty-state-description">请先在首页获取股票基础数据</div><div class="empty-state-action"><a href="/" class="btn btn-primary">前往首页</a></div></div>';
+                return;
+            }
+            
+            renderConcepts(allConcepts);
+
+            try { await ATMChart.load(); } catch(e) { console.warn('ECharts load failed:', e); }
+            requestAnimationFrame(function() {
+                renderConceptCharts(allConcepts);
+            });
+        } catch(e) {
+            console.error('加载概念分析失败:', e);
+            statusEl.innerHTML = '<div class="error-message"><div class="error-message-content"><div class="error-message-title">网络请求失败</div><div class="error-message-detail">' + e.message + '</div></div></div>';
+            statusEl.classList.remove('hidden');
+            mainContent.classList.add('hidden');
+        }
+    }
+
+    function filterConcepts(keyword) {
+        keyword = keyword.toLowerCase().trim();
+        if (!keyword) {
+            renderConcepts(allConcepts);
+        } else {
+            var filtered = allConcepts.filter(function(c) {
+                return c.concept_name.toLowerCase().indexOf(keyword) >= 0;
+            });
+            renderConcepts(filtered);
+        }
+    }
+
+    function renderConcepts(concepts) {
+        var container = document.getElementById('concepts-container');
+        if (!concepts || concepts.length === 0) {
+            container.innerHTML = '<div class="col-span-full empty-state"><div class="empty-state-title">未找到匹配的概念</div></div>';
+            return;
+        }
+
+        container.innerHTML = concepts.map(function(concept) {
+            var topStocksHtml = '';
+            if (concept.top_stocks && concept.top_stocks.length > 0) {
+                topStocksHtml = '<div class="mt-3 pt-3 border-t" style="border-color:var(--c-border);">' +
+                    '<div class="text-xs font-medium mb-2" style="color:var(--c-text-secondary);">市值 TOP 5:</div>' +
+                    '<div class="space-y-2">' +
+                    concept.top_stocks.slice(0, 5).map(function(stock) {
+                        var pct = parseFloat(stock.pct_chg || 0);
+                        return '<div class="flex items-center justify-between text-xs">' +
+                            '<div class="flex items-center gap-2">' +
+                                '<a href="/stock/' + stock.ts_code + '" class="font-medium hover:underline" style="color:var(--c-text);">' + stock.name + '</a>' +
+                                '<span style="color:var(--c-text-secondary);">' + (stock.industry || '') + '</span>' +
+                            '</div>' +
+                            '<span class="font-mono" style="color:' + ATM.pctColor(pct) + ';">' + ATM.pctText(pct) + '</span>' +
+                        '</div>';
+                    }).join('') +
+                    '</div></div>';
+            }
+
+            return '<div class="glass rounded-xl p-4 hover:border-accent transition-all cursor-pointer" onclick="showConceptDetail(' + concept.concept_id + ')">' +
+                '<div class="flex items-start justify-between mb-2">' +
+                    '<h4 class="font-semibold" style="color:var(--c-text);">' + concept.concept_name + '</h4>' +
+                    '<span class="badge">' + concept.stock_count + '只</span>' +
+                '</div>' +
+                topStocksHtml +
+            '</div>';
+        }).join('');
+    }
+
+    function renderConceptCharts(concepts) {
+        if (!concepts || concepts.length === 0) return;
+
+        var th = ATM.getChartTheme();
+
+        var el1 = document.getElementById('concept-dist-chart');
+        if (conceptDistChart && !conceptDistChart.isDisposed()) conceptDistChart.dispose();
+        el1.innerHTML = '';
+        conceptDistChart = echarts.init(el1);
+
+        var treemapData = concepts.slice(0, 30).map(function(c) {
+            var heat = c.heat_score || 0;
+            var color = heat >= 70 ? th.upColor : heat >= 40 ? th.accentColor : th.downColor;
+            return {
+                name: c.concept_name,
+                value: c.stock_count,
+                heat: heat,
+                itemStyle: {
+                    color: color,
+                    opacity: 0.6 + (heat / 100) * 0.4
+                }
+            };
+        });
+
+        conceptDistChart.setOption({
+            backgroundColor: 'transparent',
+            textStyle: th.textStyle,
+            tooltip: { 
+                trigger: 'item', 
+                backgroundColor: th.tooltip.backgroundColor, 
+                borderColor: th.tooltip.borderColor, 
+                textStyle: th.tooltip.textStyle,
+                formatter: function(params) {
+                    return params.name + '<br/>股票数: ' + params.value + '只<br/>热度: ' + (params.data.heat || 0);
+                }
+            },
+            series: [{
+                type: 'treemap',
+                data: treemapData,
+                roam: false,
+                nodeClick: 'link',
+                breadcrumb: { show: false },
+                label: {
+                    show: true,
+                    formatter: '{b}',
+                    color: '#2C2C2C',
+                    fontSize: 11,
+                    fontWeight: 500,
+                    textShadowColor: 'rgba(255, 255, 255, 0.8)',
+                    textShadowBlur: 3,
+                    textShadowOffsetX: 1,
+                    textShadowOffsetY: 1
+                },
+                upperLabel: {
+                    show: true,
+                    height: 30,
+                    color: '#fff'
+                },
+                itemStyle: {
+                    borderColor: th.splitLineColor,
+                    borderWidth: 1,
+                    gapWidth: 2
+                },
+                levels: [{
+                    itemStyle: {
+                        borderWidth: 0,
+                        borderColor: th.splitLineColor,
+                        gapWidth: 2
+                    },
+                    upperLabel: { show: false }
+                }]
+            }]
+        }, true);
+
+        var el2 = document.getElementById('concept-bar-chart');
+        if (conceptBarChart && !conceptBarChart.isDisposed()) conceptBarChart.dispose();
+        el2.innerHTML = '';
+        conceptBarChart = echarts.init(el2);
+
+        var top20 = concepts.slice(0, 20);
+        var names = top20.map(function(c) { return c.concept_name; });
+        var counts = top20.map(function(c) { return c.stock_count; });
+
+        conceptBarChart.setOption({
+            backgroundColor: 'transparent',
+            textStyle: th.textStyle,
+            tooltip: { 
+                trigger: 'axis', 
+                backgroundColor: th.tooltip.backgroundColor, 
+                borderColor: th.tooltip.borderColor, 
+                textStyle: th.tooltip.textStyle 
+            },
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: {
+                type: 'category',
+                data: names,
+                axisLabel: { 
+                    color: th.axisLabelColor, 
+                    rotate: 45, 
+                    fontSize: 9,
+                    formatter: function(value) {
+                        return value.length > 5 ? value.slice(0, 5) + '...' : value;
+                    }
+                }
+            },
+            yAxis: {
+                type: 'value',
+                axisLabel: { color: th.axisLabelColor },
+                splitLine: { lineStyle: { color: th.splitLineColor } }
+            },
+            series: [{
+                type: 'bar',
+                data: counts,
+                barMaxWidth: 30,
+                itemStyle: { color: th.accentColor },
+                label: { 
+                    show: true, 
+                    position: 'top', 
+                    color: th.axisLabelColor, 
+                    fontSize: 9 
+                }
+            }]
+        }, true);
+    }
+
+    function showConceptDetail(conceptId) {
+        window.location.href = '/concept?id=' + conceptId;
+    }
+
+    ATMChart.initPage();
+
+    window.addEventListener('theme-changed', function() {
+        loadConceptAnalysis();
+    });
+
+    ATMPerf.VisibilityManager.register(
+        function() {},
+        function() {
+            setTimeout(function() { ATMChart.resizeAll(); }, 200);
+        }
+    );
+
+    window.addEventListener('beforeunload', function() {
+        if (conceptDistChart && !conceptDistChart.isDisposed()) conceptDistChart.dispose();
+        if (conceptBarChart && !conceptBarChart.isDisposed()) conceptBarChart.dispose();
+    });
+
+    loadConceptAnalysis();
+    } catch(e) { console.error('Concept page init error:', e); }
+    </script>
+</body>
+</html>

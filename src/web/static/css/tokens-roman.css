@@ -1,0 +1,197 @@
+/* ══════════════════════════════════════════════════
+   ATMstockMarket — Roman & Hermès Style Design Tokens
+   罗马风格+爱马仕风格设计令牌 - 奢华、优雅、经典
+   ══════════════════════════════════════════════════ */
+
+:root {
+    /* ══════════════════════════════════════════════════
+       罗马+爱马仕色彩系统 - 橙金白
+       ══════════════════════════════════════════════════ */
+    
+    /* 爱马仕橙 - 主色调 */
+    --hermes-orange: #F37021;
+    --hermes-orange-light: #FF8C42;
+    --hermes-orange-dark: #E55D00;
+    --hermes-orange-subtle: rgba(243, 112, 33, 0.08);
+    
+    /* 金色系 - 装饰色 */
+    --gold-primary: #C9A961;
+    --gold-bright: #D4AF37;
+    --gold-light: #E6C98A;
+    --gold-dark: #A68B4B;
+    --gold-subtle: rgba(201, 169, 97, 0.15);
+    
+    /* 白色/米色 - 大理石质感 */
+    --marble-white: #FFFFFF;
+    --marble-cream: #FAF8F5;
+    --marble-beige: #F5F0E8;
+    --marble-sand: #EDE8DE;
+    
+    /* 深色 - 文本 */
+    --text-dark: #1A1A1A;
+    --text-medium: #2C2C2C;
+    --text-light: #4A4A4A;
+    --text-muted: #7A7A7A;
+    
+    /* 边框色 */
+    --border-gold: #C9A961;
+    --border-light: rgba(201, 169, 97, 0.3);
+    --border-subtle: rgba(0, 0, 0, 0.08);
+    
+    /* 市场色彩 - 保留中国股市惯例 */
+    --market-up: #C62828;
+    --market-up-bg: rgba(198, 40, 40, 0.08);
+    --market-down: #2E7D32;
+    --market-down-bg: rgba(46, 125, 50, 0.08);
+    --market-flat: #7A7A7A;
+    
+    /* 状态色 */
+    --status-success: #2E7D32;
+    --status-warning: #F37021;
+    --status-error: #C62828;
+    --status-info: #1976D2;
+    
+    /* ══════════════════════════════════════════════════
+       字体系统 - 优雅衬线体
+       ══════════════════════════════════════════════════ */
+    
+    /* 衬线字体 - 奢华感 */
+    --font-display: 'Cormorant Garamond', 'Playfair Display', 'Times New Roman', serif;
+    --font-body: 'Lato', 'Montserrat', 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+    
+    /* 字重 */
+    --font-light: 300;
+    --font-normal: 400;
+    --font-medium: 500;
+    --font-semibold: 600;
+    --font-bold: 700;
+    
+    /* 字体大小 */
+    --text-xs: 0.75rem;     /* 12px */
+    --text-sm: 0.875rem;    /* 14px */
+    --text-base: 1rem;      /* 16px */
+    --text-lg: 1.125rem;    /* 18px */
+    --text-xl: 1.25rem;     /* 20px */
+    --text-2xl: 1.5rem;     /* 24px */
+    --text-3xl: 1.875rem;   /* 30px */
+    --text-4xl: 2.25rem;    /* 36px */
+    --text-5xl: 3rem;       /* 48px */
+    
+    /* 行高 */
+    --leading-tight: 1.2;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.7;
+    --leading-loose: 1.8;
+    
+    /* 字间距 */
+    --tracking-tight: -0.01em;
+    --tracking-normal: 0;
+    --tracking-wide: 0.02em;
+    --tracking-wider: 0.05em;
+    
+    /* ══════════════════════════════════════════════════
+       间距系统 - 充足留白
+       ══════════════════════════════════════════════════ */
+    --space-0-5: 0.25rem;   /* 4px */
+    --space-1: 0.5rem;      /* 8px */
+    --space-1-5: 0.75rem;   /* 12px */
+    --space-2: 1rem;        /* 16px */
+    --space-3: 1.5rem;      /* 24px */
+    --space-4: 2rem;        /* 32px */
+    --space-5: 2.5rem;      /* 40px */
+    --space-6: 3rem;        /* 48px */
+    --space-8: 4rem;        /* 64px */
+    
+    /* ══════════════════════════════════════════════════
+       边框 - 金色装饰
+       ══════════════════════════════════════════════════ */
+    --radius-none: 0;
+    --radius-sm: 2px;
+    --radius-md: 4px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+    
+    /* ══════════════════════════════════════════════════
+       阴影 - 柔和阴影
+       ══════════════════════════════════════════════════ */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.1);
+    --shadow-gold: 0 2px 8px rgba(201, 169, 97, 0.2);
+    
+    /* ══════════════════════════════════════════════════
+       动画 - 优雅过渡
+       ══════════════════════════════════════════════════ */
+    --duration-fast: 200ms;
+    --duration-normal: 300ms;
+    --duration-slow: 500ms;
+    --ease-elegant: cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-fast: 200ms var(--ease-elegant);
+    --transition-normal: 300ms var(--ease-elegant);
+    
+    /* ══════════════════════════════════════════════════
+       Z-Index层级
+       ══════════════════════════════════════════════════ */
+    --z-base: 0;
+    --z-dropdown: 10;
+    --z-sticky: 20;
+    --z-overlay: 30;
+    --z-modal: 40;
+    --z-tooltip: 50;
+    
+    /* ══════════════════════════════════════════════════
+       焦点状态
+       ══════════════════════════════════════════════════ */
+    --focus-ring: 0 0 0 2px var(--gold-primary);
+    
+    /* ══════════════════════════════════════════════════
+       容器宽度
+       ══════════════════════════════════════════════════ */
+    --container-max: 1200px;
+    --container-wide: 1400px;
+    
+    /* ══════════════════════════════════════════════════
+       表格色彩
+       ══════════════════════════════════════════════════ */
+    --table-header-bg: linear-gradient(135deg, #FAF8F5 0%, #F5F0E8 100%);
+    --table-stripe-bg: rgba(0, 0, 0, 0.02);
+    --table-hover-bg: rgba(243, 112, 33, 0.05);
+    --table-border: rgba(201, 169, 97, 0.2);
+    
+    /* ══════════════════════════════════════════════════
+       输入框
+       ══════════════════════════════════════════════════ */
+    --input-bg: #FFFFFF;
+    --input-border: rgba(0, 0, 0, 0.12);
+    --input-focus-border: var(--gold-primary);
+    --input-focus-shadow: 0 0 0 3px rgba(201, 169, 97, 0.1);
+    
+    /* ══════════════════════════════════════════════════
+       滚动条
+       ══════════════════════════════════════════════════ */
+    --scrollbar-track: #F5F0E8;
+    --scrollbar-thumb: #C9A961;
+    --scrollbar-thumb-hover: #A68B4B;
+    
+    /* ══════════════════════════════════════════════════
+       渐变
+       ══════════════════════════════════════════════════ */
+    --gradient-gold: linear-gradient(135deg, #D4AF37 0%, #C9A961 50%, #A68B4B 100%);
+    --gradient-orange: linear-gradient(135deg, #FF8C42 0%, #F37021 100%);
+    --gradient-marble: linear-gradient(135deg, #FFFFFF 0%, #FAF8F5 100%);
+}
+
+/* ══════════════════════════════════════════════════
+   移动端字体调整
+   ══════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+    :root {
+        --text-xs: 0.6875rem;    /* 11px */
+        --text-sm: 0.8125rem;    /* 13px */
+        --text-base: 0.9375rem;  /* 15px */
+        --text-lg: 1.0625rem;    /* 17px */
+        --text-xl: 1.1875rem;    /* 19px */
+        --text-2xl: 1.375rem;    /* 22px */
+    }
+}

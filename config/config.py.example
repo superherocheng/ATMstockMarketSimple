@@ -1,0 +1,83 @@
+"""
+Tushare 配置文件
+=================
+请复制此文件为 config.py，并填入你的 Tushare Token。
+
+获取方式：https://tushare.pro/register 注册后，
+在「个人主页」->「接口TOKEN」中复制。
+
+注意：部分高级接口（如资金流向 moneyflow）需要足够积分。
+"""
+import os
+import tushare as ts
+from pathlib import Path
+
+# ============================================================
+#   在这里填入你的 Token（或通过环境变量 TUSHARE_TOKEN 设置）
+# ============================================================
+TUSHARE_TOKEN = os.environ.get("TUSHARE_TOKEN", "")
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+DATA_DIR = PROJECT_ROOT / "data"
+EXTERNAL_DATA_DIR = DATA_DIR / "external"
+
+# ETF 代码配置
+# 三大指数 ETF（国家队持仓）
+INDEX_ETF = {
+    "510300.SH": "沪深300ETF",
+    "510500.SH": "中证500ETF",
+    "510050.SH": "上证50ETF",
+}
+
+# 行业 ETF（流动性最高的品种）
+SECTOR_ETF = {
+    "512480.SH": "半导体ETF",
+    "515030.SH": "新能源车ETF",
+    "512010.SH": "医药ETF",
+    "512800.SH": "银行ETF",
+    "512880.SH": "证券ETF",
+    "159928.SZ": "消费ETF",
+    "515880.SH": "通信ETF",
+    "159206.SZ": "卫星ETF",
+    "515220.SH": "煤炭ETF",
+    "512400.SH": "有色ETF",
+    "562500.SH": "机器人ETF",
+}
+
+# 回溯交易日数（约一年）
+LOOKBACK_DAYS = 260
+
+# 异常检测阈值（标准差倍数）
+ANOMALY_STD_THRESHOLD = 2.0
+
+# 周期性行业集合
+CYCLICAL_INDUSTRIES = {
+    "银行", "证券", "保险", "多元金融",
+    "煤炭开采", "焦炭加工",
+    "铝", "铜", "铅锌", "小金属", "黄金",
+    "化工原料", "化纤", "塑料", "橡胶",
+    "建筑工程", "其他建材", "水泥", "玻璃", "陶瓷",
+    "水运", "公路", "港口", "空运", "铁路",
+    "火力发电", "水力发电", "新型电力", "供气供热",
+    "石油开采", "石油加工", "石油贸易",
+    "矿物制品", "有色金属",
+}
+
+# 缓存配置
+CACHE_MAX_SIZE = 500
+CACHE_DEFAULT_TTL = 3600
+
+
+def get_pro():
+    """获取 tushare pro 接口"""
+    if not TUSHARE_TOKEN or TUSHARE_TOKEN == "你的Token":
+        raise ValueError(
+            "请先配置 Tushare Token！\n"
+            "1. 复制 config.py.example 为 config.py\n"
+            "2. 在 config.py 中填入你的 Token\n"
+            "3. 或设置环境变量 TUSHARE_TOKEN\n"
+            "4. 获取 Token: https://tushare.pro/register"
+        )
+
+    ts.set_token(TUSHARE_TOKEN)
+    return ts.pro_api()

@@ -1,0 +1,223 @@
+/* ══════════════════════════════════════════════════
+   ATMstockMarket — Wikipedia风格设计令牌
+   Wikipedia Style Design Tokens
+   ══════════════════════════════════════════════════ */
+
+:root {
+    /* ══════════════════════════════════════════════════
+       色彩系统 - Wikipedia风格
+       ══════════════════════════════════════════════════ */
+    
+    /* 基础色 */
+    --c-white: #ffffff;
+    --c-black: #000000;
+    
+    /* 背景色 */
+    --c-bg: #f8f9fa;
+    --c-bg-secondary: #ffffff;
+    --c-bg-tertiary: #f1f3f4;
+    
+    /* 文本色 */
+    --c-text: #202122;
+    --c-text-secondary: #54595d;
+    --c-text-tertiary: #72777d;
+    --c-text-muted: #a2a9b1;
+    
+    /* 边框色 */
+    --c-border: #a2a9b1;
+    --c-border-light: #c8ccd1;
+    --c-border-strong: #72777d;
+    
+    /* 链接色 - Wikipedia蓝 */
+    --c-link: #0645ad;
+    --c-link-hover: #0b0080;
+    --c-link-visited: #0b0080;
+    --c-link-external: #3366bb;
+    
+    /* 强调色 */
+    --c-accent: #3366cc;
+    --c-accent-light: #447ff5;
+    --c-accent-dark: #2a4b8d;
+    --c-accent-bg: rgba(51, 102, 204, 0.1);
+    
+    /* 市场涨跌色 - 中国股市惯例 */
+    --c-up: #dd3333;                 /* 上涨红 */
+    --c-up-bg: rgba(221, 51, 51, 0.1);
+    --c-up-bg-strong: rgba(221, 51, 51, 0.15);
+    
+    --c-down: #00af00;               /* 下跌绿 */
+    --c-down-bg: rgba(0, 175, 0, 0.1);
+    --c-down-bg-strong: rgba(0, 175, 0, 0.15);
+    
+    /* 功能色 */
+    --c-success: #00af00;
+    --c-warning: #ff5d00;
+    --c-error: #dd3333;
+    --c-info: #3366cc;
+    --c-zero: #9e9689;
+    
+    /* ══════════════════════════════════════════════════
+       卡片与表面
+       ══════════════════════════════════════════════════ */
+    
+    --c-card: #ffffff;
+    --c-card-hover: #f8f9fa;
+    --c-overlay: rgba(0, 0, 0, 0.5);
+    
+    /* ══════════════════════════════════════════════════
+       字体系统
+       ══════════════════════════════════════════════════ */
+    
+    /* 主字体 - 无衬线 */
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Liberation Sans', 'Helvetica Neue', 'Noto Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    
+    /* 标题字体 - 无衬线 */
+    --font-display: 'Linux Libertine', 'Georgia', 'Times', 'Noto Serif SC', 'Source Han Serif CN', serif;
+    
+    /* 等宽字体 - 数据展示 */
+    --font-mono: 'JetBrains Mono', 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
+    
+    /* 通用字体栈 */
+    --font-body: var(--font-sans);
+    --font-serif: var(--font-display);
+    
+    /* ══════════════════════════════════════════════════
+       字体大小
+       ══════════════════════════════════════════════════ */
+    
+    --text-xs: 0.75rem;      /* 12px */
+    --text-sm: 0.875rem;     /* 14px */
+    --text-base: 1rem;       /* 16px */
+    --text-lg: 1.125rem;     /* 18px */
+    --text-xl: 1.25rem;      /* 20px */
+    --text-2xl: 1.5rem;      /* 24px */
+    --text-3xl: 1.875rem;    /* 30px */
+    --text-4xl: 2.25rem;     /* 36px */
+    
+    /* ══════════════════════════════════════════════════
+       间距系统 - 8px基础单位
+       ══════════════════════════════════════════════════ */
+    
+    --space-0-5: 0.25rem;    /* 4px */
+    --space-1: 0.5rem;       /* 8px */
+    --space-1-5: 0.75rem;    /* 12px */
+    --space-2: 1rem;         /* 16px */
+    --space-3: 1.5rem;       /* 24px */
+    --space-4: 2rem;         /* 32px */
+    --space-5: 2.5rem;       /* 40px */
+    --space-6: 3rem;         /* 48px */
+    --space-8: 4rem;         /* 64px */
+    
+    /* ══════════════════════════════════════════════════
+       圆角 - Wikipedia风格极小圆角
+       ══════════════════════════════════════════════════ */
+    
+    --radius-sm: 2px;
+    --radius-md: 2px;
+    --radius-lg: 2px;
+    --radius-xl: 2px;
+    --radius-full: 9999px;
+    
+    /* ══════════════════════════════════════════════════
+       阴影 - Wikipedia风格无阴影或极简阴影
+       ══════════════════════════════════════════════════ */
+    
+    --shadow-sm: none;
+    --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 4px 8px rgba(0, 0, 0, 0.1);
+    
+    /* ══════════════════════════════════════════════════
+       过渡与动画
+       ══════════════════════════════════════════════════ */
+    
+    --transition-fast: 100ms ease;
+    --transition-normal: 200ms ease;
+    --transition-slow: 300ms ease;
+    
+    /* ══════════════════════════════════════════════════
+       Z-index 层级
+       ══════════════════════════════════════════════════ */
+    
+    --z-base: 0;
+    --z-dropdown: 10;
+    --z-sticky: 20;
+    --z-fixed: 30;
+    --z-overlay: 40;
+    --z-modal: 50;
+    
+    /* ══════════════════════════════════════════════════
+       表格
+       ══════════════════════════════════════════════════ */
+    
+    --c-table-header: #eaecf0;
+    --c-table-stripe: #f8f9fa;
+    --c-table-hover: #eaecf0;
+    
+    /* ══════════════════════════════════════════════════
+       输入框
+       ══════════════════════════════════════════════════ */
+    
+    --c-input-bg: #ffffff;
+    --c-input-border: #a2a9b1;
+    --c-input-focus: #3366cc;
+    --c-input-focus-ring: rgba(51, 102, 204, 0.25);
+    
+    /* ══════════════════════════════════════════════════
+       滚动条
+       ══════════════════════════════════════════════════ */
+    
+    --c-scrollbar-track: #f1f3f4;
+    --c-scrollbar-thumb: #a2a9b1;
+    --c-scrollbar-thumb-hover: #72777d;
+    
+    /* ══════════════════════════════════════════════════
+       骨架屏
+       ══════════════════════════════════════════════════ */
+    
+    --c-skeleton: #eaecf0;
+    --c-skeleton-shine: #f8f9fa;
+    
+    /* ══════════════════════════════════════════════════
+       焦点环
+       ══════════════════════════════════════════════════ */
+    
+    --focus-ring: 0 0 0 2px var(--c-input-focus-ring);
+}
+
+/* ══════════════════════════════════════════════════
+   深色模式 (P3.1: manual toggle + system preference)
+   ══════════════════════════════════════════════════ */
+
+[data-theme="dark"],
+@media (prefers-color-scheme: dark) {
+    :root {
+        --c-bg: #0b0c0e;
+        --c-bg-secondary: #1a1b1e;
+        --c-bg-tertiary: #252628;
+        
+        --c-card: #1a1b1e;
+        --c-card-hover: #252628;
+        
+        --c-text: #e8e9eb;
+        --c-text-secondary: #b5b7ba;
+        --c-text-tertiary: #8a8d91;
+        
+        --c-border: #3a3d42;
+        --c-border-light: #4a4d52;
+        
+        --c-link: #6d9eeb;
+        --c-link-hover: #8ab7f0;
+        --c-link-visited: #8ab7f0;
+        
+        --c-table-header: #252628;
+        --c-table-stripe: #1a1b1e;
+        --c-table-hover: #2a2b2e;
+        
+        --c-input-bg: #1a1b1e;
+        --c-input-border: #3a3d42;
+        
+        --c-scrollbar-track: #1a1b1e;
+        --c-scrollbar-thumb: #3a3d42;
+    }
+}

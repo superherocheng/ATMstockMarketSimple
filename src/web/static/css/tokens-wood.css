@@ -1,0 +1,235 @@
+/* ══════════════════════════════════════════════════
+   ATMstockMarket — Retro Wood Style Design Tokens
+   复古木质风格设计令牌
+   ══════════════════════════════════════════════════ */
+
+:root {
+    /* ══════════════════════════════════════════════════
+       木质色彩系统 (Wood Color System)
+       ══════════════════════════════════════════════════ */
+    
+    /* 深棕色系 - Dark Wood */
+    --wood-dark: #3E2723;
+    --wood-dark-hover: #4E342E;
+    --wood-medium: #5D4037;
+    
+    /* 原木色系 - Natural Wood */
+    --wood-light: #8D6E63;
+    --wood-lighter: #A1887F;
+    --wood-muted: #BCAAA4;
+    
+    /* 背景色系 - Background Colors */
+    --bg-cream: #FFF8E7;
+    --bg-beige: #EFEBE9;
+    --bg-oak: #D7CCC8;
+    --bg-paper: #F5F5DC;
+    
+    /* ══════════════════════════════════════════════════
+       文本色彩 (Text Colors)
+       ══════════════════════════════════════════════════ */
+    --text-primary: #3E2723;
+    --text-secondary: #5D4037;
+    --text-tertiary: #8D6E63;
+    --text-muted: #A1887F;
+    
+    /* ══════════════════════════════════════════════════
+       市场色彩 - Market Colors (中国股市惯例)
+       ══════════════════════════════════════════════════ */
+    --market-up: #C62828;
+    --market-up-bg: rgba(198, 40, 40, 0.1);
+    --market-up-bg-strong: rgba(198, 40, 40, 0.18);
+    
+    --market-down: #2E7D32;
+    --market-down-bg: rgba(46, 125, 50, 0.1);
+    --market-down-bg-strong: rgba(46, 125, 50, 0.18);
+    
+    --market-flat: #757575;
+    --market-flat-bg: rgba(117, 117, 117, 0.1);
+    
+    /* ══════════════════════════════════════════════════
+       状态色彩 - Status Colors
+       ══════════════════════════════════════════════════ */
+    --status-success: #558B2F;
+    --status-success-light: #7CB342;
+    --status-warning: #F57C00;
+    --status-warning-light: #FFB74D;
+    --status-error: #D32F2F;
+    --status-error-light: #EF5350;
+    --status-info: #1976D2;
+    --status-info-light: #42A5F5;
+    
+    /* ══════════════════════════════════════════════════
+       边框色彩 - Border Colors
+       ══════════════════════════════════════════════════ */
+    --border-primary: #3E2723;
+    --border-secondary: #5D4037;
+    --border-tertiary: #8D6E63;
+    --border-light: rgba(141, 110, 99, 0.3);
+    --border-lighter: rgba(188, 170, 164, 0.3);
+    
+    /* ══════════════════════════════════════════════════
+       阴影系统 - Shadow System (木质偏移阴影)
+       ══════════════════════════════════════════════════ */
+    --shadow-sm: 2px 2px 0 rgba(62, 39, 35, 0.1);
+    --shadow-md: 3px 3px 0 rgba(62, 39, 35, 0.15);
+    --shadow-lg: 4px 4px 0 rgba(62, 39, 35, 0.2);
+    --shadow-xl: 5px 5px 0 rgba(62, 39, 35, 0.25);
+    --shadow-hover: 5px 5px 0 rgba(62, 39, 35, 0.25);
+    --shadow-active: 1px 1px 0 rgba(62, 39, 35, 0.15);
+    
+    /* ══════════════════════════════════════════════════
+       字体系统 - Typography System
+       ══════════════════════════════════════════════════ */
+    
+    /* 字体族 */
+    --font-display: 'Noto Serif SC', 'Source Han Serif CN', Georgia, serif;
+    --font-body: 'Noto Sans SC', 'Source Han Sans CN', 'PingFang SC', sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+    --font-sans: var(--font-body);
+    
+    /* 字重 */
+    --font-light: 300;
+    --font-normal: 400;
+    --font-medium: 500;
+    --font-semibold: 600;
+    --font-bold: 700;
+    
+    /* 字体大小 - PC端 */
+    --text-xs: 0.75rem;     /* 12px */
+    --text-sm: 0.875rem;    /* 14px */
+    --text-base: 1rem;      /* 16px */
+    --text-lg: 1.125rem;    /* 18px */
+    --text-xl: 1.25rem;     /* 20px */
+    --text-2xl: 1.5rem;     /* 24px */
+    --text-3xl: 1.875rem;   /* 30px */
+    --text-4xl: 2.25rem;    /* 36px */
+    --text-5xl: 3rem;       /* 48px */
+    
+    /* 行高 */
+    --leading-tight: 1.3;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.7;
+    --leading-loose: 1.8;
+    
+    /* ══════════════════════════════════════════════════
+       间距系统 - Spacing System (8px基础单位)
+       ══════════════════════════════════════════════════ */
+    --space-0-5: 0.25rem;   /* 4px */
+    --space-1: 0.5rem;      /* 8px */
+    --space-1-5: 0.75rem;   /* 12px */
+    --space-2: 1rem;        /* 16px */
+    --space-3: 1.5rem;      /* 24px */
+    --space-4: 2rem;        /* 32px */
+    --space-5: 2.5rem;      /* 40px */
+    --space-6: 3rem;        /* 48px */
+    --space-8: 4rem;        /* 64px */
+    --space-10: 5rem;       /* 80px */
+    --space-12: 6rem;       /* 96px */
+    --space-16: 8rem;       /* 128px */
+    
+    /* ══════════════════════════════════════════════════
+       边框圆角 - Border Radius
+       ══════════════════════════════════════════════════ */
+    --radius-xs: 2px;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-2xl: 20px;
+    --radius-3xl: 24px;
+    --radius-full: 9999px;
+    
+    /* ══════════════════════════════════════════════════
+       动画与过渡 - Animation & Transitions
+       ══════════════════════════════════════════════════ */
+    --duration-fast: 150ms;
+    --duration-normal: 250ms;
+    --duration-slow: 400ms;
+    --duration-slower: 600ms;
+    
+    --ease-wood: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-wood-in: cubic-bezier(0.4, 0, 1, 1);
+    --ease-wood-out: cubic-bezier(0, 0, 0.2, 1);
+    
+    --transition-fast: 150ms var(--ease-wood);
+    --transition-normal: 250ms var(--ease-wood);
+    --transition-slow: 400ms var(--ease-wood);
+    
+    /* ══════════════════════════════════════════════════
+       Z-Index 层级
+       ══════════════════════════════════════════════════ */
+    --z-base: 0;
+    --z-dropdown: 20;
+    --z-sticky: 50;
+    --z-overlay: 40;
+    --z-modal: 60;
+    --z-tooltip: 70;
+    --z-notification: 80;
+    
+    /* ══════════════════════════════════════════════════
+       焦点状态 - Focus States
+       ══════════════════════════════════════════════════ */
+    --focus-ring: 0 0 0 3px rgba(62, 39, 35, 0.3);
+    --focus-ring-offset: 0 0 0 2px var(--bg-cream), 0 0 0 4px var(--wood-dark);
+    
+    /* ══════════════════════════════════════════════════
+       渐变 - Gradients
+       ══════════════════════════════════════════════════ */
+    --gradient-wood-dark: linear-gradient(135deg, #3E2723 0%, #4E342E 100%);
+    --gradient-wood-medium: linear-gradient(135deg, #5D4037 0%, #8D6E63 100%);
+    --gradient-cream: linear-gradient(135deg, #FFF8E7 0%, #EFEBE9 100%);
+    --gradient-oak: linear-gradient(135deg, #D7CCC8 0%, #BCAAA4 100%);
+    --gradient-up: linear-gradient(135deg, #C62828, #EF5350);
+    --gradient-down: linear-gradient(135deg, #2E7D32, #66BB6A);
+    
+    /* ══════════════════════════════════════════════════
+       表格色彩 - Table Colors
+       ══════════════════════════════════════════════════ */
+    --table-stripe: rgba(215, 204, 200, 0.15);
+    --table-hover: rgba(215, 204, 200, 0.3);
+    --table-header: linear-gradient(135deg, #D7CCC8 0%, #BCAAA4 100%);
+    
+    /* ══════════════════════════════════════════════════
+       输入框色彩 - Input Colors
+       ══════════════════════════════════════════════════ */
+    --input-bg: #FFFFFF;
+    --input-border: rgba(141, 110, 99, 0.3);
+    --input-focus-border: var(--wood-medium);
+    --input-focus-ring: rgba(93, 64, 55, 0.2);
+    
+    /* ══════════════════════════════════════════════════
+       滚动条色彩 - Scrollbar Colors
+       ══════════════════════════════════════════════════ */
+    --scrollbar-track: #EFEBE9;
+    --scrollbar-thumb: #BCAAA4;
+    --scrollbar-thumb-hover: #A1887F;
+    
+    /* ══════════════════════════════════════════════════
+       骨架屏色彩 - Skeleton Colors
+       ══════════════════════════════════════════════════ */
+    --skeleton-base: #D7CCC8;
+    --skeleton-shine: #EFEBE9;
+    
+    /* ══════════════════════════════════════════════════
+       工具提示色彩 - Tooltip Colors
+       ══════════════════════════════════════════════════ */
+    --tooltip-bg: #3E2723;
+    --tooltip-text: #FFF8E7;
+    --tooltip-border: rgba(255, 248, 231, 0.2);
+}
+
+/* ══════════════════════════════════════════════════
+   移动端字体大小调整
+   ══════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+    :root {
+        --text-xs: 0.6875rem;    /* 11px */
+        --text-sm: 0.8125rem;    /* 13px */
+        --text-base: 0.9375rem;  /* 15px */
+        --text-lg: 1.0625rem;    /* 17px */
+        --text-xl: 1.1875rem;    /* 19px */
+        --text-2xl: 1.375rem;    /* 22px */
+        --text-3xl: 1.625rem;    /* 26px */
+        --text-4xl: 2rem;        /* 32px */
+    }
+}

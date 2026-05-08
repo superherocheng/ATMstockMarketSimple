@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+.venv/
+venv/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Data (managed by database, not Git)
+data/database/
+
+# Logs
+logs/*.log
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Git
+.git/
+.gitignore

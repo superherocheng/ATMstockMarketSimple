@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>行业分析 - ATMstockMarket</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/tokens-wiki.css">
+    <link rel="stylesheet" href="/static/css/style-wiki.css">
+    <link rel="stylesheet" href="/static/css/components-wiki.css">
+    <script>window.addEventListener("unhandledrejection",function(e){e.preventDefault();console.warn("Unhandled rejection:",e.reason);});window.onerror=function(){document.getElementById('nav-container')&&document.getElementById('nav-container').insertAdjacentHTML('afterend','<div style="background:#fff3cd;color:#856404;padding:12px;text-align:center;font-size:14px;border-bottom:1px solid #ffc107">⚠️ 页面部分功能加载异常，请刷新重试</div>');};</script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="/static/js/tailwind-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"
+            onerror="console.warn('ECharts CDN failed; charts will be unavailable')"></script>
+    <script src="/static/js/utils.js"></script>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/nav.js"></script>
+    <script src="/static/js/cache.js"></script>
+    <script src="/static/js/perf.js"></script>
+    <script src="/static/js/chart-loader.js"></script>
+</head>
+<body class="min-h-screen">
+    <div id="nav-container"></div>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h2 class="text-xl font-semibold mb-6 flex items-center gap-3">
+            <svg class="w-5 h-5" style="color:var(--c-accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H4m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+            行业板块分析
+            <span class="text-sm font-normal hidden sm:inline" style="color:var(--c-text-tertiary);">基于申万行业分类与量价数据</span>
+        </h2>
+
+        <div id="status-message" class="hidden mb-6"></div>
+
+        <div id="main-content" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="glass rounded-xl p-6">
+                    <h3 class="font-semibold mb-4 flex items-center gap-3">
+                        <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
+                        行业股票数量分布
+                    </h3>
+                    <div id="industry-dist-chart" class="chart-sub" style="height: 320px;"></div>
+                </div>
+                <div class="glass rounded-xl p-6">
+                    <h3 class="font-semibold mb-4 flex items-center gap-3">
+                        <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
+                        行业平均市值对比
+                    </h3>
+                    <div id="industry-mv-chart" class="chart-sub" style="height: 320px;"></div>
+                </div>
+            </div>
+
+            <div class="glass rounded-xl overflow-hidden">
+                <div class="px-6 py-4 border-b flex items-center justify-between flex-wrap gap-4" style="border-color:var(--c-border);">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-4 h-4" style="color:var(--c-accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H4m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                        <h3 class="font-semibold">行业板块详情</h3>
+                    </div>
+                    <div class="flex gap-3 items-center">
+                        <label for="industry-search" class="sr-only">搜索行业</label>
+                        <input id="industry-search" type="text" placeholder="搜索行业..." 
+                               class="px-3 py-2 rounded-lg text-sm w-48" 
+                               oninput="filterIndustries(this.value)">
+                    </div>
+                </div>
+                <div id="industries-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-6">
+                    <div class="col-span-full loading-state">
+                        <div class="spinner spinner-lg loading-state-spinner"></div>
+                        <div class="loading-state-text">加载中...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>ATMstockMarket — 数据来源: Tushare / AKShare | 仅供学习研究，不构成投资建议</p>
+    </footer>
+
+    <script>
+    try {
+    ATMNav.insert('nav-container', 'industry');
+
+    var industryDistChart = null;
+    var industryMvChart = null;
+    var allIndustries = [];
+    var level1Stats = [];
+
+    async function loadIndustryAnalysis() {
+        var statusEl = document.getElementById('status-message');
+        var mainContent = document.getElementById('main-content');
+        
+        try {
+            var resp = await fetch('/api/industry/analysis');
+            
+            if (!resp.ok) {
+                var errorData = null;
+                try {
+                    errorData = await resp.json();
+                } catch(e) {}
+                
+                var errorMsg = '加载失败';
+                if (resp.status === 404) {
+                    errorMsg = '行业分析接口未找到，请检查后端服务是否正常运行';
+                } else if (errorData && errorData.detail) {
+                    errorMsg = errorData.detail;
+                } else {
+                    errorMsg = 'HTTP ' + resp.status + ': ' + (errorData ? JSON.stringify(errorData) : '未知错误');
+                }
+                
+                statusEl.innerHTML = '<div class="error-message"><div class="error-message-content"><div class="error-message-title">数据加载失败</div><div class="error-message-detail">' + errorMsg + '</div></div></div>';
+                statusEl.classList.remove('hidden');
+                mainContent.classList.add('hidden');
+                return;
+            }
+            
+            var data = await resp.json();
+
+            // 处理错误消息
+            if (data.error) {
+                statusEl.innerHTML = '<div class="error-message"><div class="error-message-content"><div class="error-message-title">数据加载失败</div><div class="error-message-detail">' + data.error + '</div></div></div>';
+                statusEl.classList.remove('hidden');
+                mainContent.classList.add('hidden');
+                return;
+            }
+            
+            // 处理警告消息（有数据但数据不完整）
+            if (data.warning) {
+                statusEl.innerHTML = '<div class="warning-message"><div class="warning-message-title">⚠️ 数据不完整</div><div class="warning-message-detail">' + data.warning.replace(/\n/g, '<br>') + '</div></div>';
+                statusEl.classList.remove('hidden');
+                mainContent.classList.remove('hidden');
+            } else {
+                statusEl.classList.add('hidden');
+                mainContent.classList.remove('hidden');
+            }
+
+            allIndustries = data.industries || [];
+            level1Stats = data.level1_stats || [];
+            
+            if (allIndustries.length === 0) {
+                document.getElementById('industries-container').innerHTML = '<div class="col-span-full empty-state"><div class="empty-state-title">暂无行业数据</div><div class="empty-state-description">请先在首页获取股票基础数据</div><div class="empty-state-action"><a href="/" class="btn btn-primary">前往首页</a></div></div>';
+                return;
+            }
+            
+            renderIndustries(allIndustries);
+
+            try { await ATMChart.load(); } catch(e) { console.warn('ECharts load failed:', e); }
+            requestAnimationFrame(function() {
+                renderIndustryCharts(allIndustries, level1Stats);
+            });
+        } catch(e) {
+            console.error('加载行业分析失败:', e);
+            statusEl.innerHTML = '<div class="error-message"><div class="error-message-content"><div class="error-message-title">网络请求失败</div><div class="error-message-detail">' + e.message + '</div></div></div>';
+            statusEl.classList.remove('hidden');
+            mainContent.classList.add('hidden');
+        }
+    }
+
+    function filterIndustries(keyword) {
+        keyword = keyword.toLowerCase().trim();
+        if (!keyword) {
+            renderIndustries(allIndustries);
+        } else {
+            var filtered = allIndustries.filter(function(ind) {
+                return ind.industry.toLowerCase().indexOf(keyword) >= 0;
+            });
+            renderIndustries(filtered);
+        }
+    }
+
+    function renderIndustries(industries) {
+        var container = document.getElementById('industries-container');
+        if (!industries || industries.length === 0) {
+            container.innerHTML = '<div class="col-span-full empty-state"><div class="empty-state-title">未找到匹配的行业</div></div>';
+            return;
+        }
+
+        container.innerHTML = industries.map(function(industry) {
+            var topStocksHtml = '';
+            if (industry.top_stocks && industry.top_stocks.length > 0) {
+                topStocksHtml = '<div class="mt-3 pt-3 border-t" style="border-color:var(--c-border);">' +
+                    '<div class="text-xs font-medium mb-2" style="color:var(--c-text-secondary);">市值 TOP 5:</div>' +
+                    '<div class="space-y-2">' +
+                    industry.top_stocks.slice(0, 5).map(function(stock) {
+                        var pct = parseFloat(stock.pct_chg || 0);
+                        return '<div class="flex items-center justify-between text-xs">' +
+                            '<div class="flex items-center gap-2">' +
+                                '<a href="/stock/' + stock.ts_code + '" class="font-medium hover:underline" style="color:var(--c-text);">' + stock.name + '</a>' +
+                                '<span style="color:var(--c-text-secondary);">' + (stock.sub_industry || '') + '</span>' +
+                            '</div>' +
+                            '<span class="font-mono" style="color:' + ATM.pctColor(pct) + ';">' + ATM.pctText(pct) + '</span>' +
+                        '</div>';
+                    }).join('') +
+                    '</div></div>';
+            }
+
+            var metricsHtml = '';
+            if (industry.avg_metrics) {
+                var avgMv = industry.avg_metrics.avg_mv;
+                var avgPe = industry.avg_metrics.avg_pe;
+                var avgPb = industry.avg_metrics.avg_pb;
+                
+                // 格式化函数：区分 null（无数据）和 0（数据为0）
+                var formatValue = function(val, formatter) {
+                    if (val === null || val === undefined) {
+                        return '--';
+                    }
+                    return formatter ? formatter(val) : val;
+                };
+                
+                var formatMV = function(val) {
+                    if (val === 0) return '0亿';
+                    return (val / 10000).toFixed(0) + '亿';
+                };
+                
+                metricsHtml = '<div class="grid grid-cols-3 gap-2 mt-3 pt-3 border-t text-xs" style="border-color:var(--c-border);">' +
+                    '<div class="text-center">' +
+                        '<div style="color:var(--c-text-secondary);">平均市值</div>' +
+                        '<div class="font-mono font-semibold" style="color:var(--c-accent);">' + formatValue(avgMv, formatMV) + '</div>' +
+                    '</div>' +
+                    '<div class="text-center">' +
+                        '<div style="color:var(--c-text-secondary);">平均PE</div>' +
+                        '<div class="font-mono font-semibold" style="color:var(--c-warning);">' + formatValue(avgPe, function(v) { return v.toFixed(1); }) + '</div>' +
+                    '</div>' +
+                    '<div class="text-center">' +
+                        '<div style="color:var(--c-text-secondary);">平均PB</div>' +
+                        '<div class="font-mono font-semibold" style="color:var(--c-down);">' + formatValue(avgPb, function(v) { return v.toFixed(2); }) + '</div>' +
+                    '</div>' +
+                '</div>';
+            }
+
+            // 显示行业分类层级
+            var levelInfo = '';
+            if (industry.sw_level1) {
+                levelInfo = '<div class="text-xs mb-2" style="color:var(--c-text-tertiary);">' +
+                    industry.sw_level1;
+                if (industry.sw_level2) {
+                    levelInfo += ' → ' + industry.sw_level2;
+                }
+                levelInfo += '</div>';
+            }
+
+            return '<div class="glass rounded-xl p-4 hover:border-accent transition-all cursor-pointer" onclick="showIndustryDetail(\'' + encodeURIComponent(industry.sw_level3 || industry.industry) + '\')">' +
+                '<div class="flex items-start justify-between mb-2">' +
+                    '<div>' +
+                        '<h4 class="font-semibold" style="color:var(--c-text);">' + (industry.sw_level3 || industry.industry) + '</h4>' +
+                        levelInfo +
+                    '</div>' +
+                    '<span class="badge">' + industry.stock_count + '只</span>' +
+                '</div>' +
+                metricsHtml +
+                topStocksHtml +
+            '</div>';
+        }).join('');
+    }
+
+    function renderIndustryCharts(industries, level1Data) {
+        if (!industries || industries.length === 0) return;
+
+        var th = ATM.getChartTheme();
+
+        // 申万一级分类饼图
+        var el1 = document.getElementById('industry-dist-chart');
+        if (industryDistChart && !industryDistChart.isDisposed()) industryDistChart.dispose();
+        el1.innerHTML = '';
+        industryDistChart = echarts.init(el1);
+
+        var pieData = (level1Data || industries).slice(0, 15).map(function(ind) {
+            return { name: ind.sw_level1 || ind.industry, value: ind.stock_count };
+        });
+
+        industryDistChart.setOption({
+            backgroundColor: 'transparent',
+            textStyle: th.textStyle,
+            title: {
+                text: '申万一级行业分布',
+                left: 'center',
+                top: 10,
+                textStyle: {
+                    color: th.axisLabelColor,
+                    fontSize: 12
+                }
+            },
+            tooltip: { 
+                trigger: 'item', 
+                backgroundColor: th.tooltip.backgroundColor, 
+                borderColor: th.tooltip.borderColor, 
+                textStyle: th.tooltip.textStyle, 
+                formatter: '{b}: {c}只 ({d}%)' 
+            },
+            series: [{
+                type: 'pie', 
+                radius: ['35%', '65%'],
+                label: { 
+                    color: th.axisLabelColor, 
+                    fontSize: 10,
+                    formatter: function(params) {
+                        return params.name.length > 5 ? params.name.slice(0, 5) + '...' : params.name;
+                    }
+                },
+                data: pieData,
+                emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.2)' } }
+            }]
+        }, true);
+
+        // 申万三级分类柱状图（按平均市值排序）
+        var el2 = document.getElementById('industry-mv-chart');
+        if (industryMvChart && !industryMvChart.isDisposed()) industryMvChart.dispose();
+        el2.innerHTML = '';
+        industryMvChart = echarts.init(el2);
+
+        // 过滤出有市值数据的行业（avg_mv 不为 null）
+        var industriesWithMv = industries.filter(function(ind) {
+            return ind.avg_metrics && ind.avg_metrics.avg_mv !== null && ind.avg_metrics.avg_mv !== undefined;
+        });
+        
+        // 如果没有市值数据，则显示股票数量对比
+        if (industriesWithMv.length === 0) {
+            var top15 = industries.slice(0, 15);
+            var names = top15.map(function(ind) { return ind.sw_level3 || ind.industry; });
+            var stockCounts = top15.map(function(ind) { return ind.stock_count; });
+            
+            industryMvChart.setOption({
+                backgroundColor: 'transparent',
+                textStyle: th.textStyle,
+                title: {
+                    text: '暂无市值数据，显示股票数量对比',
+                    left: 'center',
+                    top: 10,
+                    textStyle: {
+                        color: th.axisLabelColor,
+                        fontSize: 12
+                    }
+                },
+                tooltip: { 
+                    trigger: 'axis', 
+                    backgroundColor: th.tooltip.backgroundColor, 
+                    borderColor: th.tooltip.borderColor, 
+                    textStyle: th.tooltip.textStyle,
+                    formatter: function(params) {
+                        var d = params[0];
+                        return d.name + '<br/>股票数量: ' + d.value + '只';
+                    }
+                },
+                grid: { left: '3%', right: '4%', bottom: '3%', top: '15%', containLabel: true },
+                xAxis: {
+                    type: 'category',
+                    data: names,
+                    axisLabel: { 
+                        color: th.axisLabelColor, 
+                        rotate: 45, 
+                        fontSize: 9,
+                        formatter: function(value) {
+                            return value.length > 4 ? value.slice(0, 4) + '...' : value;
+                        }
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: { color: th.axisLabelColor, formatter: '{value}只' },
+                    splitLine: { lineStyle: { color: th.splitLineColor } }
+                },
+                series: [{
+                    type: 'bar',
+                    data: stockCounts,
+                    barMaxWidth: 30,
+                    itemStyle: { color: th.accentColor },
+                    label: { 
+                        show: true, 
+                        position: 'top', 
+                        color: th.axisLabelColor, 
+                        fontSize: 9,
+                        formatter: '{c}只'
+                    }
+                }]
+            }, true);
+        } else {
+            // 有市值数据，显示市值对比
+            // 按照平均市值从大到小排序
+            var sortedIndustries = industriesWithMv.sort(function(a, b) {
+                var mvA = a.avg_metrics && a.avg_metrics.avg_mv ? a.avg_metrics.avg_mv : 0;
+                var mvB = b.avg_metrics && b.avg_metrics.avg_mv ? b.avg_metrics.avg_mv : 0;
+                return mvB - mvA;
+            });
+            
+            var top15 = sortedIndustries.slice(0, 15);
+            var names = top15.map(function(ind) { return ind.sw_level3 || ind.industry; });
+            var avgMvs = top15.map(function(ind) { 
+                var mv = ind.avg_metrics.avg_mv || 0;
+                return (mv / 10000).toFixed(0); 
+            });
+
+            industryMvChart.setOption({
+                backgroundColor: 'transparent',
+                textStyle: th.textStyle,
+                title: {
+                    text: '申万三级行业平均市值',
+                    left: 'center',
+                    top: 10,
+                    textStyle: {
+                        color: th.axisLabelColor,
+                        fontSize: 12
+                    }
+                },
+                tooltip: { 
+                    trigger: 'axis', 
+                    backgroundColor: th.tooltip.backgroundColor, 
+                    borderColor: th.tooltip.borderColor, 
+                    textStyle: th.tooltip.textStyle,
+                    formatter: function(params) {
+                        var d = params[0];
+                        return d.name + '<br/>平均市值: ' + d.value + '亿';
+                    }
+                },
+                grid: { left: '3%', right: '4%', bottom: '3%', top: '15%', containLabel: true },
+                xAxis: {
+                    type: 'category',
+                    data: names,
+                    axisLabel: { 
+                        color: th.axisLabelColor, 
+                        rotate: 45, 
+                        fontSize: 9,
+                        formatter: function(value) {
+                            return value.length > 4 ? value.slice(0, 4) + '...' : value;
+                        }
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: { color: th.axisLabelColor, formatter: '{value}亿' },
+                    splitLine: { lineStyle: { color: th.splitLineColor } }
+                },
+                series: [{
+                    type: 'bar',
+                    data: avgMvs,
+                    barMaxWidth: 30,
+                    itemStyle: { color: th.accentColor },
+                    label: { 
+                        show: true, 
+                        position: 'top', 
+                        color: th.axisLabelColor, 
+                        fontSize: 9,
+                        formatter: '{c}亿'
+                    }
+                }]
+            }, true);
+        }
+    }
+
+    function showIndustryDetail(industryName) {
+        window.location.href = '/industry?name=' + industryName;
+    }
+
+    ATMChart.initPage();
+
+    window.addEventListener('theme-changed', function() {
+        loadIndustryAnalysis();
+    });
+
+    ATMPerf.VisibilityManager.register(
+        function() {},
+        function() {
+            setTimeout(function() { ATMChart.resizeAll(); }, 200);
+        }
+    );
+
+    window.addEventListener('beforeunload', function() {
+        if (industryDistChart && !industryDistChart.isDisposed()) industryDistChart.dispose();
+        if (industryMvChart && !industryMvChart.isDisposed()) industryMvChart.dispose();
+    });
+
+    loadIndustryAnalysis();
+    } catch(e) { console.error('Industry page init error:', e); }
+    </script>
+</body>
+</html>

@@ -1,0 +1,737 @@
+/* ══════════════════════════════════════════════════
+   ATMstockMarket — Gundam Style Components
+   高达风格组件样式
+   ══════════════════════════════════════════════════ */
+
+/* ─── 数据卡片组件 ──────────────────────────────── */
+.data-card {
+    background: var(--gundam-surface);
+    border: 1px solid var(--border-secondary);
+    border-left: 3px solid var(--gundam-green);
+    padding: var(--space-3);
+    position: relative;
+    transition: all var(--transition-normal);
+}
+
+.data-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--gundam-green), transparent);
+}
+
+.data-card:hover {
+    border-color: var(--gundam-green);
+    box-shadow: var(--shadow-md);
+}
+
+.data-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: var(--space-2);
+}
+
+.data-card-title {
+    font-family: var(--font-display);
+    font-weight: var(--font-bold);
+    font-size: var(--text-base);
+    color: var(--gundam-green);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+}
+
+.data-card-subtitle {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.data-card-value {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-bold);
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+    margin-bottom: var(--space-1);
+}
+
+/* ─── ETF卡片组件 ──────────────────────────────── */
+.etf-card {
+    background: var(--gundam-surface);
+    border: 1px solid var(--border-secondary);
+    border-left: 3px solid var(--gundam-green);
+    padding: var(--space-3);
+    transition: all var(--transition-normal);
+    cursor: pointer;
+    position: relative;
+}
+
+.etf-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--gundam-green), transparent);
+}
+
+.etf-card:hover {
+    border-color: var(--gundam-green);
+    box-shadow: var(--shadow-md);
+}
+
+.etf-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: var(--space-2);
+}
+
+.etf-name {
+    font-family: var(--font-display);
+    font-weight: var(--font-bold);
+    font-size: var(--text-base);
+    color: var(--gundam-green);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+}
+
+.etf-code {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.etf-date {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.etf-price {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-bold);
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+    margin-bottom: var(--space-1);
+}
+
+.etf-change {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.etf-pct {
+    font-size: var(--text-sm);
+    font-weight: var(--font-bold);
+    font-family: var(--font-mono);
+}
+
+.etf-amount {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+/* ─── 热力图单元格组件 ──────────────────────────── */
+.heatmap-cell {
+    background: var(--gundam-surface);
+    border: 1px solid var(--border-subtle);
+    padding: var(--space-2);
+    transition: all var(--transition-fast);
+    cursor: pointer;
+    text-align: center;
+    position: relative;
+}
+
+.heatmap-cell::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--gundam-green);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.heatmap-cell:hover {
+    border-color: var(--gundam-green);
+    box-shadow: var(--shadow-sm);
+}
+
+.heatmap-cell:hover::before {
+    opacity: 1;
+}
+
+.heatmap-name {
+    font-weight: var(--font-medium);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-1);
+}
+
+.heatmap-pct {
+    font-size: var(--text-lg);
+    font-weight: var(--font-bold);
+    font-family: var(--font-mono);
+}
+
+/* ─── 功能入口卡片组件 ──────────────────────────── */
+.feature-card {
+    background: var(--gundam-surface);
+    border: 1px solid var(--border-secondary);
+    border-left: 3px solid var(--gundam-yellow);
+    padding: var(--space-3);
+    transition: all var(--transition-normal);
+    cursor: pointer;
+    text-decoration: none;
+    display: block;
+    position: relative;
+}
+
+.feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--gundam-yellow), transparent);
+}
+
+.feature-card:hover {
+    border-color: var(--gundam-yellow);
+    box-shadow: var(--shadow-yellow);
+    text-decoration: none;
+}
+
+.feature-icon-wrapper {
+    width: 40px;
+    height: 40px;
+    border: 2px solid var(--gundam-green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--space-2);
+    background: var(--gundam-green-subtle);
+    position: relative;
+}
+
+.feature-icon-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border: 1px solid var(--gundam-green);
+    opacity: 0.3;
+}
+
+.feature-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--gundam-green);
+}
+
+.feature-title {
+    font-family: var(--font-display);
+    font-weight: var(--font-bold);
+    font-size: var(--text-base);
+    color: var(--gundam-yellow);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    margin-bottom: var(--space-1);
+}
+
+.feature-description {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: var(--leading-normal);
+}
+
+/* ─── 数据状态表格组件 ──────────────────────────── */
+.status-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--gundam-surface);
+    border: 1px solid var(--table-border);
+    font-size: var(--text-sm);
+}
+
+.status-table thead {
+    background: var(--table-header-bg);
+    border-bottom: 2px solid var(--gundam-green);
+}
+
+.status-table th {
+    padding: var(--space-2);
+    text-align: left;
+    font-weight: var(--font-bold);
+    color: var(--gundam-green);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    font-family: var(--font-display);
+}
+
+.status-table td {
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+}
+
+.status-table tbody tr:nth-child(even) {
+    background: var(--table-stripe-bg);
+}
+
+.status-table tbody tr:hover {
+    background: var(--table-hover-bg);
+    color: var(--text-primary);
+}
+
+/* ─── 进度指示器组件 ────────────────────────────── */
+.progress-indicator {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.progress-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border-secondary);
+    border-top-color: var(--gundam-green);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    box-shadow: 0 0 10px var(--gundam-green-glow);
+}
+
+.progress-text {
+    font-size: var(--text-sm);
+    font-weight: var(--font-bold);
+    color: var(--gundam-green);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+}
+
+.progress-step {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+/* ─── 日志查看器组件 ────────────────────────────── */
+.log-viewer {
+    background: var(--gundam-dark);
+    border: 1px solid var(--border-secondary);
+    border-left: 3px solid var(--gundam-green);
+    padding: var(--space-2);
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+}
+
+.log-line {
+    margin-bottom: var(--space-1);
+}
+
+.log-error {
+    color: var(--market-up);
+}
+
+.log-success {
+    color: var(--market-down);
+    font-weight: var(--font-bold);
+}
+
+.log-info {
+    color: var(--gundam-green);
+}
+
+.log-default {
+    color: var(--text-secondary);
+}
+
+/* ─── 错误消息组件 ──────────────────────────────── */
+.error-message {
+    padding: var(--space-3);
+    background: var(--market-up-bg);
+    border: 1px solid var(--market-up);
+    border-left: 3px solid var(--market-up);
+}
+
+.error-message-title {
+    font-weight: var(--font-bold);
+    color: var(--market-up);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    margin-bottom: var(--space-1);
+}
+
+.error-message-detail {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+/* ─── 按钮组 ────────────────────────────────────── */
+.button-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+}
+
+@media (max-width: 640px) {
+    .button-group {
+        flex-direction: column;
+    }
+    
+    .button-group .btn {
+        width: 100%;
+    }
+}
+
+/* ─── 图表容器组件 ──────────────────────────────── */
+.chart-container {
+    background: var(--gundam-surface);
+    border: 1px solid var(--border-secondary);
+    border-left: 3px solid var(--gundam-green);
+    padding: var(--space-3);
+    position: relative;
+}
+
+.chart-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--gundam-green), transparent);
+}
+
+.chart-main {
+    width: 100%;
+    height: 400px;
+    min-height: 300px;
+}
+
+.chart-sub {
+    width: 100%;
+    height: 280px;
+    min-height: 240px;
+}
+
+/* ─── 统计卡片组件 ──────────────────────────────── */
+.stat-card {
+    background: var(--gundam-surface);
+    border: 1px solid var(--border-secondary);
+    border-left: 3px solid var(--gundam-green);
+    padding: var(--space-2);
+    position: relative;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--gundam-green), transparent);
+}
+
+.stat-label {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    margin-bottom: var(--space-1);
+}
+
+.stat-value {
+    font-size: var(--text-xl);
+    font-weight: var(--font-bold);
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+}
+
+.stat-change {
+    font-size: var(--text-sm);
+    font-family: var(--font-mono);
+    margin-top: var(--space-1);
+}
+
+/* ─── 标签组件 ──────────────────────────────────── */
+.tag {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-0-5) var(--space-1);
+    font-size: var(--text-xs);
+    font-weight: var(--font-bold);
+    background: var(--gundam-green-subtle);
+    color: var(--gundam-green);
+    border: 1px solid var(--gundam-green);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+}
+
+.tag-success {
+    background: var(--market-down-bg);
+    color: var(--market-down);
+    border-color: var(--market-down);
+}
+
+.tag-warning {
+    background: rgba(255, 215, 0, 0.1);
+    color: var(--gundam-yellow);
+    border-color: var(--gundam-yellow);
+}
+
+.tag-error {
+    background: var(--market-up-bg);
+    color: var(--market-up);
+    border-color: var(--market-up);
+}
+
+/* ─── 分隔线组件 ────────────────────────────────── */
+.divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gundam-green), transparent);
+    border: none;
+    margin: var(--space-3) 0;
+    opacity: 0.3;
+}
+
+/* ─── 工具提示组件 ──────────────────────────────── */
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip-text {
+    visibility: hidden;
+    position: absolute;
+    z-index: var(--z-tooltip);
+    background: var(--gundam-dark);
+    color: var(--gundam-green);
+    text-align: center;
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--gundam-green);
+    font-size: var(--text-xs);
+    white-space: nowrap;
+    box-shadow: var(--shadow-md);
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* ─── 下拉菜单组件 ──────────────────────────────── */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    z-index: var(--z-dropdown);
+    background: var(--gundam-dark);
+    border: 1px solid var(--gundam-green);
+    box-shadow: var(--shadow-lg);
+    min-width: 160px;
+}
+
+.dropdown-content.show {
+    display: block;
+}
+
+.dropdown-item {
+    padding: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border-left: 2px solid transparent;
+}
+
+.dropdown-item:hover {
+    background: var(--gundam-green-subtle);
+    color: var(--gundam-green);
+    border-left-color: var(--gundam-green);
+}
+
+/* ─── 模态框组件 ────────────────────────────────── */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: var(--z-overlay);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-2);
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal {
+    background: var(--gundam-dark);
+    border: 2px solid var(--gundam-green);
+    box-shadow: var(--shadow-glow);
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.modal::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--gundam-green);
+}
+
+.modal-header {
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--border-secondary);
+}
+
+.modal-title {
+    font-family: var(--font-display);
+    font-weight: var(--font-bold);
+    font-size: var(--text-xl);
+    color: var(--gundam-green);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+}
+
+.modal-body {
+    padding: var(--space-3);
+}
+
+.modal-footer {
+    padding: var(--space-3);
+    border-top: 1px solid var(--border-secondary);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+}
+
+/* ─── 警告横幅组件 ──────────────────────────────── */
+.alert-banner {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid;
+    border-left: 3px solid;
+    margin-bottom: var(--space-3);
+}
+
+.alert-info {
+    background: var(--gundam-green-subtle);
+    border-color: var(--gundam-green);
+    color: var(--gundam-green);
+}
+
+.alert-success {
+    background: var(--market-down-bg);
+    border-color: var(--market-down);
+    color: var(--market-down);
+}
+
+.alert-warning {
+    background: rgba(255, 215, 0, 0.1);
+    border-color: var(--gundam-yellow);
+    color: var(--gundam-yellow);
+}
+
+.alert-error {
+    background: var(--market-up-bg);
+    border-color: var(--market-up);
+    color: var(--market-up);
+}
+
+/* ─── 加载占位符组件 ────────────────────────────── */
+.skeleton-card {
+    height: 100px;
+}
+
+.skeleton-text {
+    height: 14px;
+    margin-bottom: var(--space-1);
+}
+
+.skeleton-text-sm {
+    height: 12px;
+    width: 60%;
+}
+
+.skeleton-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+
+/* ─── 响应式调整 ────────────────────────────────── */
+@media (max-width: 640px) {
+    .data-card,
+    .etf-card,
+    .feature-card {
+        padding: var(--space-2);
+    }
+    
+    .etf-price,
+    .data-card-value {
+        font-size: var(--text-xl);
+    }
+    
+    .chart-main {
+        height: 350px !important;
+    }
+    
+    .chart-sub {
+        height: 260px !important;
+    }
+    
+    .modal {
+        margin: var(--space-1);
+        max-height: 95vh;
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: var(--space-2);
+    }
+}
+
+@media (max-width: 768px) {
+    .feature-card {
+        padding: var(--space-2);
+    }
+    
+    .feature-icon-wrapper {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .feature-icon {
+        width: 18px;
+        height: 18px;
+    }
+}
