@@ -11,7 +11,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import text
 
 from src.web.services.cache import _cached_persistent
-from src.web.services.db import get_conn, query, safe_json, safe_value
+from src.core.db_manager_postgresql import get_conn, query, safe_json, safe_value
 from src.web.services.validators import validate_ts_code
 from config.config import CYCLICAL_INDUSTRIES, DATA_DIR
 from src.core.trading_calendar import now_beijing

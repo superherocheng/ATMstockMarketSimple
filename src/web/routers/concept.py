@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from src.web.services.cache import _cached_persistent
-from src.web.services.db import query, safe_json, safe_dict
+from src.core.db_manager_postgresql import query, safe_json, safe_dict
 
 logger = logging.getLogger(__name__)
 

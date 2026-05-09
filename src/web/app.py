@@ -25,8 +25,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-from src.web.services.db import _ensure_db
-from src.core.db_manager_postgresql import close_db_manager
+from src.core.db_manager_postgresql import _ensure_db, close_db_manager
 from starlette.middleware.gzip import GZipMiddleware
 from src.web.services.middleware import rate_limit_middleware, add_cache_headers
 from src.web.routers import overview, etf, stocks, barra, concept, industry, fetch

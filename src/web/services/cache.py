@@ -138,7 +138,7 @@ def _cached(key, func, *args, **kwargs):
 
 
 def _db_cache_get(key):
-    from src.web.services.db import get_conn
+    from src.core.db_manager_postgresql import get_conn
     conn = None
     try:
         conn = get_conn()
@@ -157,7 +157,7 @@ def _db_cache_get(key):
 
 
 def _db_cache_set(key, data):
-    from src.web.services.db import get_conn
+    from src.core.db_manager_postgresql import get_conn
     conn = None
     try:
         conn = get_conn()
@@ -177,7 +177,7 @@ def _db_cache_set(key, data):
 
 
 def _db_cache_invalidate(*categories):
-    from src.web.services.db import get_conn
+    from src.core.db_manager_postgresql import get_conn
     conn = None
     try:
         conn = get_conn()
@@ -205,7 +205,7 @@ def _db_cache_invalidate(*categories):
 
 
 def _is_data_stale(key, max_age_hours=6):
-    from src.web.services.db import get_conn
+    from src.core.db_manager_postgresql import get_conn
     conn = None
     try:
         conn = get_conn()
@@ -225,7 +225,7 @@ def _is_data_stale(key, max_age_hours=6):
 
 
 def _cached_persistent(key, func, max_age_hours=6):
-    from src.web.services.db import safe_dict
+    from src.core.db_manager_postgresql import safe_dict
     try:
         mem = _cache_get(key)
         if mem is not None:

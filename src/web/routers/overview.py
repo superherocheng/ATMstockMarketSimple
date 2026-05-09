@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import text
 
 from src.web.services.cache import _cached_persistent, _api_cache
-from src.web.services.db import get_conn, query, safe_json
+from src.core.db_manager_postgresql import get_conn, query, safe_json
 from config.config import INDEX_ETF, SECTOR_ETF, DATA_DIR
 from src.core.trading_calendar import now_beijing, get_latest_trading_date
 

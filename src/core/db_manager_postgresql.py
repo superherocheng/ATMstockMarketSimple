@@ -7,6 +7,8 @@ ATMstockMarket PostgreSQL 数据库连接管理模块
 - 事务支持
 - 自动类型转换
 """
+import logging
+import os
 import threading
 from pathlib import Path
 from typing import Optional, Any, Dict, List
@@ -17,6 +19,9 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 import psycopg2
 from psycopg2.extras import execute_batch
+
+
+logger = logging.getLogger(__name__)
 
 
 class PostgreSQLConnectionManager:
@@ -271,3 +276,69 @@ def close_db_manager():
 def query(sql: str, params: Optional[tuple] = None) -> pd.DataFrame:
     """执行查询（兼容旧代码）"""
     return get_db_manager().query(sql, params)
+
+
+def _ensure_db():
+    """初始化PostgreSQL数据库连接"""
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        raise RuntimeError(
+            "DATABASE_URL environment variable not set. "
+            "Please set it to your PostgreSQL connection string. "
+            "Example: postgresql://user:password@host:port/database"
+        )
+    init_db_manager(db_url)
+    logger.info("PostgreSQL数据库连接已建立")
+
+
+_db_initialized = False
+
+
+def reset_db_initialized():
+    """Reset the global DB initialization flag (for fetch module)."""
+    global _db_initialized
+    _db_initialized = False
+
+
+def safe_json(df):
+    """Safely convert DataFrame to JSON-serializable list of dicts"""
+    if df is None or len(df) == 0:
+        return []
+    df = df.copy()
+    df = df.replace([float('inf'), float('-inf')], float('nan'))
+    records = df.to_dict(orient="records")
+    for record in records:
+        for key, value in record.items():
+            try:
+                if pd.isna(value):
+                    record[key] = None
+            except Exception:
+                pass
+    return records
+
+
+def safe_value(value):
+    """Convert a single value to JSON-safe value"""
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except Exception:
+        pass
+    if isinstance(value, (int, float, np.floating, np.integer)):
+        try:
+            if not np.isfinite(value):
+                return None
+        except Exception:
+            pass
+    return value
+
+
+def safe_dict(d):
+    """Recursively convert dict/list values to JSON-safe values"""
+    if not isinstance(d, dict):
+        if isinstance(d, list):
+            return [safe_dict(item) for item in d]
+        return safe_value(d)
+    return {k: safe_dict(v) for k, v in d.items()}

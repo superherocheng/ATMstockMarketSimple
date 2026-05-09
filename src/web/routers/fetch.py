@@ -9,7 +9,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from src.web.services.db import get_conn, reset_db_initialized
+from src.core.db_manager_postgresql import get_conn, reset_db_initialized
 from src.web.services.cache import _cache_invalidate, _db_cache_invalidate
 from src.core.trading_calendar import now_beijing
 from src.core.db_manager_postgresql import close_db_manager
