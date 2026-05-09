@@ -1,13 +1,5 @@
-# ── Stage 1: Build React frontend ──
-FROM node:20-alpine AS frontend-builder
-WORKDIR /app/frontend
-COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci --cache /tmp/npm-cache && npm cache clean --force
-COPY frontend/ ./
-RUN npm run build
-
-# ── Stage 2: Python backend + serve React build ──
-FROM python:3.12-slim AS backend
+# ── Python backend with Jinja2 templates ──
+FROM python:3.12-slim
 WORKDIR /app
 
 # System deps
@@ -25,12 +17,8 @@ COPY config/ ./config/
 COPY scripts/ ./scripts/
 COPY alembic/ ./alembic/
 COPY alembic.ini .
-COPY utils/ ./utils/
 COPY data/ ./data/
 COPY pyproject.toml .
-
-# Copy frontend build from previous stage
-COPY --from=frontend-builder /app/src/web/static/react/ ./src/web/static/react/
 
 # Create .env placeholder (real values come from runtime env vars)
 RUN touch .env

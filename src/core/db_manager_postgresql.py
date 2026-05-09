@@ -17,8 +17,7 @@ import numpy as np
 from sqlalchemy import create_engine, text, pool
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
-import psycopg2
-from psycopg2.extras import execute_batch
+# psycopg2 is used indirectly via SQLAlchemy
 
 
 logger = logging.getLogger(__name__)
@@ -88,7 +87,7 @@ class PostgreSQLConnectionManager:
                 conn.commit()
                 return result
         except SQLAlchemyError as e:
-            print(f"Execute error: {e}")
+            logger.error("Execute error on sql=%s params=%s: %s", sql[:80], params, e, exc_info=True)
             raise
     
     def _execute_with_positional_params(self, conn, sql: str, params: tuple):
@@ -124,7 +123,7 @@ class PostgreSQLConnectionManager:
                 else:
                     return pd.read_sql_query(text(sql), conn)
         except Exception as e:
-            print(f"Query error: {e}")
+            logger.error("Query error on sql=%s params=%s: %s", sql[:80], params, e, exc_info=True)
             return pd.DataFrame()
     
     def _query_with_positional_params(self, conn, sql: str, params: tuple) -> pd.DataFrame:
@@ -162,7 +161,7 @@ class PostgreSQLConnectionManager:
                 )
                 return len(df)
         except Exception as e:
-            print(f"Insert error: {e}")
+            logger.error("Insert error into %s: %s", table_name, e, exc_info=True)
             return 0
     
     def upsert_dataframe(self, df: pd.DataFrame, table_name: str, 
@@ -201,7 +200,7 @@ class PostgreSQLConnectionManager:
             
             return len(df)
         except Exception as e:
-            print(f"Upsert error: {e}")
+            logger.error("Upsert error into %s: %s", table_name, e, exc_info=True)
             return 0
     
     def execute_batch(self, operations: List[tuple]) -> int:
@@ -219,7 +218,7 @@ class PostgreSQLConnectionManager:
                 conn.commit()
             return count
         except Exception as e:
-            print(f"Batch execution error: {e}")
+            logger.error("Batch execution error (committed %d ops): %s", count, e, exc_info=True)
             return count
     
     def close(self):
@@ -291,13 +290,7 @@ def _ensure_db():
     logger.info("PostgreSQL数据库连接已建立")
 
 
-_db_initialized = False
 
-
-def reset_db_initialized():
-    """Reset the global DB initialization flag (for fetch module)."""
-    global _db_initialized
-    _db_initialized = False
 
 
 def safe_json(df):

@@ -13,7 +13,6 @@ from src.data_fetchers.tushare_fetcher import (
     fetch_fina_indicator,
 )
 from src.data_fetchers.external_loader import load_csv_data, extract_and_load_data
-
 __all__ = [
     "init_db",
     "fetch_index_etf",
@@ -22,6 +21,4 @@ __all__ = [
     "fetch_stock_daily",
     "fetch_daily_basic",
     "fetch_fina_indicator",
-    "load_csv_data",
-    "extract_and_load_data",
 ]

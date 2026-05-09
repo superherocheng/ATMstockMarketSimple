@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>指数ETF分析 - ATMstockMarket</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="/static/css/app.css">
     <script defer src="/static/js/vendor.js"></script>
     <script defer src="/static/js/app.js"></script>
@@ -22,7 +24,7 @@
     <nav>
       <div class="nav-container">
         <a href="/" class="nav-logo">
-          <span class="nav-logo-icon">📊</span>
+          <span class="nav-logo-icon">AM</span>
           ATMstockMarket
         </a>
         <div class="nav-links" id="nav-links">
@@ -38,33 +40,37 @@
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 stagger-children">
         <div class="flex gap-2 sm:gap-3 flex-wrap">
-            <button class="tab-btn active glass rounded-lg px-4 sm:px-5 py-2.5 text-sm font-semibold" style="min-height:44px;"
+            <button class="tab-btn active" style="min-height:44px;"
                     data-code="510300.SH" onclick="switchETF(this)">沪深300ETF</button>
-            <button class="tab-btn glass rounded-lg px-4 sm:px-5 py-2.5 text-sm" style="min-height:44px;"
+            <button class="tab-btn" style="min-height:44px;"
                     data-code="510500.SH" onclick="switchETF(this)">中证500ETF</button>
-            <button class="tab-btn glass rounded-lg px-4 sm:px-5 py-2.5 text-sm" style="min-height:44px;"
+            <button class="tab-btn" style="min-height:44px;"
                     data-code="510050.SH" onclick="switchETF(this)">上证50ETF</button>
+            <button class="tab-btn" style="min-height:44px;"
+                    data-code="512100.SH" onclick="switchETF(this)">中证1000ETF</button>
+            <button class="tab-btn" style="min-height:44px;"
+                    data-code="588000.SH" onclick="switchETF(this)">科创50ETF</button>
         </div>
 
         <div id="etf-info" class="glass rounded-xl p-4 sm:p-6">
             <div class="flex items-center justify-between etf-info-grid">
                 <div>
                     <span id="etf-name" class="text-xl font-bold">沪深300ETF</span>
-                    <span id="etf-code" class="text-sm ml-2" style="color:var(--c-muted);">510300.SH</span>
+                    <span id="etf-code" class="text-sm ml-2" style="color:var(--c-text-tertiary);">510300.SH</span>
                 </div>
                 <div class="flex gap-4 sm:gap-6 text-sm etf-stats">
-                    <div><span style="color:var(--c-muted);">最新价(元)</span> <span id="etf-price" class="text-xl font-bold ml-1 num-mono font-mono">--</span></div>
-                    <div><span style="color:var(--c-muted);">涨跌幅</span> <span id="etf-pct" class="text-xl font-bold ml-1 num-mono font-mono">--</span></div>
-                    <div><span style="color:var(--c-muted);">成交额(万)</span> <span id="etf-vol" class="text-xl font-bold ml-1 num-mono font-mono">--</span></div>
+                    <div><span style="color:var(--c-text-tertiary);">最新价(元)</span> <span id="etf-price" class="text-xl font-bold ml-1 num-mono font-mono">--</span></div>
+                    <div><span style="color:var(--c-text-tertiary);">涨跌幅</span> <span id="etf-pct" class="text-xl font-bold ml-1 num-mono font-mono">--</span></div>
+                    <div><span style="color:var(--c-text-tertiary);">成交额(万)</span> <span id="etf-vol" class="text-xl font-bold ml-1 num-mono font-mono">--</span></div>
                 </div>
             </div>
         </div>
 
         <div class="glass rounded-xl p-4 sm:p-6">
-            <h3 class="font-bold mb-3 flex items-center gap-2">
+            <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
                 <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
                 K线走势
-                <span class="text-xs" style="color:var(--c-muted);">（红色标记 = 异常涨跌幅）</span>
+                <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">红色标记 = 异常涨跌幅</span>
             </h3>
             <div id="kline-chart" class="chart-main" style="height: 380px;">
                 <div class="skeleton skeleton-chart"></div>
@@ -72,10 +78,10 @@
         </div>
 
         <div class="glass rounded-xl p-4 sm:p-6">
-            <h3 class="font-bold mb-3 flex items-center gap-2">
+            <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
                 <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
                 份额变化
-                <span class="text-xs" style="color:var(--c-muted);">（蓝色标记 = 份额异常变动）</span>
+                <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">蓝色标记 = 份额异常变动</span>
             </h3>
             <div id="share-chart" class="chart-sub" style="height: 320px;">
                 <div class="skeleton skeleton-chart"></div>
@@ -83,20 +89,31 @@
         </div>
 
         <div class="glass rounded-xl p-4 sm:p-6">
-            <h3 class="font-bold mb-4 flex items-center gap-2">
+            <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
+                <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
+                份额实际值
+                <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">折线：120日绝对值 &nbsp;柱状：每日变化ZSCORE</span>
+            </h3>
+            <div id="share-value-chart" class="chart-sub" style="height: 300px;">
+                <div class="skeleton skeleton-chart"></div>
+            </div>
+        </div>
+
+        <div class="glass rounded-xl p-4 sm:p-6">
+            <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
                 <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
                 异常事件标记
-                <span class="text-xs" style="color:var(--c-muted);">（超过2倍标准差）</span>
+                <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">超过2倍标准差</span>
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 stagger-children">
                 <div>
-                    <h4 class="text-sm mb-2" style="color:var(--c-muted);">价格异常</h4>
+                    <h4 class="text-sm mb-2" style="color:var(--c-text-tertiary);">价格异常</h4>
                     <div id="price-anomalies" class="space-y-2 text-sm">
                         <div class="skeleton skeleton-text"><span class="spinner inline-block mr-2"></span></div>
                     </div>
                 </div>
                 <div>
-                    <h4 class="text-sm mb-2" style="color:var(--c-muted);">份额异常</h4>
+                    <h4 class="text-sm mb-2" style="color:var(--c-text-tertiary);">份额异常</h4>
                     <div id="share-anomalies" class="space-y-2 text-sm">
                         <div class="skeleton skeleton-text"><span class="spinner inline-block mr-2"></span></div>
                     </div>
@@ -109,20 +126,20 @@
         <p>ATMstockMarket — 数据来源: Tushare / AKShare | 仅供学习研究，不构成投资建议</p>
     </footer>
 
-    <div class="bottom-nav">
-      <a href="/" class="bottom-nav-item">
+    <div class="bottom-nav" role="navigation" aria-label="主导航">
+      <a href="/" class="bottom-nav-item" aria-label="首页">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
         </span>
         <span class="bottom-nav-label">首页</span>
       </a>
-      <a href="/etf" class="bottom-nav-item active">
+      <a href="/etf" class="bottom-nav-item active" aria-label="指数ETF">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
         </span>
         <span class="bottom-nav-label">指数ETF</span>
       </a>
-      <a href="/sector" class="bottom-nav-item">
+      <a href="/sector" class="bottom-nav-item" aria-label="行业ETF">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
         </span>
@@ -131,11 +148,13 @@
     </div>
 
     <script>
+    document.addEventListener('DOMContentLoaded', function() {
     try {
 
     var currentCode = '510300.SH';
     var klineChart = null;
     var shareChart = null;
+    var shareDetailChart = null;
 
     function switchETF(btn) {
         document.querySelectorAll('.tab-btn').forEach(function(b) {
@@ -154,6 +173,7 @@
             try { await ATMChart.load(); } catch(e) { console.warn('ECharts load failed:', e); }
             renderKline(data);
             renderShares(data);
+            renderShareDetail(data);
             renderAnomalies(data);
         } catch(e) {
             console.error('加载失败:', e);
@@ -217,7 +237,7 @@
                     color: '#2C2C2C',
                     fontWeight: 600,
                     fontSize: 14,
-                    fontFamily: "'Noto Serif SC', serif"
+                    fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
                 }
             },
             tooltip: {
@@ -358,6 +378,145 @@
         }, true);
     }
 
+    // 份额实际值图表：过去120天折线(绝对值) + 每日变化ZSCORE柱状
+    function renderShareDetail(data) {
+        var el = document.getElementById('share-value-chart');
+        if (shareDetailChart && !shareDetailChart.isDisposed()) shareDetailChart.dispose();
+        el.innerHTML = '';
+        if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
+        shareDetailChart = echarts.init(el);
+        var th = ATM.getChartTheme();
+
+        var shares = (data.shares || []).slice();
+        if (shares.length === 0) {
+            shareDetailChart.setOption({
+                backgroundColor: 'transparent',
+                title: { text: '暂无份额数据', left: 'center', top: 'center', textStyle: { color: th.axisLabelColor, fontSize: 14, fontWeight: 'normal' } }
+            }, true);
+            return;
+        }
+
+        // 取过去120天数据
+        var chartData = shares.slice(-120);
+        var dates = chartData.map(function(sh) {
+            var d = sh.trade_date;
+            return d ? d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8) : d;
+        });
+        var values = chartData.map(function(sh) { return parseFloat(sh.fd_share || 0); });
+
+        // 计算每日变化量: delta[i] = values[i] - values[i-1]
+        var dailyChanges = [];
+        for (var i = 0; i < values.length; i++) {
+            dailyChanges.push(i === 0 ? null : values[i] - values[i-1]);
+        }
+
+        // 计算变化量的均值和标准差
+        var validChanges = dailyChanges.filter(function(v) { return v !== null; });
+        var chgMean = validChanges.reduce(function(a, b) { return a + b; }, 0) / validChanges.length;
+        var chgVariance = validChanges.reduce(function(a, b) { return a + Math.pow(b - chgMean, 2); }, 0) / validChanges.length;
+        var chgStd = Math.sqrt(chgVariance) || 1;
+
+        // ZSCORE = (每日变化 - 均值) / 标准差
+        var zscores = dailyChanges.map(function(v) {
+            return v === null ? null : (v - chgMean) / chgStd;
+        });
+
+        shareDetailChart.setOption({
+            backgroundColor: 'transparent',
+            textStyle: th.textStyle,
+            tooltip: {
+                trigger: 'axis',
+                backgroundColor: th.tooltip.backgroundColor,
+                borderColor: th.tooltip.borderColor,
+                textStyle: th.tooltip.textStyle,
+                formatter: function(params) {
+                    var tip = '<b>' + params[0].axisValueLabel + '</b><br/>';
+                    params.forEach(function(p) {
+                        if (p.value === null || p.value === undefined) return;
+                        if (p.seriesName.indexOf('ZSCORE') !== -1) {
+                            var zv = p.value;
+                            var zcolor = zv > 0 ? th.upColor : zv < 0 ? th.downColor : '#888';
+                            tip += p.marker + ' ' + p.seriesName + ': <span style="color:' + zcolor + ';font-weight:bold;">' + (zv > 0 ? '+' : '') + zv.toFixed(2) + 'σ</span><br/>';
+                        } else {
+                            tip += p.marker + ' ' + p.seriesName + ': ' + p.value.toFixed(2) + ' 亿份<br/>';
+                        }
+                    });
+                    return tip;
+                }
+            },
+            legend: {
+                data: ['份额绝对值(120日)', '份额变化ZSCORE'],
+                textStyle: th.legend.textStyle
+            },
+            grid: { left: '10%', right: '8%', top: '15%', bottom: '15%' },
+            xAxis: {
+                type: 'category',
+                data: dates,
+                axisLabel: { color: th.axisLabelColor, fontSize: 10, rotate: 30 },
+                boundaryGap: true
+            },
+            yAxis: [
+                {
+                    type: 'value',
+                    name: '亿份',
+                    nameTextStyle: { color: th.axisLabelColor, fontSize: 10 },
+                    axisLabel: { color: th.axisLabelColor, formatter: '{value}' },
+                    splitLine: { lineStyle: { color: th.splitLineColor } }
+                },
+                {
+                    type: 'value',
+                    name: 'σ',
+                    nameTextStyle: { color: th.axisLabelColor, fontSize: 10 },
+                    axisLabel: { color: th.axisLabelColor, formatter: '{value}σ' },
+                    splitLine: { show: false },
+                    scale: true
+                }
+            ],
+            dataZoom: [
+                { type: 'inside', start: 0, end: 100 },
+                { type: 'slider', start: 0, end: 100 }
+            ],
+            series: [
+                {
+                    name: '份额绝对值(120日)',
+                    type: 'line',
+                    yAxisIndex: 0,
+                    data: values,
+                    smooth: true,
+                    showSymbol: false,
+                    lineStyle: { width: 2, color: '#3182CE' },
+                    areaStyle: {
+                        color: {
+                            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                { offset: 0, color: '#3182CE44' },
+                                { offset: 1, color: '#3182CE08' }
+                            ]
+                        }
+                    },
+                    z: 1
+                },
+                {
+                    name: '份额变化ZSCORE',
+                    type: 'bar',
+                    yAxisIndex: 1,
+                    data: zscores.map(function(z) {
+                        if (z === null) return { value: null };
+                        return {
+                            value: z,
+                            itemStyle: {
+                                color: z >= 0 ? th.upColor : th.downColor,
+                                opacity: 0.7
+                            }
+                        };
+                    }),
+                    barMaxWidth: 12,
+                    z: 2
+                }
+            ]
+        }, true);
+    }
+
     function renderAnomalies(data) {
         var priceEl = document.getElementById('price-anomalies');
         var shareEl = document.getElementById('share-anomalies');
@@ -365,7 +524,7 @@
         var shareAnom = (data.anomalies && data.anomalies.share) || [];
 
         if (priceAnom.length === 0) {
-            priceEl.innerHTML = '<div style="color:var(--c-muted);">暂无价格异常事件</div>';
+            priceEl.innerHTML = '<div style="color:var(--c-text-tertiary);">暂无价格异常事件</div>';
         } else {
             priceEl.innerHTML = priceAnom.slice(-10).reverse().map(function(a) {
                 var pct = parseFloat(a.pct_chg || 0);
@@ -376,7 +535,7 @@
         }
 
         if (shareAnom.length === 0) {
-            shareEl.innerHTML = '<div style="color:var(--c-muted);">暂无份额异常事件</div>';
+            shareEl.innerHTML = '<div style="color:var(--c-text-tertiary);">暂无份额异常事件</div>';
         } else {
             shareEl.innerHTML = shareAnom.slice(-10).reverse().map(function(a) {
                 var chgPct = parseFloat(a.chg_pct || 0);
@@ -403,11 +562,13 @@
         function() {
             if (klineChart) { klineChart.resize(); }
             if (shareChart) { shareChart.resize(); }
+            if (shareDetailChart) { shareDetailChart.resize(); }
         },
         function() {
             setTimeout(function() {
                 if (klineChart) klineChart.resize();
                 if (shareChart) shareChart.resize();
+                if (shareDetailChart) shareDetailChart.resize();
             }, 200);
         }
     );
@@ -415,11 +576,16 @@
     window.addEventListener('beforeunload', function() {
         if (klineChart && !klineChart.isDisposed()) klineChart.dispose();
         if (shareChart && !shareChart.isDisposed()) shareChart.dispose();
+        if (shareDetailChart && !shareDetailChart.isDisposed()) shareDetailChart.dispose();
     });
 
     loadData(currentCode);
     window.__atmPageReady();
+    
+    // Expose for inline onclick attributes
+    window.switchETF = switchETF;
     } catch(e) { console.error('ETF page init error:', e); }
+    });
     </script>
 </body>
 </html>

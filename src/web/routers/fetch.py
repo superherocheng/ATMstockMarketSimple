@@ -9,10 +9,10 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from src.core.db_manager_postgresql import get_conn, reset_db_initialized
+from src.core.db_manager_postgresql import get_conn
 from src.web.services.cache import _cache_invalidate
 from src.core.trading_calendar import now_beijing
-from src.core.db_manager_postgresql import close_db_manager
+from src.core.db_manager_postgresql import close_db_manager, _ensure_db
 from config.config import DATA_DIR
 
 logger = logging.getLogger(__name__)
@@ -145,7 +145,6 @@ def _run_fetch(task_type):
         _fetch_status["progress"] = 0
         _fetch_status["current_step"] = "初始化..."
 
-    reset_db_initialized()
     close_db_manager()
 
     tushare_script = str(BASE_DIR.parent / "data_fetchers" / "tushare_fetcher.py")
@@ -187,6 +186,12 @@ def _run_fetch(task_type):
             _fetch_status["running"] = False
             _fetch_status["finished_at"] = now_beijing().strftime("%Y-%m-%d %H:%M:%S")
             _fetch_status["current_step"] = "完成"
+        # Re-initialize DB connection after fetch (close_db_manager was called above)
+        try:
+            _ensure_db()
+            _add_log("[OK] 数据库连接已恢复")
+        except Exception as e:
+            logger.error("数据库连接恢复失败: %s", e)
 
 
 @router.post("/api/fetch/{task_type}")

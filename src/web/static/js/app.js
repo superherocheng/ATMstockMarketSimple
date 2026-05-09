@@ -101,7 +101,7 @@
 
 (function() {
 // Source: utils.js
-var ATM = ATM || {};
+window.ATM = window.ATM || {};
 
 ATM.escapeHtml = function(str) {
     if (str === null || str === undefined) return '';
@@ -275,7 +275,7 @@ ATM.getChartTheme = function() {
         backgroundColor: 'transparent',
         textStyle: {
             color: '#6b6560',
-            fontFamily: '"Noto Serif SC", "Source Han Serif SC", Georgia, serif'
+            fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
         },
         title: {
             textStyle: {
@@ -322,7 +322,7 @@ ATM.getChartTheme = function() {
 
 (function() {
 // Source: nav.js
-var ATMNav = ATMNav || {};
+window.ATMNav = window.ATMNav || {};
 
 ATMNav.render = function(activePage) {
     var links = [
@@ -501,7 +501,7 @@ ATMNav.toggleTheme = function() {
 
 (function() {
 // Source: theme.js
-var ATMTheme = ATMTheme || {};
+window.ATMTheme = window.ATMTheme || {};
 
 ATMTheme.init = function() {
     var saved = localStorage.getItem('atm-theme');
@@ -560,7 +560,7 @@ ATMTheme.init();
 
 (function() {
 // Source: cache.js
-var ATMCache = ATMCache || {};
+window.ATMCache = window.ATMCache || {};
 
 ATMCache._storage = window.sessionStorage;
 ATMCache._prefix = 'atm_';
@@ -638,7 +638,7 @@ ATMCache.api = function(url, options) {
         });
 };
 
-var ATMRouter = ATMRouter || {};
+window.ATMRouter = window.ATMRouter || {};
 
 ATMRouter._initialized = false;
 ATMRouter._isMobile = function() {
@@ -704,7 +704,7 @@ if (document.readyState === 'loading') {
 
 (function() {
 // Source: perf.js
-var ATMPerf = ATMPerf || {};
+window.ATMPerf = window.ATMPerf || {};
 
 ATMPerf.debounce = function(fn, delay) {
     var timer;
@@ -825,7 +825,7 @@ ATMPerf.idleCallback = function(fn) {
 
 (function() {
 // Source: performance.js
-var ATMPerf = ATMPerf || {};
+window.ATMPerf = window.ATMPerf || {};
 
 function _isMobile() {
     return typeof ATMMobile !== 'undefined' && ATMMobile.isMobile && ATMMobile.isMobile();
@@ -1043,7 +1043,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 (function() {
 // Source: mobile.js
-var ATMMobile = ATMMobile || {};
+window.ATMMobile = window.ATMMobile || {};
 
 ATMMobile.isMobile = function() {
     return window.innerWidth < 768;
@@ -1214,305 +1214,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 })();
 
-(function() {
-// Source: gestures.js
-var ATMGesture = ATMGesture || {};
-
-ATMGesture.isTouchDevice = function() {
-    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-};
-
-ATMGesture.SwipeDetector = function(element, options) {
-    var self = this;
-    this.element = typeof element === 'string' ? document.getElementById(element) : element;
-    this.options = Object.assign({
-        threshold: 50,
-        velocityThreshold: 0.3,
-        preventDefaultTouch: false,
-        onSwipeLeft: null,
-        onSwipeRight: null,
-        onSwipeUp: null,
-        onSwipeDown: null
-    }, options || {});
-    
-    this.startX = 0;
-    this.startY = 0;
-    this.startTime = 0;
-    
-    this.handleTouchStart = function(e) {
-        var touch = e.touches[0];
-        self.startX = touch.clientX;
-        self.startY = touch.clientY;
-        self.startTime = Date.now();
-        
-        if (self.options.preventDefaultTouch) {
-            e.preventDefault();
-        }
-    };
-    
-    this.handleTouchEnd = function(e) {
-        if (e.touches.length > 0) return;
-        
-        var touch = e.changedTouches[0];
-        var deltaX = touch.clientX - self.startX;
-        var deltaY = touch.clientY - self.startY;
-        var deltaTime = Date.now() - self.startTime;
-        var velocityX = Math.abs(deltaX) / deltaTime;
-        var velocityY = Math.abs(deltaY) / deltaTime;
-        
-        if (Math.abs(deltaX) > self.options.threshold && velocityX > self.options.velocityThreshold) {
-            if (deltaX > 0 && self.options.onSwipeRight) {
-                self.options.onSwipeRight(deltaX, velocityX);
-            } else if (deltaX < 0 && self.options.onSwipeLeft) {
-                self.options.onSwipeLeft(deltaX, velocityX);
-            }
-        }
-        
-        if (Math.abs(deltaY) > self.options.threshold && velocityY > self.options.velocityThreshold) {
-            if (deltaY > 0 && self.options.onSwipeDown) {
-                self.options.onSwipeDown(deltaY, velocityY);
-            } else if (deltaY < 0 && self.options.onSwipeUp) {
-                self.options.onSwipeUp(deltaY, velocityY);
-            }
-        }
-    };
-    
-    this.enable = function() {
-        self.element.addEventListener('touchstart', self.handleTouchStart, { passive: !self.options.preventDefaultTouch });
-        self.element.addEventListener('touchend', self.handleTouchEnd, { passive: true });
-    };
-    
-    this.disable = function() {
-        self.element.removeEventListener('touchstart', self.handleTouchStart);
-        self.element.removeEventListener('touchend', self.handleTouchEnd);
-    };
-    
-    this.enable();
-};
-
-ATMGesture.PinchDetector = function(element, options) {
-    var self = this;
-    this.element = typeof element === 'string' ? document.getElementById(element) : element;
-    this.options = Object.assign({
-        threshold: 1.2,
-        onPinchIn: null,
-        onPinchOut: null,
-        onPinchMove: null
-    }, options || {});
-    
-    this.initialDistance = 0;
-    this.lastDistance = 0;
-    
-    this.getDistance = function(touch1, touch2) {
-        var dx = touch1.clientX - touch2.clientX;
-        var dy = touch1.clientY - touch2.clientY;
-        return Math.sqrt(dx * dx + dy * dy);
-    };
-    
-    this.handleTouchStart = function(e) {
-        if (e.touches.length === 2) {
-            self.initialDistance = self.getDistance(e.touches[0], e.touches[1]);
-            self.lastDistance = self.initialDistance;
-        }
-    };
-    
-    this.handleTouchMove = function(e) {
-        if (e.touches.length === 2) {
-            var currentDistance = self.getDistance(e.touches[0], e.touches[1]);
-            var scale = currentDistance / self.initialDistance;
-            var deltaScale = currentDistance / self.lastDistance;
-            
-            if (self.options.onPinchMove) {
-                self.options.onPinchMove(scale, deltaScale);
-            }
-            
-            if (scale > self.options.threshold && self.options.onPinchOut) {
-                self.options.onPinchOut(scale);
-            } else if (scale < 1 / self.options.threshold && self.options.onPinchIn) {
-                self.options.onPinchIn(scale);
-            }
-            
-            self.lastDistance = currentDistance;
-        }
-    };
-    
-    this.enable = function() {
-        self.element.addEventListener('touchstart', self.handleTouchStart, { passive: true });
-        self.element.addEventListener('touchmove', self.handleTouchMove, { passive: true });
-    };
-    
-    this.disable = function() {
-        self.element.removeEventListener('touchstart', self.handleTouchStart);
-        self.element.removeEventListener('touchmove', self.handleTouchMove);
-    };
-    
-    this.enable();
-};
-
-ATMGesture.PullToRefresh = function(element, options) {
-    var self = this;
-    this.element = typeof element === 'string' ? document.getElementById(element) : element;
-    this.options = Object.assign({
-        threshold: 80,
-        onRefresh: null,
-        indicator: null
-    }, options || {});
-    
-    this.startY = 0;
-    this.pulling = false;
-    this.refreshing = false;
-    
-    this.handleTouchStart = function(e) {
-        if (self.element.scrollTop === 0 && !self.refreshing) {
-            self.startY = e.touches[0].clientY;
-            self.pulling = true;
-        }
-    };
-    
-    this.handleTouchMove = function(e) {
-        if (!self.pulling || self.refreshing) return;
-        
-        var currentY = e.touches[0].clientY;
-        var deltaY = currentY - self.startY;
-        
-        if (deltaY > 0) {
-            e.preventDefault();
-            
-            var progress = Math.min(deltaY / self.options.threshold, 1);
-            
-            if (self.options.indicator) {
-                self.options.indicator.style.transform = 'translateY(' + (deltaY * 0.5) + 'px)';
-                self.options.indicator.style.opacity = progress;
-            }
-            
-            if (deltaY > self.options.threshold && self.options.onRefresh) {
-                self.refreshing = true;
-                self.options.onRefresh().then(function() {
-                    self.refreshing = false;
-                    self.pulling = false;
-                    if (self.options.indicator) {
-                        self.options.indicator.style.transform = '';
-                        self.options.indicator.style.opacity = 0;
-                    }
-                });
-            }
-        }
-    };
-    
-    this.handleTouchEnd = function(e) {
-        self.pulling = false;
-        if (self.options.indicator && !self.refreshing) {
-            self.options.indicator.style.transform = '';
-            self.options.indicator.style.opacity = 0;
-        }
-    };
-    
-    this.enable = function() {
-        self.element.addEventListener('touchstart', self.handleTouchStart, { passive: true });
-        self.element.addEventListener('touchmove', self.handleTouchMove, { passive: false });
-        self.element.addEventListener('touchend', self.handleTouchEnd, { passive: true });
-    };
-    
-    this.disable = function() {
-        self.element.removeEventListener('touchstart', self.handleTouchStart);
-        self.element.removeEventListener('touchmove', self.handleTouchMove);
-        self.element.removeEventListener('touchend', self.handleTouchEnd);
-    };
-    
-    this.enable();
-};
-
-ATMGesture.enableChartGestures = function(chartContainerId) {
-    var container = document.getElementById(chartContainerId);
-    if (!container) return;
-    if (typeof echarts === 'undefined') { console.warn('ECharts not loaded, gestures disabled'); return; }
-    
-    var pinchDetector = new ATMGesture.PinchDetector(container, {
-        onPinchOut: function(scale) {
-            var chart = echarts.getInstanceByDom(container);
-            if (chart) {
-                var option = chart.getOption();
-                if (option.dataZoom && option.dataZoom.length > 0) {
-                    var zoom = option.dataZoom[0];
-                    var newStart = Math.max(0, zoom.start - 5);
-                    var newEnd = Math.min(100, zoom.end + 5);
-                    chart.dispatchAction({
-                        type: 'dataZoom',
-                        start: newStart,
-                        end: newEnd
-                    });
-                }
-            }
-        },
-        onPinchIn: function(scale) {
-            var chart = echarts.getInstanceByDom(container);
-            if (chart) {
-                var option = chart.getOption();
-                if (option.dataZoom && option.dataZoom.length > 0) {
-                    var zoom = option.dataZoom[0];
-                    var newStart = Math.min(50, zoom.start + 5);
-                    var newEnd = Math.max(50, zoom.end - 5);
-                    chart.dispatchAction({
-                        type: 'dataZoom',
-                        start: newStart,
-                        end: newEnd
-                    });
-                }
-            }
-        }
-    });
-    
-    var swipeDetector = new ATMGesture.SwipeDetector(container, {
-        onSwipeLeft: function() {
-            var chart = echarts.getInstanceByDom(container);
-            if (chart) {
-                chart.dispatchAction({
-                    type: 'dataZoom',
-                    dataRangeIndex: 0,
-                    startValue: 'next'
-                });
-            }
-        },
-        onSwipeRight: function() {
-            var chart = echarts.getInstanceByDom(container);
-            if (chart) {
-                chart.dispatchAction({
-                    type: 'dataZoom',
-                    dataRangeIndex: 0,
-                    startValue: 'prev'
-                });
-            }
-        }
-    });
-    
-    return {
-        pinch: pinchDetector,
-        swipe: swipeDetector
-    };
-};
-
-ATMGesture.enableTableGestures = function(tableContainerId) {
-    var container = document.getElementById(tableContainerId);
-    if (!container) return;
-    
-    var swipeDetector = new ATMGesture.SwipeDetector(container, {
-        threshold: 30,
-        onSwipeLeft: function() {
-            container.scrollBy({ left: 200, behavior: 'smooth' });
-        },
-        onSwipeRight: function() {
-            container.scrollBy({ left: -200, behavior: 'smooth' });
-        }
-    });
-    
-    return swipeDetector;
-};
-
-})();
 
 (function() {
 // Source: chart-loader.js
-var ATMChart = ATMChart || {};
+window.ATMChart = window.ATMChart || {};
 
 ATMChart._loaded = null;
 
@@ -1628,7 +1333,7 @@ ATMChart.getChartTheme = function() {
     return {
         backgroundColor: 'transparent',
         textStyle: {
-            fontFamily: "'Noto Serif SC', 'Source Han Serif SC', Georgia, serif",
+            fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif",
             fontSize: 12,
             color: '#3D3D3D'
         },
@@ -1636,7 +1341,7 @@ ATMChart.getChartTheme = function() {
             textStyle: {
                 color: '#2C2C2C',
                 fontWeight: 600,
-                fontFamily: "'Noto Serif SC', serif"
+                fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
             },
             subtextStyle: {
                 color: '#5C5C5C'
@@ -1684,7 +1389,7 @@ ATMChart.getChartTheme = function() {
             },
             axisLabel: {
                 color: '#5C5C5C',
-                fontFamily: "'Noto Serif SC', serif"
+                fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
             },
             splitLine: {
                 lineStyle: {
@@ -1730,14 +1435,14 @@ ATMChart.getChartTheme = function() {
             borderWidth: 1,
             textStyle: {
                 color: '#FAF6F0',
-                fontFamily: "'Noto Serif SC', serif"
+                fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
             },
             extraCssText: 'border-radius: 8px; box-shadow: 0 4px 12px rgba(60, 60, 60, 0.15);'
         },
         legend: {
             textStyle: {
                 color: '#3D3D3D',
-                fontFamily: "'Noto Serif SC', serif"
+                fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
             },
             pageTextStyle: {
                 color: '#5C5C5C'
@@ -1912,323 +1617,5 @@ ATMChart.setupResponsiveChart = function(containerId, baseHeight, option) {
     return chart;
 };
 
-})();
-
-(function() {
-// Source: ink-wash-effects.js
-/* ══════════════════════════════════════════════════
-   ATMstockMarket — 江南水墨效果
-   Ink Wash Painting Effects
-   ══════════════════════════════════════════════════ */
-
-(function() {
-    'use strict';
-    
-    /* ══════════════════════════════════════════════════
-       水墨晕染效果
-       ══════════════════════════════════════════════════ */
-    
-    class InkWashEffect {
-        constructor() {
-            this.init();
-        }
-        
-        init() {
-            this.addRippleEffect();
-            this.addParallaxEffect();
-            this.addInkSpreadEffect();
-            this.addScrollAnimations();
-        }
-        
-        /* 涟漪效果 */
-        addRippleEffect() {
-            const rippleElements = document.querySelectorAll('.ripple-effect, .btn, .nav-link');
-            
-            rippleElements.forEach(el => {
-                el.addEventListener('click', (e) => {
-                    const rect = el.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    
-                    const ripple = document.createElement('span');
-                    ripple.className = 'ripple';
-                    ripple.style.left = x + 'px';
-                    ripple.style.top = y + 'px';
-                    
-                    el.appendChild(ripple);
-                    
-                    setTimeout(() => {
-                        ripple.remove();
-                    }, 600);
-                });
-            });
-        }
-        
-        /* 视差滚动效果 */
-        addParallaxEffect() {
-            const parallaxElements = document.querySelectorAll('.ink-wash-bg, .hero-section');
-            
-            if (parallaxElements.length === 0) return;
-            
-            let ticking = false;
-            
-            const updateParallax = () => {
-                const scrollY = window.pageYOffset;
-                
-                parallaxElements.forEach(el => {
-                    const rect = el.getBoundingClientRect();
-                    const speed = el.dataset.parallaxSpeed || 0.5;
-                    const yPos = -(scrollY * speed);
-                    
-                    el.style.transform = `translate3d(0, ${yPos}px, 0)`;
-                });
-                
-                ticking = false;
-            };
-            
-            window.addEventListener('scroll', () => {
-                if (!ticking) {
-                    requestAnimationFrame(updateParallax);
-                    ticking = true;
-                }
-            }, { passive: true });
-        }
-        
-        /* 水墨扩散效果 */
-        addInkSpreadEffect() {
-            const cards = document.querySelectorAll('.card, .glass, .ink-card, .screen-card');
-            
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach((entry, index) => {
-                    if (entry.isIntersecting) {
-                        setTimeout(() => {
-                            entry.target.classList.add('ink-spread-visible');
-                        }, index * 100);
-                    }
-                });
-            }, {
-                threshold: 0.1,
-                rootMargin: '0px 0px -50px 0px'
-            });
-            
-            cards.forEach(card => {
-                observer.observe(card);
-            });
-        }
-        
-        /* 滚动动画 */
-        addScrollAnimations() {
-            const sections = document.querySelectorAll('section');
-            
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('section-visible');
-                    }
-                });
-            }, {
-                threshold: 0.1
-            });
-            
-            sections.forEach(section => {
-                section.classList.add('section-hidden');
-                observer.observe(section);
-            });
-        }
-    }
-    
-    /* ══════════════════════════════════════════════════
-       水墨粒子效果
-       ══════════════════════════════════════════════════ */
-    
-    class InkParticleEffect {
-        constructor(container) {
-            this.container = container;
-            this.particles = [];
-            this.maxParticles = 20;
-            this.init();
-        }
-        
-        init() {
-            if (!this.container) return;
-            
-            this.createCanvas();
-            this.animate();
-        }
-        
-        createCanvas() {
-            this.canvas = document.createElement('canvas');
-            this.canvas.style.cssText = `
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                pointer-events: none;
-                opacity: 0.3;
-            `;
-            this.ctx = this.canvas.getContext('2d');
-            this.container.appendChild(this.canvas);
-            
-            this.resize();
-            window.addEventListener('resize', () => this.resize());
-        }
-        
-        resize() {
-            this.canvas.width = this.container.offsetWidth;
-            this.canvas.height = this.container.offsetHeight;
-        }
-        
-        createParticle() {
-            return {
-                x: Math.random() * this.canvas.width,
-                y: Math.random() * this.canvas.height,
-                radius: Math.random() * 2 + 1,
-                opacity: Math.random() * 0.5 + 0.2,
-                speedX: (Math.random() - 0.5) * 0.5,
-                speedY: (Math.random() - 0.5) * 0.5,
-                color: Math.random() > 0.5 ? '#3d7a8c' : '#a67c52'
-            };
-        }
-        
-        animate() {
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            
-            if (this.particles.length < this.maxParticles) {
-                this.particles.push(this.createParticle());
-            }
-            
-            this.particles.forEach((p, index) => {
-                p.x += p.speedX;
-                p.y += p.speedY;
-                
-                if (p.x < 0 || p.x > this.canvas.width || 
-                    p.y < 0 || p.y > this.canvas.height) {
-                    this.particles[index] = this.createParticle();
-                }
-                
-                this.ctx.beginPath();
-                this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                this.ctx.fillStyle = p.color;
-                this.ctx.globalAlpha = p.opacity;
-                this.ctx.fill();
-            });
-            
-            this.ctx.globalAlpha = 1;
-            
-            requestAnimationFrame(() => this.animate());
-        }
-    }
-    
-    /* ══════════════════════════════════════════════════
-       水墨文字效果
-       ══════════════════════════════════════════════════ */
-    
-    class InkTextEffect {
-        constructor() {
-            this.init();
-        }
-        
-        init() {
-            const titles = document.querySelectorAll('h1, h2, h3, .calligraphy-title');
-            
-            titles.forEach(title => {
-                title.addEventListener('mouseenter', () => {
-                    title.style.textShadow = '2px 2px 4px rgba(45, 45, 45, 0.1)';
-                });
-                
-                title.addEventListener('mouseleave', () => {
-                    title.style.textShadow = 'none';
-                });
-            });
-        }
-    }
-    
-    /* ══════════════════════════════════════════════════
-       平滑滚动
-       ══════════════════════════════════════════════════ */
-    
-    class SmoothScroll {
-        constructor() {
-            this.init();
-        }
-        
-        init() {
-            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-                anchor.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const target = document.querySelector(anchor.getAttribute('href'));
-                    if (target) {
-                        target.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start'
-                        });
-                    }
-                });
-            });
-        }
-    }
-    
-    /* ══════════════════════════════════════════════════
-       初始化
-       ══════════════════════════════════════════════════ */
-    
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            new InkWashEffect();
-            new InkTextEffect();
-            new SmoothScroll();
-            
-            const heroSection = document.querySelector('.hero-section');
-            if (heroSection) {
-                new InkParticleEffect(heroSection);
-            }
-        });
-    } else {
-        new InkWashEffect();
-        new InkTextEffect();
-        new SmoothScroll();
-        
-        const heroSection = document.querySelector('.hero-section');
-        if (heroSection) {
-            new InkParticleEffect(heroSection);
-        }
-    }
-    
-    /* ══════════════════════════════════════════════════
-       CSS 样式注入
-       ══════════════════════════════════════════════════ */
-    
-    const style = document.createElement('style');
-    style.textContent = `
-        .section-hidden {
-            opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.6s ease, transform 0.6s ease;
-        }
-        
-        .section-visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        
-        .ink-spread-visible {
-            animation: inkSpread 0.6s ease forwards;
-        }
-        
-        @keyframes inkSpread {
-            from {
-                opacity: 0;
-                transform: scale(0.95);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-    `;
-    document.head.appendChild(style);
-    
-})();
-
+-e 
 })();

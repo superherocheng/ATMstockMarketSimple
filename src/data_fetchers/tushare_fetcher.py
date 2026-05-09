@@ -513,30 +513,44 @@ def _apply_etf_adj(df, ts_code):
     前复权公式: adj_price = price × adj_factor / latest_adj_factor
     其中 latest_adj_factor 为最新交易日对应的复权因子。
     """
+    import math
+
     if df is None or len(df) == 0:
         return df
 
     try:
         db = get_db_manager()
-        conn = db.get_connection()
-        adj_df = db.query(
-            "SELECT trade_date, adj_factor FROM etf_adj_factor "
-            "WHERE ts_code=:p0 ORDER BY trade_date",
-            {"p0": ts_code}
-        )
+        with db.get_connection() as conn:
+            adj_df = db.query(
+                "SELECT trade_date, adj_factor FROM etf_adj_factor "
+                "WHERE ts_code=:p0 ORDER BY trade_date",
+                {"p0": ts_code}
+            )
     except Exception:
         return df  # DB不可用时返回原始数据
 
     if adj_df is None or len(adj_df) == 0:
         return df  # 无复权因子，返回原始数据
 
-    # 获取最新复权因子
-    latest_adj = float(adj_df["adj_factor"].iloc[-1])
+    # 获取最新复权因子，并确保有效
+    latest_adj_raw = adj_df["adj_factor"].iloc[-1]
+    try:
+        if pd.isna(latest_adj_raw):
+            return df
+        latest_adj = float(latest_adj_raw)
+    except (ValueError, TypeError):
+        return df
     if latest_adj <= 0:
         return df  # 无效复权因子
 
-    # 构建 trade_date → adj_factor 映射
-    adj_map = dict(zip(adj_df["trade_date"], adj_df["adj_factor"]))
+    # 构建 trade_date → adj_factor 映射，过滤 NaN
+    adj_map = {}
+    for _, r in adj_df.iterrows():
+        td = str(r.get("trade_date", ""))
+        adj_val = r.get("adj_factor")
+        if adj_val is None or (isinstance(adj_val, float) and (pd.isna(adj_val) or math.isnan(adj_val))):
+            continue
+        adj_map[td] = float(adj_val)
 
     df = df.copy()
     price_cols = ["open", "high", "low", "close", "pre_close"]
@@ -545,7 +559,7 @@ def _apply_etf_adj(df, ts_code):
         td = str(row.get("trade_date", ""))
         adj = adj_map.get(td)
         if adj is None or adj <= 0:
-            continue  # 无该日复权因子，保留原值
+            continue  # 无该日复权因子或无效，保留原值
         ratio = adj / latest_adj
         for col in price_cols:
             if col in df.columns and pd.notna(row[col]):

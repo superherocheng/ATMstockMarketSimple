@@ -240,8 +240,7 @@ async def health_check():
     return checks
 
 
-@router.get("/api/data-range")
-async def api_data_range():
+def _compute_data_range():
     """查询数据库中各数据表的日期范围和记录数"""
     conn = None
     try:
@@ -304,3 +303,10 @@ async def api_data_range():
     finally:
         if conn:
             conn.close()
+
+
+@router.get("/api/data-range")
+async def api_data_range():
+    """查询数据库中各数据表的日期范围和记录数（缓存5分钟）"""
+    from src.web.services.cache import _cached_persistent
+    return _cached_persistent("data_range", _compute_data_range, max_age_hours=0.083)

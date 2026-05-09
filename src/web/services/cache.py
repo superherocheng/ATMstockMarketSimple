@@ -1,11 +1,91 @@
+"""
+ATMstockMarket — 两级缓存系统
+=============================
+Redis（主）+ 内存 LRU（快速回退）
+
+结构：
+  get(key)        → Redis → 内存 → None
+  set(key, val)   → Redis + 内存
+  invalidate()    → Redis + 内存
+"""
 import json
 import logging
 import threading
 import time as _time
 
-from config.config import CACHE_MAX_SIZE, CACHE_DEFAULT_TTL
+from config.config import (
+    CACHE_MAX_SIZE, CACHE_DEFAULT_TTL,
+    REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PREFIX,
+)
 
 logger = logging.getLogger(__name__)
+
+# ── 可选 Redis 客户端 ───────────────────────────────────────
+_redis_client = None
+_redis_available = False
+
+
+def _get_redis():
+    global _redis_client, _redis_available
+    if _redis_client is None:
+        try:
+            import redis
+            _redis_client = redis.Redis(
+                host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB,
+                socket_connect_timeout=1, socket_timeout=2,
+                decode_responses=True,
+            )
+            _redis_client.ping()
+            _redis_available = True
+            logger.info("Redis 缓存已连接 %s:%s/%s", REDIS_HOST, REDIS_PORT, REDIS_DB)
+        except Exception as e:
+            _redis_client = None
+            _redis_available = False
+            logger.warning("Redis 不可用，回退到内存缓存: %s", e)
+    return _redis_client if _redis_available else None
+
+
+def _redis_key(key):
+    return REDIS_PREFIX + key
+
+
+def _redis_get(key):
+    r = _get_redis()
+    if r is None:
+        return None
+    try:
+        val = r.get(_redis_key(key))
+        if val is not None:
+            return json.loads(val)
+    except Exception:
+        pass
+    return None
+
+
+def _redis_set(key, value, ttl=None):
+    r = _get_redis()
+    if r is None:
+        return
+    try:
+        r.setex(_redis_key(key), ttl or CACHE_DEFAULT_TTL, json.dumps(value, default=str))
+    except Exception as e:
+        logger.warning("Redis set 失败 (%s): %s", key, e)
+
+
+def _redis_delete(pattern):
+    """删除匹配 pattern* 的所有 Redis 键"""
+    r = _get_redis()
+    if r is None:
+        return
+    try:
+        keys = r.keys(_redis_key(pattern) + "*")
+        if keys:
+            r.delete(*keys)
+    except Exception:
+        pass
+
+
+# ── 内存 LRU 缓存 ──────────────────────────────────────────
 
 CACHE_CATEGORIES = {
     "overview": ["overview", "heatmap"],
@@ -14,7 +94,7 @@ CACHE_CATEGORIES = {
 
 
 class ThreadSafeCache:
-    """线程安全的缓存类，支持 maxsize 和 TTL"""
+    """线程安全的内存 LRU 缓存，支持 TTL"""
 
     def __init__(self, maxsize: int = 1000, default_ttl: float = None):
         self._cache = {}
@@ -46,13 +126,11 @@ class ThreadSafeCache:
                 expire_at = _time.time() + ttl
             elif self._default_ttl is not None:
                 expire_at = _time.time() + self._default_ttl
-
             if key in self._cache:
                 if key in self._access_order:
                     self._access_order.remove(key)
             elif len(self._cache) >= self._maxsize:
                 self._evict_lru()
-
             self._cache[key] = (value, expire_at)
             self._access_order.append(key)
 
@@ -66,7 +144,6 @@ class ThreadSafeCache:
                         self._access_order.remove(key)
                     self._access_order.append(key)
                     return value
-
             result = func(*args, **kwargs)
             self.set(key, result, ttl=ttl)
             return result
@@ -114,33 +191,59 @@ class ThreadSafeCache:
 _api_cache = ThreadSafeCache(maxsize=CACHE_MAX_SIZE, default_ttl=CACHE_DEFAULT_TTL)
 
 
+# ── 公开 API ───────────────────────────────────────────────
+
 def _cache_get(key):
+    """两级缓存读：Redis → 内存"""
+    # 优先读 Redis
+    val = _redis_get(key)
+    if val is not None:
+        _api_cache.set(key, val)
+        return val
+    # 回退到内存
     return _api_cache.get(key)
 
 
-def _cache_set(key, value):
-    _api_cache.set(key, value)
+def _cache_set(key, value, ttl=None):
+    """两级缓存写：Redis + 内存"""
+    _redis_set(key, value, ttl=ttl or CACHE_DEFAULT_TTL)
+    _api_cache.set(key, value, ttl=ttl)
 
 
 def _cache_invalidate(*categories):
-    _api_cache.invalidate(*categories)
+    """两级缓存清除"""
+    if not categories:
+        _redis_delete("")
+        _api_cache.invalidate()
+    else:
+        for cat in categories:
+            for pattern in CACHE_CATEGORIES.get(cat, []):
+                _redis_delete(pattern.rstrip("*"))
+        _api_cache.invalidate(*categories)
 
 
-def _cached(key, func, *args, **kwargs):
-    return _api_cache.get_or_set(key, func, *args, **kwargs)
+def _cached(key, func, *args, ttl=None, **kwargs):
+    """get_or_set：Redis → 内存 → 计算"""
+    val = _cache_get(key)
+    if val is not None:
+        return val
+    result = func(*args, **kwargs)
+    _cache_set(key, result, ttl=ttl)
+    return result
 
 
 def _cached_persistent(key, func, max_age_hours=6):
-    """Cache with in-memory LRU only (no DB tier)."""
+    """持久化缓存的快捷方法（两级缓存）"""
     from src.core.db_manager_postgresql import safe_dict
+    ttl_sec = int(max_age_hours * 3600)
     try:
-        result = _api_cache.get(key)
-        if result is not None:
-            return safe_dict(result)
+        val = _cache_get(key)
+        if val is not None:
+            return safe_dict(val)
         result = func()
         result = safe_dict(result)
-        _api_cache.set(key, result)
+        _cache_set(key, result, ttl=ttl_sec)
         return result
     except Exception as e:
-        logger.error(f"_cached_persistent failed for key={key}: {e}", exc_info=True)
+        logger.error("_cached_persistent failed for key=%s: %s", key, e, exc_info=True)
         return {"error": str(e)}
