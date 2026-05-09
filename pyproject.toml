@@ -63,7 +63,7 @@ atm-web = "src.web.app:main"
 atm-fetch = "src.data_fetchers.tushare_fetcher:main"
 
 [tool.setuptools]
-packages = ["src", "src.core", "src.data_fetchers", "src.web"]
+packages = ["src", "src.core", "src.data_fetchers", "src.web", "config"]
 
 [tool.setuptools.package-data]
 "*" = ["*.html", "*.css", "*.js", "*.json"]

@@ -75,8 +75,14 @@ install_deps() {
 # 初始化数据库
 init_db() {
     echo "[3/3] 初始化数据库..."
-    $PYTHON_CMD scripts/init_database.py --schema 2>/dev/null || echo -e "${YELLOW}[跳过] 数据库初始化${NC}"
-    echo -e "${GREEN}[OK] 数据库初始化完成${NC}"
+    $PYTHON_CMD -c "
+from src.data_fetchers.tushare_fetcher import init_db
+try:
+    init_db()
+    print('[OK] 数据库初始化完成')
+except Exception as e:
+    print(f'[跳过] 数据库初始化: {e}')
+" 2>&1
 }
 
 # 打印使用说明
@@ -97,15 +103,14 @@ print_usage() {
     echo ""
     echo "  2. 配置 Tushare Token:"
     echo "     export TUSHARE_TOKEN='你的Token'"
-    echo "     或编辑 src/core/config.py 文件"
+    echo "     或编辑 config/config.py 文件"
     echo "     获取地址: https://tushare.pro/register"
     echo ""
     echo "  3. 获取数据:"
-    echo "     python scripts/init_database.py        # 初始化数据库"
-    echo "     python src/data_fetchers/tushare_fetcher.py          # 全量获取"
-    echo "     python src/data_fetchers/tushare_fetcher.py --etf    # 仅 ETF"
-    echo "     python src/data_fetchers/tushare_fetcher.py --stocks # 仅个股"
-    echo "     python src/data_fetchers/akshare_fetcher.py          # AKShare 数据"
+    echo "     python -m src.data_fetchers.tushare_fetcher --init      # 初始化数据库"
+    echo "     python -m src.data_fetchers.tushare_fetcher             # 全量获取"
+    echo "     python -m src.data_fetchers.tushare_fetcher --etf       # 仅 ETF"
+    echo "     python -m src.data_fetchers.tushare_fetcher --stocks    # 仅个股"
     echo ""
     echo "  4. 启动 Web 服务:"
     echo "     python -m uvicorn src.web.app:app --host 0.0.0.0 --port 8000 --reload"

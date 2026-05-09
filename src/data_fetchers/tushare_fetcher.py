@@ -633,9 +633,16 @@ def fetch_stock_list():
                    fields="ts_code,name,industry,area,market,list_date")
     df = df[~df["name"].str.contains("ST", na=False)]
     df = df[~df["ts_code"].str.endswith(".BJ")]
-    conn.execute(text("DELETE FROM stock_basic"))
-    conn.commit()
-    db.insert_dataframe(df, "stock_basic", if_exists='append')
+    # Use the same connection for DELETE + INSERT to maintain atomicity.
+    # If the INSERT fails, the transaction rolls back and the old data is preserved.
+    try:
+        with conn.begin():
+            conn.execute(text("DELETE FROM stock_basic"))
+            df.to_sql("stock_basic", conn, if_exists='append', index=False, method='multi')
+    except Exception:
+        import traceback
+        print(f"[ERROR] stock_basic 更新失败，数据已回滚: {traceback.format_exc()}")
+        raise
     print(f"  共 {len(df)} 只非ST股票")
     return df["ts_code"].tolist()
 

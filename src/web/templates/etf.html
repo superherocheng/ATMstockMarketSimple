@@ -80,17 +80,6 @@
         <div class="glass rounded-xl p-4 sm:p-6">
             <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
                 <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                份额变化
-                <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">蓝色标记 = 份额异常变动</span>
-            </h3>
-            <div id="share-chart" class="chart-sub" style="height: 320px;">
-                <div class="skeleton skeleton-chart"></div>
-            </div>
-        </div>
-
-        <div class="glass rounded-xl p-4 sm:p-6">
-            <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
-                <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
                 份额实际值
                 <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">折线：120日绝对值 &nbsp;柱状：每日变化ZSCORE</span>
             </h3>
@@ -102,22 +91,11 @@
         <div class="glass rounded-xl p-4 sm:p-6">
             <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
                 <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                异常事件标记
+                份额异常事件
                 <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">超过2倍标准差</span>
             </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 stagger-children">
-                <div>
-                    <h4 class="text-sm mb-2" style="color:var(--c-text-tertiary);">价格异常</h4>
-                    <div id="price-anomalies" class="space-y-2 text-sm">
-                        <div class="skeleton skeleton-text"><span class="spinner inline-block mr-2"></span></div>
-                    </div>
-                </div>
-                <div>
-                    <h4 class="text-sm mb-2" style="color:var(--c-text-tertiary);">份额异常</h4>
-                    <div id="share-anomalies" class="space-y-2 text-sm">
-                        <div class="skeleton skeleton-text"><span class="spinner inline-block mr-2"></span></div>
-                    </div>
-                </div>
+            <div id="share-anomalies" class="space-y-2 text-sm">
+                <div class="skeleton skeleton-text"><span class="spinner inline-block mr-2"></span></div>
             </div>
         </div>
     </main>
@@ -153,7 +131,6 @@
 
     var currentCode = '510300.SH';
     var klineChart = null;
-    var shareChart = null;
     var shareDetailChart = null;
 
     function switchETF(btn) {
@@ -172,7 +149,6 @@
             updateInfo(data);
             try { await ATMChart.load(); } catch(e) { console.warn('ECharts load failed:', e); }
             renderKline(data);
-            renderShares(data);
             renderShareDetail(data);
             renderAnomalies(data);
         } catch(e) {
@@ -192,6 +168,11 @@
             pctEl.textContent = ATM.pctText(pct);
             pctEl.style.color = ATM.pctColor(pct);
             document.getElementById('etf-vol').textContent = ATM.formatNum((parseFloat(last.amount || 0) / 10000).toFixed(0), 0) + '万';
+        } else {
+            document.getElementById('etf-price').textContent = '--';
+            document.getElementById('etf-pct').textContent = '--';
+            document.getElementById('etf-pct').style.color = '';
+            document.getElementById('etf-vol').textContent = '--';
         }
     }
 
@@ -199,9 +180,12 @@
         var el = document.getElementById('kline-chart');
         if (klineChart && !klineChart.isDisposed()) klineChart.dispose();
         el.innerHTML = '';
-        klineChart = echarts.init(el);
         var kline = data.kline || [];
-        if (kline.length === 0) return;
+        if (kline.length === 0) {
+            el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--c-text-tertiary);">暂无K线数据</div>';
+            return;
+        }
+        klineChart = echarts.init(el);
 
         var th = ATM.getChartTheme();
         var dates = kline.map(function(k) { return k.trade_date; });
@@ -234,7 +218,7 @@
                 left: '3%',
                 top: '2%',
                 textStyle: {
-                    color: '#2C2C2C',
+                    color: '#1A1C19',
                     fontWeight: 600,
                     fontSize: 14,
                     fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
@@ -298,83 +282,6 @@
                     label: { show: true, position: 'top', color: th.axisLabelColor, fontSize: 8, formatter: '{c}%' }
                 }
             ]
-        }, true);
-    }
-
-    function renderShares(data) {
-        var el = document.getElementById('share-chart');
-        if (shareChart && !shareChart.isDisposed()) shareChart.dispose();
-        el.innerHTML = '';
-        shareChart = echarts.init(el);
-        var shares = data.shares || [];
-        if (shares.length === 0) return;
-
-        var th = ATM.getChartTheme();
-        var recent = shares.slice(-20);
-        var dates = recent.map(function(s) { return s.trade_date; });
-        var allValues = shares.map(function(s) { return parseFloat(s.fd_share || 0); });
-        var sortedAll = allValues.slice().sort(function(a, b) { return a - b; });
-
-        function toPercentile(val) {
-            if (sortedAll.length === 0) return 50;
-            var rank = sortedAll.filter(function(v) { return v <= val; }).length;
-            return Math.round(rank / sortedAll.length * 100);
-        }
-        var pctValues = recent.map(function(s) { return toPercentile(parseFloat(s.fd_share || 0)); });
-
-        var anomalyDates = new Set((data.anomalies && data.anomalies.share || []).map(function(a) { return a.trade_date; }));
-        var markPoints = recent.filter(function(s) { return anomalyDates.has(s.trade_date); }).map(function(s) {
-            return {
-                name: s.trade_date,
-                coord: [s.trade_date, toPercentile(parseFloat(s.fd_share || 0))],
-                symbolSize: 8,
-                itemStyle: { color: th.upColor }
-            };
-        });
-
-        shareChart.setOption({
-            backgroundColor: 'transparent',
-            textStyle: th.textStyle,
-            tooltip: {
-                trigger: 'axis',
-                backgroundColor: th.tooltip.backgroundColor,
-                borderColor: th.tooltip.borderColor,
-                textStyle: th.tooltip.textStyle,
-                formatter: function(params) {
-                    var p = params[0];
-                    if (!p) return '';
-                    var idx = p.dataIndex;
-                    var rawVal = parseFloat(recent[idx] && recent[idx].fd_share || 0);
-                    var pct = p.value;
-                    var date = p.axisValueLabel;
-                    return '<b>' + date + '</b><br/>历史百分位: <b>' + pct + '%</b><br/>份额: ' + (rawVal / 100000000).toFixed(2) + '亿份';
-                }
-            },
-            grid: { left: '10%', right: '3%', top: '10%', bottom: '15%' },
-            xAxis: { type: 'category', data: dates, axisLabel: { color: th.axisLabelColor, fontSize: 10 } },
-            yAxis: {
-                type: 'value', min: 0, max: 100,
-                axisLabel: { color: th.axisLabelColor, formatter: '{value}%' },
-                splitLine: { lineStyle: { color: th.splitLineColor } }
-            },
-            series: [{
-                name: '份额百分位', type: 'scatter',
-                data: pctValues.map(function(v) {
-                    return { value: v, itemStyle: { color: th.upColor } };
-                }),
-                symbolSize: 10,
-                markPoint: { data: markPoints, symbol: 'diamond', symbolSize: 16, label: { show: false } },
-                markLine: {
-                    silent: true,
-                    lineStyle: { color: th.splitLineColor, type: 'dashed', width: 1 },
-                    label: { position: 'insideEndTop', fontSize: 10, color: th.axisLabelColor },
-                    data: [
-                        { yAxis: 80, label: { formatter: '高位 80%' } },
-                        { yAxis: 50, label: { formatter: '中位 50%' } },
-                        { yAxis: 20, label: { formatter: '低位 20%' } }
-                    ]
-                }
-            }]
         }, true);
     }
 
@@ -484,13 +391,13 @@
                     data: values,
                     smooth: true,
                     showSymbol: false,
-                    lineStyle: { width: 2, color: '#3182CE' },
+                    lineStyle: { width: 2, color: '#6B8F71' },
                     areaStyle: {
                         color: {
                             type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
                             colorStops: [
-                                { offset: 0, color: '#3182CE44' },
-                                { offset: 1, color: '#3182CE08' }
+                                { offset: 0, color: '#6B8F7144' },
+                                { offset: 1, color: '#6B8F7108' }
                             ]
                         }
                     },
@@ -518,21 +425,8 @@
     }
 
     function renderAnomalies(data) {
-        var priceEl = document.getElementById('price-anomalies');
         var shareEl = document.getElementById('share-anomalies');
-        var priceAnom = (data.anomalies && data.anomalies.price) || [];
         var shareAnom = (data.anomalies && data.anomalies.share) || [];
-
-        if (priceAnom.length === 0) {
-            priceEl.innerHTML = '<div style="color:var(--c-text-tertiary);">暂无价格异常事件</div>';
-        } else {
-            priceEl.innerHTML = priceAnom.slice(-10).reverse().map(function(a) {
-                var pct = parseFloat(a.pct_chg || 0);
-                return '<div class="flex items-center justify-between glass rounded px-3 py-2">' +
-                    '<span><span class="pulse-dot"></span> ' + a.trade_date + '</span>' +
-                    '<span class="font-bold num-mono font-mono" style="color:' + ATM.pctColor(pct) + '">' + ATM.pctText(pct) + '</span></div>';
-            }).join('');
-        }
 
         if (shareAnom.length === 0) {
             shareEl.innerHTML = '<div style="color:var(--c-text-tertiary);">暂无份额异常事件</div>';
@@ -561,13 +455,11 @@
     ATMPerf.VisibilityManager.register(
         function() {
             if (klineChart) { klineChart.resize(); }
-            if (shareChart) { shareChart.resize(); }
             if (shareDetailChart) { shareDetailChart.resize(); }
         },
         function() {
             setTimeout(function() {
                 if (klineChart) klineChart.resize();
-                if (shareChart) shareChart.resize();
                 if (shareDetailChart) shareDetailChart.resize();
             }, 200);
         }
@@ -575,7 +467,6 @@
 
     window.addEventListener('beforeunload', function() {
         if (klineChart && !klineChart.isDisposed()) klineChart.dispose();
-        if (shareChart && !shareChart.isDisposed()) shareChart.dispose();
         if (shareDetailChart && !shareDetailChart.isDisposed()) shareDetailChart.dispose();
     });
 

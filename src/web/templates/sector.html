@@ -38,11 +38,11 @@
             行业ETF横向对比 &amp; 板块轮动
         </h2>
 
-        <div id="sector-cards" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
+        <div id="sector-cards" class="grid grid-cols-4 gap-2">
             <div class="glass rounded-lg p-3 text-center animate-pulse" style="color:var(--c-text-tertiary);"><span class="spinner inline-block mr-2"></span>加载中...</div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 stagger-children">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 stagger-children">
             <div class="glass rounded-xl p-4 sm:p-6">
                 <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
                     <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
@@ -63,30 +63,23 @@
             </div>
         </div>
 
-        <div id="detail-section" class="hidden space-y-6">
-            <div class="glass rounded-xl p-4 sm:p-6">
-                <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
-                    <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                    <span id="detail-title">ETF详情</span>
-                </h3>
-                <div id="detail-kline" class="chart-sub" style="height: 350px;"></div>
+        <div id="detail-section" class="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 stagger-children">
+                <div class="glass rounded-xl p-4 sm:p-6">
+                    <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
+                        <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
+                        <span id="detail-title">ETF详情</span>
+                    </h3>
+                    <div id="detail-kline" class="chart-sub" style="height: 350px;"></div>
+                </div>
+                <div class="glass rounded-xl p-4 sm:p-6">
+                    <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
+                        <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
+                        <span id="detail-share-title">份额实际值</span>
+                    </h3>
+                    <div id="detail-share-chart" class="chart-sub" style="height: 350px;"></div>
+                </div>
             </div>
-            <div class="glass rounded-xl p-4 sm:p-6">
-                <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
-                    <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                    <span id="detail-share-title">份额实际值</span>
-                </h3>
-                <div id="detail-share-chart" class="chart-sub" style="height: 300px;"></div>
-            </div>
-        </div>
-
-        <div class="glass rounded-xl p-4 sm:p-6">
-            <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
-                <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                板块资金流向矩阵
-                <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">颜色深浅 = 成交额相对大小，红涨绿跌</span>
-            </h3>
-            <div id="flow-matrix" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3 stagger-children"></div>
         </div>
     </main>
 
@@ -134,7 +127,6 @@
                 return s.kline && s.kline.length > 0;
             });
             renderSectorCards();
-            renderFlowMatrix();
             try { await ATMChart.load(); } catch(e) { console.warn('ECharts load failed:', e); }
             // Wrap chart renders in try-catch — requestAnimationFrame
             // runs outside the outer try-catch scope, so any throw here
@@ -154,9 +146,16 @@
         } catch(e) {
             console.error('加载失败:', e);
             document.getElementById('sector-cards').innerHTML =
-                '<div class="glass rounded-lg p-3 text-center col-span-2 sm:col-span-5" style="color:var(--c-text-tertiary);">暂无数据，请先运行 fetch_data.py</div>';
+                '<div class="glass rounded-lg p-3 text-center" style="grid-column:1/-1;color:var(--c-text-tertiary);">暂无数据，请先运行 fetch_data.py</div>';
         }
     }
+
+    var SIGNAL_STYLE = {
+        strong: { bg: 'var(--c-up-bg)', color: 'var(--c-up)', label: '强势' },
+        lurk:   { bg: 'var(--c-accent-bg)', color: 'var(--c-accent)', label: '埋伏' },
+        exit:   { bg: 'var(--c-down-bg)', color: 'var(--c-down)', label: '撤离' },
+        risk:   { bg: 'rgba(255,93,0,0.1)', color: '#ff5d00', label: '风险' },
+    };
 
     function renderSectorCards() {
         var container = document.getElementById('sector-cards');
@@ -170,10 +169,15 @@
             var last = kline.length > 0 ? kline[kline.length - 1] : null;
             var pct = last ? parseFloat(last.pct_chg || 0) : 0;
             var isSelected = selectedCode === s.ts_code;
-            return '<div class="sector-card glass rounded-lg p-3 text-center ' + (isSelected ? 'selected' : '') + '" onclick="selectSector(\'' + s.ts_code + '\')">' +
-                '<div class="text-sm font-bold mb-1">' + s.name + '</div>' +
-                '<div class="text-lg font-bold" style="color:' + ATM.pctColor(pct) + '">' + ATM.pctText(pct) + '</div>' +
-                '<div class="text-xs" style="color:var(--c-text-tertiary);">' + (last ? '<span class="pulse-dot"></span> ' + (last.close || '') : '--') + '</div></div>';
+            var sig = (s.signal && s.signal.tag !== 'none') ? SIGNAL_STYLE[s.signal.tag] : null;
+            var sigHtml = sig
+                ? '<div style="margin-top:4px;font-size:10px;font-weight:600;padding:1px 6px;border-radius:9999px;display:inline-block;background:' + sig.bg + ';color:' + sig.color + ';">' + sig.label + '</div>'
+                : '';
+            return '<div class="sector-card glass rounded-lg p-2 text-center ' + (isSelected ? 'selected' : '') + '" onclick="selectSector(\'' + s.ts_code + '\')">' +
+                '<div class="text-xs font-bold mb-1">' + s.name + '</div>' +
+                '<div class="text-base font-bold" style="color:' + ATM.pctColor(pct) + '">' + ATM.pctText(pct) + '</div>' +
+                '<div class="text-xs" style="color:var(--c-text-tertiary);">' + (last ? '<span class="pulse-dot"></span> ' + (last.close || '') : '--') + '</div>' +
+                sigHtml + '</div>';
         }).join('');
     }
 
@@ -364,13 +368,13 @@
                     data: values,
                     smooth: true,
                     showSymbol: false,
-                    lineStyle: { width: 2, color: '#3182CE' },
+                    lineStyle: { width: 2, color: '#6B8F71' },
                     areaStyle: {
                         color: {
                             type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
                             colorStops: [
-                                { offset: 0, color: '#3182CE44' },
-                                { offset: 1, color: '#3182CE08' }
+                                { offset: 0, color: '#6B8F7144' },
+                                { offset: 1, color: '#6B8F7108' }
                             ]
                         }
                     },
@@ -441,9 +445,9 @@
             xAxis: { type: 'category', data: names, axisLabel: { color: th.axisLabelColor, rotate: 30, fontSize: 10 } },
             yAxis: { type: 'value', axisLabel: { color: th.axisLabelColor, formatter: '{value}%' }, splitLine: { lineStyle: { color: th.splitLineColor } } },
             series: [
-                { name: '5日', type: 'bar', data: series5, itemStyle: { color: '#3182CE' }, barMaxWidth: 15 },
-                { name: '10日', type: 'bar', data: series10, itemStyle: { color: '#805AD5' }, barMaxWidth: 15 },
-                { name: '20日', type: 'bar', data: series20, itemStyle: { color: '#0891B2' }, barMaxWidth: 15 }
+                { name: '5日', type: 'bar', data: series5, itemStyle: { color: '#6B8F71' }, barMaxWidth: 15 },
+                { name: '10日', type: 'bar', data: series10, itemStyle: { color: '#8FBF97' }, barMaxWidth: 15 },
+                { name: '20日', type: 'bar', data: series20, itemStyle: { color: '#4A7050' }, barMaxWidth: 15 }
             ]
         }, true);
     }
@@ -505,40 +509,6 @@
             dataZoom: [{ type: 'inside' }],
             series: seriesList
         }, true);
-    }
-
-    function renderFlowMatrix() {
-        var container = document.getElementById('flow-matrix');
-        var sorted = allSectors.slice().sort(function(a, b) {
-            var ka = a.kline || [], kb = b.kline || [];
-            var pa = ka.length ? parseFloat(ka[ka.length-1].pct_chg || 0) : 0;
-            var pb = kb.length ? parseFloat(kb[kb.length-1].pct_chg || 0) : 0;
-            return pb - pa;
-        });
-        container.innerHTML = sorted.map(function(s) {
-            var kline = s.kline || [];
-            if (kline.length < 2) {
-                return '<div class="glass rounded-lg p-3 sm:p-4 text-center">' +
-                    '<div class="text-sm font-bold">' + s.name + '</div>' +
-                    '<div class="text-xs mt-1" style="color:var(--c-text-tertiary);">' + s.ts_code + '</div>' +
-                    '<div class="text-xs" style="color:var(--c-text-tertiary);">数据不足</div></div>';
-            }
-            var recent5 = kline.slice(-5);
-            var prev5 = kline.slice(-10, -5);
-            var recentVol = recent5.reduce(function(a, k) { return a + parseFloat(k.vol || 0); }, 0) / 5;
-            var prevVol = prev5.length > 0 ? prev5.reduce(function(a, k) { return a + parseFloat(k.vol || 0); }, 0) / prev5.length : recentVol;
-            var volRatio = prevVol > 0 ? (recentVol / prevVol - 1) * 100 : 0;
-            var lastPct = parseFloat(kline[kline.length-1].pct_chg || 0);
-            var bgColor;
-            if (volRatio > 20) bgColor = 'var(--c-up-bg-strong)';
-            else if (volRatio > 0) bgColor = 'var(--c-up-bg)';
-            else if (volRatio > -20) bgColor = 'var(--c-down-bg)';
-            else bgColor = 'var(--c-down-bg-strong)';
-            return '<div class="rounded-lg p-3 sm:p-4 text-center sector-card" style="background:' + bgColor + '" onclick="selectSector(\'' + s.ts_code + '\')">' +
-                '<div class="text-sm font-bold mb-1">' + s.name + '</div>' +
-                '<div class="text-xs mb-1" style="color:' + ATM.pctColor(lastPct) + '">' + ATM.pctText(lastPct) + '</div>' +
-                '<div class="text-xs num-mono font-mono" style="color:var(--c-text-tertiary);"><span class="pulse-dot"></span> ' + s.ts_code + '</div></div>';
-        }).join('');
     }
 
     ATMChart.initPage();

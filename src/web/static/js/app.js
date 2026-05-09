@@ -274,18 +274,18 @@ ATM.getChartTheme = function() {
     return {
         backgroundColor: 'transparent',
         textStyle: {
-            color: '#6b6560',
+            color: '#5C5A55',
             fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
         },
         title: {
             textStyle: {
-                color: '#3a3632',
+                color: '#1A1C19',
                 fontWeight: 700
             }
         },
         legend: {
             textStyle: {
-                color: '#6b6560',
+                color: '#5C5A55',
                 fontSize: 12
             },
             icon: 'roundRect',
@@ -293,27 +293,27 @@ ATM.getChartTheme = function() {
             itemHeight: 8
         },
         tooltip: {
-            backgroundColor: 'rgba(50, 46, 42, 0.94)',
-            borderColor: 'rgba(107, 143, 163, 0.3)',
+            backgroundColor: 'rgba(42, 45, 40, 0.94)',
+            borderColor: 'rgba(58, 61, 53, 0.5)',
             borderWidth: 1,
             textStyle: {
-                color: '#f5f0e6',
+                color: '#E8E6E1',
                 fontSize: 12
             },
-            extraCssText: 'box-shadow:0 4px 16px rgba(58,54,50,0.15);border-radius:4px;'
+            extraCssText: 'box-shadow:0 4px 16px rgba(26,28,25,0.15);border-radius:12px;'
         },
-        splitLineColor: 'rgba(212, 207, 196, 0.6)',
-        axisLabelColor: '#9e9689',
-        axisLineColor: 'rgba(212, 207, 196, 0.5)',
-        upColor: '#c45c5c',
-        upColor0: 'rgba(196, 92, 92, 0.12)',
-        downColor: '#5a9470',
-        downColor0: 'rgba(90, 148, 112, 0.12)',
-        accentColor: '#6b8fa3',
-        accentLight: 'rgba(107, 143, 163, 0.15)',
+        splitLineColor: 'rgba(226, 224, 216, 0.7)',
+        axisLabelColor: '#94928A',
+        axisLineColor: 'rgba(226, 224, 216, 0.5)',
+        upColor: '#dd3333',
+        upColor0: 'rgba(221, 51, 51, 0.12)',
+        downColor: '#00af00',
+        downColor0: 'rgba(0, 175, 0, 0.12)',
+        accentColor: '#6B8F71',
+        accentLight: 'rgba(107, 143, 113, 0.15)',
         seriesColors: [
-            '#6b8fa3', '#8cb89c', '#b8845a', '#a08070',
-            '#c45c5c', '#5a9470', '#7a9078', '#9c8a7a'
+            '#6B8F71', '#8FBF97', '#4A7050', '#94928A',
+            '#dd3333', '#00af00', '#D97735', '#B5B3AC'
         ]
     };
 };
@@ -1335,16 +1335,16 @@ ATMChart.getChartTheme = function() {
         textStyle: {
             fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif",
             fontSize: 12,
-            color: '#3D3D3D'
+            color: '#5C5A55'
         },
         title: {
             textStyle: {
-                color: '#2C2C2C',
+                color: '#1A1C19',
                 fontWeight: 600,
                 fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
             },
             subtextStyle: {
-                color: '#5C5C5C'
+                color: '#94928A'
             }
         },
         line: {
@@ -1353,7 +1353,7 @@ ATMChart.getChartTheme = function() {
             },
             lineStyle: {
                 width: 2,
-                shadowColor: 'rgba(60, 60, 60, 0.1)',
+                shadowColor: 'rgba(26, 28, 25, 0.08)',
                 shadowBlur: 4,
                 shadowOffsetY: 2
             },
@@ -1363,117 +1363,117 @@ ATMChart.getChartTheme = function() {
         },
         bar: {
             itemStyle: {
-                barBorderRadius: [4, 4, 0, 0],
-                shadowColor: 'rgba(60, 60, 60, 0.08)',
+                barBorderRadius: [6, 6, 0, 0],
+                shadowColor: 'rgba(26, 28, 25, 0.06)',
                 shadowBlur: 4,
                 shadowOffsetY: 2
             }
         },
         pie: {
             itemStyle: {
-                borderRadius: 4,
-                borderColor: '#FAF6F0',
+                borderRadius: 6,
+                borderColor: '#F7F6F3',
                 borderWidth: 2
             }
         },
         categoryAxis: {
             axisLine: {
                 lineStyle: {
-                    color: 'rgba(60, 60, 60, 0.2)'
+                    color: 'rgba(204, 201, 191, 0.5)'
                 }
             },
             axisTick: {
                 lineStyle: {
-                    color: 'rgba(60, 60, 60, 0.15)'
+                    color: 'rgba(204, 201, 191, 0.3)'
                 }
             },
             axisLabel: {
-                color: '#5C5C5C',
+                color: '#94928A',
                 fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
             },
             splitLine: {
                 lineStyle: {
-                    color: 'rgba(60, 60, 60, 0.06)'
+                    color: 'rgba(226, 224, 216, 0.4)'
                 }
             },
             splitArea: {
                 areaStyle: {
-                    color: ['rgba(126, 184, 201, 0.03)', 'rgba(139, 201, 160, 0.03)']
+                    color: ['rgba(107, 143, 113, 0.03)', 'rgba(143, 191, 151, 0.03)']
                 }
             }
         },
         valueAxis: {
             axisLine: {
                 lineStyle: {
-                    color: 'rgba(60, 60, 60, 0.2)'
+                    color: 'rgba(204, 201, 191, 0.5)'
                 }
             },
             axisTick: {
                 lineStyle: {
-                    color: 'rgba(60, 60, 60, 0.15)'
+                    color: 'rgba(204, 201, 191, 0.3)'
                 }
             },
             axisLabel: {
-                color: '#5C5C5C',
+                color: '#94928A',
                 fontFamily: "'JetBrains Mono', monospace"
             },
             splitLine: {
                 lineStyle: {
-                    color: 'rgba(60, 60, 60, 0.06)',
+                    color: 'rgba(226, 224, 216, 0.4)',
                     type: 'dashed'
                 }
             },
             splitArea: {
                 areaStyle: {
-                    color: ['rgba(212, 165, 116, 0.02)', 'rgba(184, 169, 201, 0.02)']
+                    color: ['rgba(107, 143, 113, 0.02)', 'rgba(143, 191, 151, 0.02)']
                 }
             }
         },
         tooltip: {
-            backgroundColor: 'rgba(74, 74, 74, 0.95)',
-            borderColor: 'rgba(250, 246, 240, 0.2)',
+            backgroundColor: 'rgba(42, 45, 40, 0.94)',
+            borderColor: 'rgba(58, 61, 53, 0.5)',
             borderWidth: 1,
             textStyle: {
-                color: '#FAF6F0',
+                color: '#E8E6E1',
                 fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
             },
-            extraCssText: 'border-radius: 8px; box-shadow: 0 4px 12px rgba(60, 60, 60, 0.15);'
+            extraCssText: 'border-radius: 12px; box-shadow: 0 4px 12px rgba(26, 28, 25, 0.12);'
         },
         legend: {
             textStyle: {
-                color: '#3D3D3D',
+                color: '#5C5A55',
                 fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
             },
             pageTextStyle: {
-                color: '#5C5C5C'
+                color: '#94928A'
             }
         },
         color: [
-            '#7EB8C9',
+            '#6B8F71',
+            '#8FBF97',
+            '#4A7050',
+            '#D97735',
+            '#B5B3AC',
+            '#94928A',
             '#D4A574',
-            '#8BC9A0',
-            '#B8A9C9',
-            '#D4726A',
-            '#6AAF7C',
-            '#F0C4A0',
-            '#B5D8E2',
+            '#7BA882',
             '#E5C9A8',
-            '#D4C9DE'
+            '#CCC9BF'
         ],
         watercolorColors: {
-            blue: '#7EB8C9',
-            blueLight: '#B5D8E2',
-            green: '#8BC9A0',
-            greenLight: '#B8DFC5',
-            terracotta: '#D4A574',
+            blue: '#6B8F71',
+            blueLight: '#8FBF97',
+            green: '#4A7050',
+            greenLight: '#7BA882',
+            terracotta: '#D97735',
             terracottaLight: '#E5C9A8',
-            lavender: '#B8A9C9',
-            lavenderLight: '#D4C9DE',
-            peach: '#F0C4A0',
-            peachLight: '#F7DCC4',
-            up: '#D4726A',
+            lavender: '#B5B3AC',
+            lavenderLight: '#CCC9BF',
+            peach: '#D4A574',
+            peachLight: '#E5C9A8',
+            up: '#dd3333',
             upLight: '#E8A09A',
-            down: '#6AAF7C',
+            down: '#00af00',
             downLight: '#9DC9A8'
         }
     };
@@ -1617,5 +1617,4 @@ ATMChart.setupResponsiveChart = function(containerId, baseHeight, option) {
     return chart;
 };
 
--e 
 })();

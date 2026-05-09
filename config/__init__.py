@@ -1,0 +1,1 @@
+# ATMstockMarket config package

@@ -103,3 +103,4 @@ logs/
 *.tmp
 *.bak
 *.swp
+.superpowers/

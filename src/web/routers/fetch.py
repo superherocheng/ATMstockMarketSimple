@@ -121,7 +121,7 @@ def _load_allsymbol_data():
 
     _add_log("--- 开始加载股票分类数据 (ALLSYMBOL.csv) ---")
 
-    load_script = str(BASE_DIR.parent / "scripts" / "load_allsymbol.py")
+    load_script = str(BASE_DIR.parent.parent / "scripts" / "load_allsymbol.py")
     work_dir = str(BASE_DIR.parent.parent)
 
     cmd = [sys.executable, "-u", load_script]

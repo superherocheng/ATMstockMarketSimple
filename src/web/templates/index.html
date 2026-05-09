@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="ATMstockMarket - A股市场分析平台">
-    <meta name="theme-color" content="#3366cc">
+    <meta name="theme-color" content="#6B8F71">
     <title>ATMstockMarket - A股市场分析</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -39,7 +39,7 @@
                 行业板块热力图
             </h2>
             <div class="glass rounded-xl p-5">
-                <div id="heatmap" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2"></div>
+                <div id="heatmap" class="grid grid-cols-4 gap-2"></div>
             </div>
         </section>
 
@@ -52,7 +52,6 @@
                     </h2>
                     <div class="data-mgmt-buttons">
                         <button onclick="fetchTushare()" id="btn-tushare" class="btn btn-secondary data-mgmt-btn">Tushare数据</button>
-                        <button onclick="fetchAkshare()" id="btn-akshare" class="btn btn-secondary data-mgmt-btn">AKShare数据</button>
                         <button onclick="oneClickUpdate()" id="btn-update" class="btn btn-primary data-mgmt-btn">全部数据</button>
                     </div>
                 </div>
@@ -74,7 +73,7 @@
             </div>
         </section>
 
-        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <section class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <a href="/etf" class="glass rounded-xl p-5 transition-all block group">
                 <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3 transition-all group-hover:scale-105" style="background:#FEF3C7;">
                     <svg width="20" height="20" style="color:#D97706;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
@@ -88,20 +87,6 @@
                 </div>
                 <h3 class="font-semibold mb-1">板块轮动</h3>
                 <p class="text-sm" style="color:var(--c-text-tertiary);">行业涨跌排名 · 热点追踪</p>
-            </a>
-            <a href="/etf#share" class="glass rounded-xl p-5 transition-all block group">
-                <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3 transition-all group-hover:scale-105" style="background:#DBEAFE;">
-                    <svg width="20" height="20" style="color:#2563EB;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                </div>
-                <h3 class="font-semibold mb-1">份额分析</h3>
-                <p class="text-sm" style="color:var(--c-text-tertiary);">ETF份额变化 · 资金流向</p>
-            </a>
-            <a href="/sector#matrix" class="glass rounded-xl p-5 transition-all block group">
-                <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3 transition-all group-hover:scale-105" style="background:#EDE9FE;">
-                    <svg width="20" height="20" style="color:#7C3AED;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
-                </div>
-                <h3 class="font-semibold mb-1">板块矩阵</h3>
-                <p class="text-sm" style="color:var(--c-text-tertiary);">资金流向矩阵 · 全景扫描</p>
             </a>
         </section>
     </main>
@@ -153,7 +138,6 @@
             { group: 'ETF数据', items: ['index_etf_daily','sector_etf_daily','etf_share'] },
             { group: '个股数据', items: ['stock_daily','stock_basic'] },
             { group: '基本面数据', items: ['stock_daily_basic','stock_fina_indicator'] },
-            { group: 'AKShare数据', items: ['lhb','institute'] },
         ];
         var anyNeedUpdate = false;
         var html = '<div class="overflow-x-auto" style="-webkit-overflow-scrolling:touch;overflow-x:auto;"><table class="w-full text-sm zebra-table" style="min-width:520px;">';
@@ -226,13 +210,11 @@
 
     function disableAllButtons() {
         document.getElementById("btn-tushare").disabled = true;
-        document.getElementById("btn-akshare").disabled = true;
         document.getElementById("btn-update").disabled = true;
     }
 
     function enableAllButtons() {
         document.getElementById("btn-tushare").disabled = false;
-        document.getElementById("btn-akshare").disabled = false;
         document.getElementById("btn-update").disabled = false;
     }
 
@@ -242,7 +224,6 @@
     }
 
     function resetButtonTushare() { document.getElementById("btn-tushare").innerHTML = 'Tushare数据'; }
-    function resetButtonAkshare() { document.getElementById("btn-akshare").innerHTML = 'AKShare数据'; }
     function resetButtonAll() { document.getElementById("btn-update").innerHTML = '全部数据'; }
 
     async function fetchTushare() {
@@ -267,31 +248,6 @@
             alert("启动失败: " + e.message);
             enableAllButtons();
             resetButtonTushare();
-        }
-    }
-
-    async function fetchAkshare() {
-        disableAllButtons();
-        setButtonLoading("btn-akshare", "获取中...");
-        try {
-            var resp = await fetch("/api/fetch/akshare", { method: "POST" });
-            if (resp.status === 409) {
-                setButtonLoading("btn-akshare", "获取中...");
-                document.getElementById("fetch-progress").classList.remove("hidden");
-                if (!pollTimer) { pollTimer = setInterval(pollStatus, 1500); pollStatus(); }
-                return;
-            }
-            document.getElementById("fetch-progress").classList.remove("hidden");
-            document.getElementById("fetch-log").innerHTML = '<div style="color:#D97706;">正在启动 AKShare 数据获取...</div>';
-            updateProgressBar(0, "running");
-            document.getElementById("fetch-status-text").textContent = "获取中...";
-            if (pollTimer) clearInterval(pollTimer);
-            pollTimer = setInterval(pollStatus, 1500);
-            setTimeout(pollStatus, 800);
-        } catch(e) {
-            alert("启动失败: " + e.message);
-            enableAllButtons();
-            resetButtonAkshare();
         }
     }
 
@@ -321,7 +277,6 @@
                 if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
                 enableAllButtons();
                 resetButtonTushare();
-                resetButtonAkshare();
                 resetButtonAll();
                 loadDataRange();
                 loadOverview();
@@ -386,7 +341,6 @@
     
     // Expose handler functions for inline onclick attributes
     window.fetchTushare = fetchTushare;
-    window.fetchAkshare = fetchAkshare;
     window.oneClickUpdate = oneClickUpdate;
     } catch(e) { console.error('Page init error:', e);
         document.getElementById('data-status').innerHTML = '<div class="error-message"><div class="error-message-title">页面加载错误</div><div class="error-message-detail">' + e.message + '</div></div>';

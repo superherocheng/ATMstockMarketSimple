@@ -36,19 +36,23 @@ def _detect_anomalies(df, df_share):
     if len(df_share) > 20 and "fd_share" in df_share.columns:
         shares = df_share["fd_share"].dropna()
         if len(shares) > 20:
-            share_chg = shares.pct_change().dropna()
-            mean_s = share_chg.mean()
-            std_s = share_chg.std()
-            if std_s > 0:
-                z_scores = (share_chg - mean_s).abs() / std_s
-                mask = z_scores > ANOMALY_STD_THRESHOLD
-                mask_true_idx = mask[mask].index
-                anomaly_share = df_share.iloc[1:].loc[mask.values].copy()
-                anomaly_share["chg_pct"] = share_chg.loc[mask_true_idx].values * 100
-                anomaly_share["z_score"] = z_scores.loc[mask_true_idx].values
-                share_abs_chg = shares.diff().dropna()
-                anomaly_share["chg_abs"] = share_abs_chg.loc[mask_true_idx].values
-                anomalies["share"] = safe_json(anomaly_share[["trade_date", "fd_share", "chg_pct", "chg_abs", "z_score"]])
+            share_chg = shares.pct_change()
+            # Remove first-row NaN and any inf values from zero-division
+            share_chg = share_chg.replace([float('inf'), float('-inf')], float('nan')).dropna()
+            if len(share_chg) > 20:
+                mean_s = share_chg.mean()
+                std_s = share_chg.std()
+                if std_s > 0:
+                    z_scores = (share_chg - mean_s).abs() / std_s
+                    anomaly_mask = z_scores > ANOMALY_STD_THRESHOLD
+                    anomaly_idx = anomaly_mask[anomaly_mask].index
+                    if len(anomaly_idx) > 0:
+                        anomaly_share = df_share.loc[anomaly_idx].copy()
+                        anomaly_share["chg_pct"] = (share_chg.loc[anomaly_idx] * 100).values
+                        anomaly_share["z_score"] = z_scores.loc[anomaly_idx].values
+                        abs_chg = shares.diff()
+                        anomaly_share["chg_abs"] = abs_chg.loc[anomaly_idx].values
+                        anomalies["share"] = safe_json(anomaly_share[["trade_date", "fd_share", "chg_pct", "chg_abs", "z_score"]])
     return anomalies
 
 
@@ -139,6 +143,7 @@ def _compute_sector_etf_all():
             df_pd = _apply_etf_adj(df_pd, code)
             kline_serialized = safe_json(df_pd)
         else:
+            df_pd = pd.DataFrame()
             kline_serialized = []
 
         result.append({
@@ -146,8 +151,61 @@ def _compute_sector_etf_all():
             "name": name,
             "kline": kline_serialized,
             "shares": safe_json(pd.DataFrame(df_share) if df_share else []),
+            "signal": _compute_signal(df_pd, pd.DataFrame(df_share) if df_share else pd.DataFrame()),
         })
     return result
+
+
+def _compute_signal(kline_df, share_df, window=10):
+    """判断ETF近期走势信号。
+
+    逻辑：取近 window 个交易日的份额变化趋势和价格变化趋势。
+    - 份额持续流入 + 价格上涨 → 强势
+    - 份额持续流入 + 价格不涨/下跌 → 埋伏
+    - 份额持续流出 + 价格下跌 → 撤离
+    - 份额持续流出 + 价格不跌/上涨 → 风险
+    - 数据不足 → 无信号
+    """
+    if len(kline_df) < window or len(share_df) < window:
+        return {"label": "--", "tag": "none"}
+
+    recent_kline = kline_df.tail(window)
+    recent_shares = share_df.tail(window)
+
+    # 份额趋势：最近窗口期末 vs 期初
+    share_vals = recent_shares["fd_share"].astype(float).values
+    if share_vals[0] == 0:
+        return {"label": "--", "tag": "none"}
+    share_change = (share_vals[-1] - share_vals[0]) / abs(share_vals[0]) * 100
+
+    # 价格趋势：最近窗口涨跌幅
+    closes = recent_kline["close"].astype(float).values
+    if closes[0] == 0:
+        return {"label": "--", "tag": "none"}
+    price_change = (closes[-1] - closes[0]) / abs(closes[0]) * 100
+
+    inflow = share_change > 0
+    rising = price_change > 0
+
+    if inflow and rising:
+        tag = "strong"
+        label = "强势"
+    elif inflow and not rising:
+        tag = "lurk"
+        label = "埋伏"
+    elif not inflow and not rising:
+        tag = "exit"
+        label = "撤离"
+    else:
+        tag = "risk"
+        label = "风险"
+
+    return {
+        "label": label,
+        "tag": tag,
+        "share_change": round(share_change, 2),
+        "price_change": round(price_change, 2),
+    }
 
 
 @router.get("/api/sector-etf")
