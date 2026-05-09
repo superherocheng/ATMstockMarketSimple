@@ -13,7 +13,22 @@
 </head>
 <body class="min-h-screen">
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg" style="background:var(--c-accent);color:white;">跳转到主要内容</a>
-    <div id="nav-container"></div>
+    <nav>
+      <div class="nav-container">
+        <a href="/" class="nav-logo">
+          <span class="nav-logo-icon">📊</span>
+          ATMstockMarket
+        </a>
+        <div class="nav-links" id="nav-links">
+          <a href="/" class="nav-link active">首页</a>
+          <a href="/etf" class="nav-link">指数ETF</a>
+          <a href="/sector" class="nav-link">行业ETF</a>
+        </div>
+        <button class="mobile-menu-btn" onclick="document.getElementById('nav-links').classList.toggle('open')" aria-label="菜单">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M0 3h20v2H0V3zm0 6h20v2H0V9zm0 6h20v2H0v-2z"/></svg>
+        </button>
+      </div>
+    </nav>
 
     <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4">
         <section class="mb-4">
@@ -41,10 +56,10 @@
                         <svg class="w-5 h-5" style="color:var(--c-accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
                         数据管理
                     </h2>
-                    <div class="flex flex-wrap gap-2">
-                        <button onclick="fetchTushare()" id="btn-tushare" class="btn btn-secondary">Tushare数据</button>
-                        <button onclick="fetchAkshare()" id="btn-akshare" class="btn btn-secondary">AKShare数据</button>
-                        <button onclick="oneClickUpdate()" id="btn-update" class="btn btn-primary">全部数据</button>
+                    <div class="data-mgmt-buttons">
+                        <button onclick="fetchTushare()" id="btn-tushare" class="btn btn-secondary data-mgmt-btn">Tushare数据</button>
+                        <button onclick="fetchAkshare()" id="btn-akshare" class="btn btn-secondary data-mgmt-btn">AKShare数据</button>
+                        <button onclick="oneClickUpdate()" id="btn-update" class="btn btn-primary data-mgmt-btn">全部数据</button>
                     </div>
                 </div>
                 <div id="data-status" class="mb-2"><div class="skeleton skeleton-card"></div></div>
@@ -80,19 +95,19 @@
                 <h3 class="font-semibold mb-1">行业ETF轮动</h3>
                 <p class="text-sm" style="color:var(--c-text-tertiary);">板块资金流向，横向对比</p>
             </a>
-            <a href="/stocks" class="glass rounded-xl p-5 hover:border-accent transition-all block group">
+            <a href="/etf" class="glass rounded-xl p-5 hover:border-accent transition-all block group">
                 <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3 transition-all group-hover:scale-105" style="background:var(--c-watercolor-blue-bg);">
                     <svg class="w-5 h-5" style="color:var(--c-watercolor-blue);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
                 </div>
-                <h3 class="font-semibold mb-1">个股排行榜</h3>
-                <p class="text-sm" style="color:var(--c-text-tertiary);">波动率 / 涨跌幅 TOP10</p>
+                <h3 class="font-semibold mb-1">指数ETF分析</h3>
+                <p class="text-sm" style="color:var(--c-text-tertiary);">K线 / 份额 / 异常检测</p>
             </a>
-            <a href="/barra" class="glass rounded-xl p-5 hover:border-accent transition-all block group">
+            <a href="/sector" class="glass rounded-xl p-5 hover:border-accent transition-all block group">
                 <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3 transition-all group-hover:scale-105" style="background:var(--c-watercolor-lavender-bg);">
                     <svg class="w-5 h-5" style="color:var(--c-watercolor-lavender);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                 </div>
-                <h3 class="font-semibold mb-1">BARRA因子分析</h3>
-                <p class="text-sm" style="color:var(--c-text-tertiary);">行业/量价/市值/成长价值</p>
+                <h3 class="font-semibold mb-1">行业ETF轮动</h3>
+                <p class="text-sm" style="color:var(--c-text-tertiary);">板块资金流向 / 横向对比</p>
             </a>
         </section>
     </main>
@@ -101,10 +116,29 @@
         <p>ATMstockMarket — 数据来源: Tushare / AKShare | 仅供学习研究，不构成投资建议</p>
     </footer>
 
+    <div class="bottom-nav">
+      <a href="/" class="bottom-nav-item active">
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+        </span>
+        <span class="bottom-nav-label">首页</span>
+      </a>
+      <a href="/etf" class="bottom-nav-item">
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </span>
+        <span class="bottom-nav-label">指数ETF</span>
+      </a>
+      <a href="/sector" class="bottom-nav-item">
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </span>
+        <span class="bottom-nav-label">行业ETF</span>
+      </a>
+    </div>
+
     <script>
     try {
-    ATMNav.insert('nav-container', 'home');
-
     async function loadDataRange() {
         try {
             var resp = await fetch('/api/data-range');

@@ -19,7 +19,22 @@
     </style>
 </head>
 <body class="min-h-screen">
-    <div id="nav-container"></div>
+    <nav>
+      <div class="nav-container">
+        <a href="/" class="nav-logo">
+          <span class="nav-logo-icon">📊</span>
+          ATMstockMarket
+        </a>
+        <div class="nav-links" id="nav-links">
+          <a href="/" class="nav-link">首页</a>
+          <a href="/etf" class="nav-link active">指数ETF</a>
+          <a href="/sector" class="nav-link">行业ETF</a>
+        </div>
+        <button class="mobile-menu-btn" onclick="document.getElementById('nav-links').classList.toggle('open')" aria-label="菜单">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M0 3h20v2H0V3zm0 6h20v2H0V9zm0 6h20v2H0v-2z"/></svg>
+        </button>
+      </div>
+    </nav>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 stagger-children">
         <div class="flex gap-2 sm:gap-3 flex-wrap">
@@ -90,13 +105,33 @@
         </div>
     </main>
 
-    <footer class="text-center text-xs py-6 border-t mt-12" style="color:var(--c-muted);border-color:var(--c-border);">
-        ATMstockMarket &mdash; 数据来源: Tushare | 仅供学习研究，不构成投资建议
+    <footer>
+        <p>ATMstockMarket — 数据来源: Tushare / AKShare | 仅供学习研究，不构成投资建议</p>
     </footer>
+
+    <div class="bottom-nav">
+      <a href="/" class="bottom-nav-item">
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+        </span>
+        <span class="bottom-nav-label">首页</span>
+      </a>
+      <a href="/etf" class="bottom-nav-item active">
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </span>
+        <span class="bottom-nav-label">指数ETF</span>
+      </a>
+      <a href="/sector" class="bottom-nav-item">
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </span>
+        <span class="bottom-nav-label">行业ETF</span>
+      </a>
+    </div>
 
     <script>
     try {
-    ATMNav.insert('nav-container', 'etf');
 
     var currentCode = '510300.SH';
     var klineChart = null;

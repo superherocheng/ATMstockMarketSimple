@@ -467,25 +467,6 @@ ATMNav.loadFreshness = function() {
     }).catch(function() {});
 };
 
-// ── P3.3: Anomaly badge on ETF nav links ──
-ATMNav.loadAnomalyBadge = function() {
-    // Only check on ETF/overview pages to avoid unnecessary requests
-    fetch('/api/barra/summary').then(function(r) { return r.json(); }).then(function(d) {
-        var count = (d.industry_risk_count || 0) + (d.stock_risk_count || 0);
-        var etfLink = document.querySelector('.nav-link[href="/etf"], a[href="/etf"]');
-        if (etfLink && count > 0) {
-            var badge = etfLink.querySelector('.anomaly-badge');
-            if (!badge) {
-                badge = document.createElement('span');
-                badge.className = 'anomaly-badge';
-                etfLink.appendChild(badge);
-            }
-            badge.textContent = count;
-            badge.title = count + ' 个异常信号';
-        }
-    }).catch(function() {});
-};
-
 // ── P3.1: Theme toggle with localStorage persistence ──
 ATMNav.THEME_KEY = 'atm-theme';
 
