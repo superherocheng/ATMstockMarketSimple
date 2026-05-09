@@ -199,10 +199,6 @@ def init_db():
             ts_code VARCHAR, trade_date VARCHAR, buy_amount DOUBLE PRECISION,
             sell_amount DOUBLE PRECISION, net_amount DOUBLE PRECISION,
             PRIMARY KEY (ts_code, trade_date))""",
-        """CREATE TABLE IF NOT EXISTS etf_anomalies (
-            ts_code VARCHAR, trade_date VARCHAR, anomaly_type VARCHAR,
-            z_score DOUBLE PRECISION, value DOUBLE PRECISION,
-            PRIMARY KEY (ts_code, trade_date, anomaly_type))""",
         # ── P2.6: ETF复权因子表 ──
         """CREATE TABLE IF NOT EXISTS etf_adj_factor (
             ts_code VARCHAR, trade_date VARCHAR, adj_factor DOUBLE PRECISION,

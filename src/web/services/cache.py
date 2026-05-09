@@ -2,21 +2,14 @@ import json
 import logging
 import threading
 import time as _time
-from datetime import datetime
-
-from sqlalchemy import text
 
 from config.config import CACHE_MAX_SIZE, CACHE_DEFAULT_TTL
-from src.core.trading_calendar import now_beijing
 
 logger = logging.getLogger(__name__)
 
 CACHE_CATEGORIES = {
     "overview": ["overview", "heatmap"],
     "etf": ["index_etf_*", "sector_etf_*", "sector_cards"],
-    "stocks": ["stocks_volatility", "stocks_gainers", "stocks_fundamental", "stocks_lhb", "stocks_institute"],
-    "stock_detail": ["stock_detail_*"],
-    "barra": ["barra_industry", "barra_momentum", "barra_size", "barra_style"],
 }
 
 
@@ -137,108 +130,16 @@ def _cached(key, func, *args, **kwargs):
     return _api_cache.get_or_set(key, func, *args, **kwargs)
 
 
-def _db_cache_get(key):
-    from src.core.db_manager_postgresql import get_conn
-    conn = None
-    try:
-        conn = get_conn()
-        row = conn.execute(
-            text("SELECT data_json FROM precomputed_cache WHERE cache_key=:key"),
-            {"key": key}
-        ).fetchone()
-        if row:
-            return json.loads(row[0])
-        return None
-    except Exception:
-        return None
-    finally:
-        if conn:
-            conn.close()
-
-
-def _db_cache_set(key, data):
-    from src.core.db_manager_postgresql import get_conn
-    conn = None
-    try:
-        conn = get_conn()
-        conn.execute(
-            text("""INSERT INTO precomputed_cache (cache_key, updated_at, data_json)
-               VALUES (:key, :updated_at, :data_json)
-               ON CONFLICT (cache_key)
-               DO UPDATE SET updated_at = EXCLUDED.updated_at, data_json = EXCLUDED.data_json"""),
-            {"key": key, "updated_at": now_beijing().strftime("%Y%m%d%H%M%S"), "data_json": json.dumps(data, ensure_ascii=False, default=str)},
-        )
-        conn.commit()
-    except Exception:
-        pass
-    finally:
-        if conn:
-            conn.close()
-
-
-def _db_cache_invalidate(*categories):
-    from src.core.db_manager_postgresql import get_conn
-    conn = None
-    try:
-        conn = get_conn()
-        if not categories:
-            conn.execute(text("DELETE FROM precomputed_cache"))
-        else:
-            for cat in categories:
-                for pattern in CACHE_CATEGORIES.get(cat, []):
-                    if "*" in pattern:
-                        conn.execute(
-                            text("DELETE FROM precomputed_cache WHERE cache_key LIKE :pattern"),
-                            {"pattern": pattern.replace("*", "%")},
-                        )
-                    else:
-                        conn.execute(
-                            text("DELETE FROM precomputed_cache WHERE cache_key=:pattern"),
-                            {"pattern": pattern},
-                        )
-        conn.commit()
-    except Exception:
-        pass
-    finally:
-        if conn:
-            conn.close()
-
-
-def _is_data_stale(key, max_age_hours=6):
-    from src.core.db_manager_postgresql import get_conn
-    conn = None
-    try:
-        conn = get_conn()
-        row = conn.execute(
-            text("SELECT updated_at FROM precomputed_cache WHERE cache_key=:key"),
-            {"key": key}
-        ).fetchone()
-        if not row:
-            return True
-        updated = datetime.strptime(row[0], "%Y%m%d%H%M%S")
-        return (now_beijing() - updated).total_seconds() > max_age_hours * 3600
-    except Exception:
-        return True
-    finally:
-        if conn:
-            conn.close()
-
-
 def _cached_persistent(key, func, max_age_hours=6):
+    """Cache with in-memory LRU only (no DB tier)."""
     from src.core.db_manager_postgresql import safe_dict
     try:
-        mem = _cache_get(key)
-        if mem is not None:
-            return safe_dict(mem)
-        if not _is_data_stale(key, max_age_hours):
-            db_result = _db_cache_get(key)
-            if db_result is not None:
-                _cache_set(key, db_result)
-                return safe_dict(db_result)
+        result = _api_cache.get(key)
+        if result is not None:
+            return safe_dict(result)
         result = func()
         result = safe_dict(result)
-        _cache_set(key, result)
-        _db_cache_set(key, result)
+        _api_cache.set(key, result)
         return result
     except Exception as e:
         logger.error(f"_cached_persistent failed for key={key}: {e}", exc_info=True)

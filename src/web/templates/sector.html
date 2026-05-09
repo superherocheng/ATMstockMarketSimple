@@ -60,27 +60,6 @@
             </div>
         </div>
 
-        <!-- P3.6: ETF对比模式 — 双ETF归一化叠加 -->
-        <div class="glass rounded-xl p-4 sm:p-6 mt-6">
-            <h3 class="font-bold mb-3 flex items-center gap-2">
-                <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                双ETF对比 <span class="text-xs" style="color:var(--c-muted);">（归一化 base=100）</span>
-            </h3>
-            <div class="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
-                <select id="compare-select-1" class="w-full sm:w-auto bg-white/10 border border-white/20 rounded px-3 py-2 text-sm" style="color:var(--c-text);background:var(--c-bg);min-height:44px;">
-                    <option value="">选择 ETF A</option>
-                </select>
-                <span class="text-sm font-bold mx-auto sm:mx-0" style="color:var(--c-accent);">VS</span>
-                <select id="compare-select-2" class="w-full sm:w-auto bg-white/10 border border-white/20 rounded px-3 py-2 text-sm" style="color:var(--c-text);background:var(--c-bg);min-height:44px;">
-                    <option value="">选择 ETF B</option>
-                </select>
-                <button id="compare-btn" onclick="runCompare()" class="w-full sm:w-auto px-4 py-2 rounded text-sm font-bold" style="background:var(--c-accent);color:#fff;min-height:44px;">对比</button>
-            </div>
-            <div id="compare-overlay-chart" class="chart-sub" style="height: 350px;">
-                <div class="skeleton skeleton-chart"></div>
-            </div>
-        </div>
-
         <div id="detail-section" class="hidden">
             <div class="glass rounded-xl p-4 sm:p-6">
                 <h3 class="font-bold mb-3 flex items-center gap-2">
@@ -114,130 +93,6 @@
     var compareChart = null;
     var shareCompareChart = null;
     var detailChart = null;
-    var overlayCompareChart = null;
-
-    // ── P3.6: ETF对比模式 ──
-    function initCompareSelects() {
-        var allEtfs = [];
-        // Include index ETFs (hardcoded — same as config.py INDEX_ETF)
-        var indexEtfs = [
-            { code: '510300.SH', name: '沪深300ETF' },
-            { code: '510500.SH', name: '中证500ETF' },
-            { code: '510050.SH', name: '上证50ETF' }
-        ];
-        indexEtfs.forEach(function(e) { allEtfs.push(e); });
-        // Merge sector ETFs from allSectors
-        allSectors.forEach(function(s) {
-            allEtfs.push({ code: s.ts_code, name: s.name });
-        });
-        // Sort by name
-        allEtfs.sort(function(a, b) { return a.name.localeCompare(b.name, 'zh'); });
-
-        var sel1 = document.getElementById('compare-select-1');
-        var sel2 = document.getElementById('compare-select-2');
-        var html = '<option value="">选择 ETF</option>';
-        allEtfs.forEach(function(e) {
-            html += '<option value="' + e.code + '">' + e.name + ' (' + e.code + ')</option>';
-        });
-        sel1.innerHTML = html;
-        sel2.innerHTML = html;
-    }
-
-    async function runCompare() {
-        var code1 = document.getElementById('compare-select-1').value;
-        var code2 = document.getElementById('compare-select-2').value;
-        if (!code1 || !code2) {
-            alert('请选择两只 ETF 进行对比');
-            return;
-        }
-        if (code1 === code2) {
-            alert('请选择不同的 ETF');
-            return;
-        }
-
-        var btn = document.getElementById('compare-btn');
-        btn.textContent = '加载中...';
-        btn.disabled = true;
-
-        try {
-            var resp = await fetch('/api/sector-etf/compare?code1=' + code1 + '&code2=' + code2);
-            var data = await resp.json();
-            if (data.error) {
-                alert(data.error);
-                return;
-            }
-            renderCompareOverlay(data);
-        } catch(e) {
-            console.error('对比加载失败:', e);
-        } finally {
-            btn.textContent = '对比';
-            btn.disabled = false;
-        }
-    }
-
-    function renderCompareOverlay(data) {
-        var el = document.getElementById('compare-overlay-chart');
-        if (overlayCompareChart && !overlayCompareChart.isDisposed()) overlayCompareChart.dispose();
-        el.innerHTML = '';
-        if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
-        overlayCompareChart = echarts.init(el);
-        var th = ATM.getChartTheme();
-
-        overlayCompareChart.setOption({
-            backgroundColor: 'transparent',
-            textStyle: th.textStyle,
-            title: {
-                text: data.name1 + ' vs ' + data.name2,
-                left: 'center',
-                textStyle: { color: th.legend.textStyle.color, fontSize: 13, fontWeight: 'bold' }
-            },
-            tooltip: {
-                trigger: 'axis',
-                backgroundColor: th.tooltip.backgroundColor,
-                borderColor: th.tooltip.borderColor,
-                textStyle: th.tooltip.textStyle
-            },
-            legend: {
-                data: [data.name1, data.name2],
-                textStyle: th.legend.textStyle,
-                top: 28
-            },
-            grid: { left: '10%', right: '4%', top: '20%', bottom: '8%' },
-            xAxis: { type: 'time', axisLabel: { color: th.axisLabelColor } },
-            yAxis: {
-                type: 'value',
-                axisLabel: { color: th.axisLabelColor, formatter: '{value}' },
-                splitLine: { lineStyle: { color: th.splitLineColor } },
-                name: '归一化价格 (base=100)',
-                nameTextStyle: { color: th.axisLabelColor, fontSize: 10 }
-            },
-            dataZoom: [{ type: 'inside' }, { type: 'slider' }],
-            series: [
-                {
-                    name: data.name1, type: 'line',
-                    data: data.series1,
-                    smooth: true, showSymbol: false,
-                    lineStyle: { width: 2, color: '#3182CE' },
-                    itemStyle: { color: '#3182CE' },
-                    markLine: {
-                        silent: true,
-                        data: [{ yAxis: 100, label: { formatter: '基准 100', fontSize: 10 } }],
-                        lineStyle: { color: th.splitLineColor, type: 'dashed' }
-                    }
-                },
-                {
-                    name: data.name2, type: 'line',
-                    data: data.series2,
-                    smooth: true, showSymbol: false,
-                    lineStyle: { width: 2, color: '#E53E3E' },
-                    itemStyle: { color: '#E53E3E' }
-                }
-            ]
-        }, true);
-    }
-
-    // ── End P3.6 ──
-
     async function loadSectors() {
         try {
             var resp = await fetch('/api/sector-etf');
@@ -248,7 +103,6 @@
             });
             renderSectorCards();
             renderFlowMatrix();
-            initCompareSelects();  // P3.6
             try { await ATMChart.load(); } catch(e) { console.warn('ECharts load failed:', e); }
             // Wrap chart renders in try-catch — requestAnimationFrame
             // runs outside the outer try-catch scope, so any throw here
@@ -531,7 +385,6 @@
         if (compareChart && !compareChart.isDisposed()) compareChart.dispose();
         if (shareCompareChart && !shareCompareChart.isDisposed()) shareCompareChart.dispose();
         if (detailChart && !detailChart.isDisposed()) detailChart.dispose();
-        if (overlayCompareChart && !overlayCompareChart.isDisposed()) overlayCompareChart.dispose();
     });
 
     loadSectors();
