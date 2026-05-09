@@ -8,7 +8,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -17,10 +16,7 @@ ENV_FILE = PROJECT_ROOT / ".env"
 if ENV_FILE.exists():
     load_dotenv(ENV_FILE)
 
-REACT_BUILD_DIR = BASE_DIR / "static" / "react"
-REACT_ASSETS_DIR = REACT_BUILD_DIR / "assets"
-REACT_INDEX_PATH = REACT_BUILD_DIR / "index.html"
-HAS_REACT_BUILD = REACT_INDEX_PATH.exists()
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -55,22 +51,6 @@ async def lifespan(app):
 
 app = FastAPI(title="ATMstockMarket", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
-
-# React SPA: serve compiled app at /react/ if build exists
-if HAS_REACT_BUILD:
-    # Serve React assets (JS/CSS chunks) at /react/assets/
-    app.mount("/react/assets", StaticFiles(directory=str(REACT_ASSETS_DIR)), name="react_assets")
-    # Serve React index.html at /react (without trailing slash)
-    @app.get("/react")
-    async def react_index():
-        return FileResponse(REACT_INDEX_PATH)
-    # Serve React SPA fallback at /react/{path}
-    @app.get("/react/{full_path:path}")
-    async def serve_react_spa(full_path: str):
-        react_file = REACT_BUILD_DIR / full_path
-        if react_file.exists():
-            return FileResponse(react_file)
-        return FileResponse(REACT_INDEX_PATH)
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.middleware("http")(rate_limit_middleware)

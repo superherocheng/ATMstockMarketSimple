@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/static/css/tokens-wiki.css">
     <link rel="stylesheet" href="/static/css/style-wiki.css">
     <link rel="stylesheet" href="/static/css/components-wiki.css">
-    <script>window.addEventListener("unhandledrejection",function(e){e.preventDefault();console.warn("Unhandled rejection:",e.reason);});window.onerror=function(){document.getElementById('nav-container')&&document.getElementById('nav-container').insertAdjacentHTML('afterend','<div style="background:#fff3cd;color:#856404;padding:12px;text-align:center;font-size:14px;border-bottom:1px solid #ffc107">⚠️ 页面部分功能加载异常，请刷新重试</div>');};</script>
+    <script src="/static/js/error-handler.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="/static/js/tailwind-config.js"></script>
     <script src="/static/js/utils.js"></script>
@@ -1010,6 +1010,7 @@
 
     loadSummary();
     loadIndustry();
+    window.__atmPageReady();
     } catch(e) { console.error('Barra page init error:', e); }
     </script>
 </body>

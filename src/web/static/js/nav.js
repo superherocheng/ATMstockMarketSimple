@@ -58,19 +58,22 @@ ATMNav.toggleMobile = function(forceClose) {
     var navLinks = document.getElementById('nav-links');
     var overlay = document.getElementById('mobile-overlay');
     var btn = document.getElementById('mobile-menu-btn');
+    // Guard: bail if nav-links is missing (page may have errored)
+    if (!navLinks) { console.warn('nav-links element not found'); return; }
     var isOpen = forceClose ? false : navLinks.classList.toggle('open');
     if (forceClose) {
         navLinks.classList.remove('open');
-        overlay.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
     } else {
-        overlay.classList.toggle('active');
+        if (overlay) overlay.classList.toggle('active');
     }
     if (btn) {
         btn.setAttribute('aria-expanded', isOpen.toString());
         btn.setAttribute('aria-label', isOpen ? '关闭菜单' : '打开菜单');
     }
     if (isOpen) {
-        navLinks.querySelector('a')?.focus();
+        var firstLink = navLinks.querySelector('a');
+        if (firstLink) firstLink.focus();
     }
     // Prevent body scroll when overlay is active
     document.body.style.overflow = isOpen ? 'hidden' : '';

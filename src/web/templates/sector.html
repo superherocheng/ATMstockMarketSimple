@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/static/css/tokens-wiki.css">
     <link rel="stylesheet" href="/static/css/style-wiki.css">
     <link rel="stylesheet" href="/static/css/components-wiki.css">
-    <script>window.addEventListener("unhandledrejection",function(e){e.preventDefault();console.warn("Unhandled rejection:",e.reason);});window.onerror=function(){document.getElementById('nav-container')&&document.getElementById('nav-container').insertAdjacentHTML('afterend','<div style="background:#fff3cd;color:#856404;padding:12px;text-align:center;font-size:14px;border-bottom:1px solid #ffc107">⚠️ 页面部分功能加载异常，请刷新重试</div>');};</script>
+    <script src="/static/js/error-handler.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="/static/js/tailwind-config.js"></script>
     <script src="/static/js/utils.js"></script>
@@ -179,6 +179,7 @@
         var el = document.getElementById('compare-overlay-chart');
         if (overlayCompareChart && !overlayCompareChart.isDisposed()) overlayCompareChart.dispose();
         el.innerHTML = '';
+        if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
         overlayCompareChart = echarts.init(el);
         var th = ATM.getChartTheme();
 
@@ -249,9 +250,18 @@
             renderFlowMatrix();
             initCompareSelects();  // P3.6
             try { await ATMChart.load(); } catch(e) { console.warn('ECharts load failed:', e); }
+            // Wrap chart renders in try-catch — requestAnimationFrame
+            // runs outside the outer try-catch scope, so any throw here
+            // would trigger window.onerror and show the ⚠️ warning banner.
             requestAnimationFrame(function() {
-                renderCompareChart();
-                renderShareCompare();
+                try {
+                    if (typeof echarts !== 'undefined') {
+                        renderCompareChart();
+                        renderShareCompare();
+                    } else {
+                        console.warn('echarts not available, skipping initial chart render');
+                    }
+                } catch(e) { console.error('Chart render error:', e); }
             });
             var urlCode = new URLSearchParams(window.location.search).get('code');
             if (urlCode) selectSector(urlCode);
@@ -295,6 +305,7 @@
         var el = document.getElementById('detail-kline');
         if (detailChart && !detailChart.isDisposed()) detailChart.dispose();
         el.innerHTML = '';
+        if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
         detailChart = echarts.init(el);
         var kline = sector.kline || [];
         if (kline.length === 0) return;
@@ -363,6 +374,7 @@
         var el = document.getElementById('compare-chart');
         if (compareChart && !compareChart.isDisposed()) compareChart.dispose();
         el.innerHTML = '';
+        if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
         compareChart = echarts.init(el);
         var th = ATM.getChartTheme();
 
@@ -413,6 +425,7 @@
         var el = document.getElementById('share-compare-chart');
         if (shareCompareChart && !shareCompareChart.isDisposed()) shareCompareChart.dispose();
         el.innerHTML = '';
+        if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
         shareCompareChart = echarts.init(el);
         var th = ATM.getChartTheme();
 
@@ -522,6 +535,7 @@
     });
 
     loadSectors();
+    window.__atmPageReady();
     } catch(e) { console.error('Sector page init error:', e); }
     </script>
 </body>
