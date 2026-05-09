@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 from src.core.db_manager_postgresql import _ensure_db, close_db_manager
 from starlette.middleware.gzip import GZipMiddleware
 from src.web.services.middleware import rate_limit_middleware, add_cache_headers
-from src.web.routers import overview, etf, stocks, barra, concept, industry, fetch
+from src.web.routers import overview, etf, fetch
 
 
 @asynccontextmanager
@@ -57,10 +57,6 @@ app.middleware("http")(add_cache_headers)
 
 app.include_router(overview.router)
 app.include_router(etf.router)
-app.include_router(stocks.router)
-app.include_router(barra.router)
-app.include_router(concept.router)
-app.include_router(industry.router)
 app.include_router(fetch.router)
 
 if __name__ == "__main__":
