@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from src.core.db_manager_postgresql import get_conn, reset_db_initialized
-from src.web.services.cache import _cache_invalidate, _db_cache_invalidate
+from src.web.services.cache import _cache_invalidate
 from src.core.trading_calendar import now_beijing
 from src.core.db_manager_postgresql import close_db_manager
 from config.config import DATA_DIR
@@ -149,7 +149,6 @@ def _run_fetch(task_type):
     close_db_manager()
 
     tushare_script = str(BASE_DIR.parent / "data_fetchers" / "tushare_fetcher.py")
-    akshare_script = str(BASE_DIR.parent / "data_fetchers" / "akshare_fetcher.py")
     work_dir = str(BASE_DIR.parent.parent)
 
     try:
@@ -159,17 +158,9 @@ def _run_fetch(task_type):
             cmd = [sys.executable, "-u", tushare_script]
             _run_subprocess(tushare_script, cmd, work_dir, "Tushare", 10, 60)
 
-            _add_log("--- 开始 AKShare 数据获取 ---")
-            ak_cmd = [sys.executable, "-u", akshare_script]
-            _run_subprocess(akshare_script, ak_cmd, work_dir, "AKShare", 70, 30)
-
         elif task_type == "tushare":
             cmd = [sys.executable, "-u", tushare_script]
             _run_subprocess(tushare_script, cmd, work_dir, "Tushare", 0, 100)
-
-        elif task_type == "akshare":
-            cmd = [sys.executable, "-u", akshare_script]
-            _run_subprocess(akshare_script, cmd, work_dir, "AKShare", 0, 100)
 
         elif task_type in ("etf", "stocks"):
             cmd = [sys.executable, "-u", tushare_script]
@@ -181,25 +172,12 @@ def _run_fetch(task_type):
 
         _add_log("[DONE] 数据获取完成！")
 
-        # ── P1.3: Pre-compute ETF anomalies after data refresh ──
-        if task_type in ("all", "tushare", "etf"):
-            try:
-                _add_log("--- 预计算 ETF 异常检测 ---")
-                from src.web.routers.etf import precompute_all_etf_anomalies
-                precompute_all_etf_anomalies()
-                _add_log("[OK] ETF 异常检测预计算完成")
-            except Exception as e:
-                _add_log(f"[WARN] ETF 异常预计算失败: {e}")
-
         if task_type == "etf":
             _cache_invalidate("etf", "overview")
-            _db_cache_invalidate("etf", "overview")
         elif task_type == "stocks":
-            _cache_invalidate("stocks", "stock_detail", "barra", "overview")
-            _db_cache_invalidate("stocks", "stock_detail", "barra", "overview")
+            _cache_invalidate("overview")
         else:
             _cache_invalidate()
-            _db_cache_invalidate()
         with _fetch_lock:
             _fetch_status["progress"] = 100
     except Exception as e:
@@ -213,7 +191,7 @@ def _run_fetch(task_type):
 
 @router.post("/api/fetch/{task_type}")
 async def api_fetch_data(task_type: str):
-    if task_type not in ("all", "tushare", "akshare", "etf", "stocks"):
+    if task_type not in ("all", "tushare", "etf", "stocks"):
         return JSONResponse({"error": "无效的任务类型"}, status_code=400)
 
     with _fetch_lock:

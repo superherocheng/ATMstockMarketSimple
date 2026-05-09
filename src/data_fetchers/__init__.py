@@ -12,7 +12,6 @@ from src.data_fetchers.tushare_fetcher import (
     fetch_daily_basic,
     fetch_fina_indicator,
 )
-from src.data_fetchers.akshare_fetcher import fetch_lhb
 from src.data_fetchers.external_loader import load_csv_data, extract_and_load_data
 
 __all__ = [
@@ -23,7 +22,6 @@ __all__ = [
     "fetch_stock_daily",
     "fetch_daily_basic",
     "fetch_fina_indicator",
-    "fetch_lhb",
     "load_csv_data",
     "extract_and_load_data",
 ]
