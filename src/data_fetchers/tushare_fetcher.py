@@ -961,6 +961,15 @@ def main():
         if args.etf:
             fetch_index_etf()
             fetch_sector_etf()
+            # After sector ETF data is fetched, compute analysis
+            try:
+                from src.analysis import factor_engine, ic_analyzer
+                print("Computing factor analysis...")
+                factor_engine.compute_all_factors()
+                ic_analyzer.compute_all_ic()
+                print("[OK] Analysis computation complete")
+            except Exception as e:
+                print(f"[SKIP] Analysis computation failed: {e}")
             return
         if args.stocks:
             fetch_stock_list()
@@ -975,6 +984,15 @@ def main():
         # 默认：全部获取（自动跳过已是最新）
         fetch_index_etf()
         fetch_sector_etf()
+        # After sector ETF data is fetched, compute analysis
+        try:
+            from src.analysis import factor_engine, ic_analyzer
+            print("Computing factor analysis...")
+            factor_engine.compute_all_factors()
+            ic_analyzer.compute_all_ic()
+            print("[OK] Analysis computation complete")
+        except Exception as e:
+            print(f"[SKIP] Analysis computation failed: {e}")
         fetch_stock_list()
         fetch_stock_daily()
         fetch_daily_basic()

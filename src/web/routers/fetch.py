@@ -172,7 +172,7 @@ def _run_fetch(task_type):
         _add_log("[DONE] 数据获取完成！")
 
         if task_type == "etf":
-            _cache_invalidate("etf", "overview")
+            _cache_invalidate("etf", "overview", "analysis")
         elif task_type == "stocks":
             _cache_invalidate("overview")
         else:
