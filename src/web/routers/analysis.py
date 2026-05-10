@@ -86,6 +86,15 @@ async def api_rolling_icir(preset_id: str = "short", forward_days: int = 5, wind
     )
 
 
+@router.get("/api/analysis/weight-recommendation")
+async def api_weight_recommendation(preset_id: str = "short"):
+    return _cached_persistent(
+        f"analysis_weight_rec_{preset_id}",
+        lambda: chart_builder.build_weight_recommendation(preset_id),
+        max_age_hours=4,
+    )
+
+
 @router.get("/api/analysis/summary")
 async def api_summary(preset_id: str = "short"):
     return _cached_persistent(

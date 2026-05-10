@@ -98,6 +98,13 @@ def compute_all_ic(preset_id: str = None) -> int:
                                  columns=["etf_code", "trade_date", "factor", "z_flow", "z_mom", "quadrant"])
         price_df = pd.DataFrame(price_rows, columns=["ts_code", "trade_date", "close"])
 
+        # Normalize dates to strings (factor_daily returns datetime.date,
+        # sector_etf_daily returns int YYYYMMDD from Tushare)
+        factor_df["trade_date"] = factor_df["trade_date"].apply(
+            lambda d: str(d).replace("-", "") if hasattr(d, "strftime") else str(d))
+        price_df["trade_date"] = price_df["trade_date"].apply(
+            lambda d: str(d).replace("-", "") if hasattr(d, "strftime") else str(d))
+
         # Build price lookup: (code, date) → close
         price_df["close"] = price_df["close"].astype(float)
         price_lookup = {}
