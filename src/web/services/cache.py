@@ -90,6 +90,7 @@ def _redis_delete(pattern):
 CACHE_CATEGORIES = {
     "overview": ["overview", "heatmap"],
     "etf": ["index_etf_*", "sector_etf_*", "sector_cards"],
+    "analysis": ["analysis_*"],
 }
 
 
