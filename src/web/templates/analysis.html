@@ -17,6 +17,8 @@
     .preset-freshness { margin-left:auto; font-size:11px; color:#999; }
     .tech-btn { padding:6px 14px; border-radius:6px; border:1px solid #8b4513; background:transparent; color:#8b4513; font-size:12px; cursor:pointer; text-decoration:none; transition:all .2s; }
     .tech-btn:hover { background:#8b4513; color:#fff; }
+    .rec-btn { padding:6px 14px; border-radius:6px; border:1px solid #2d5a2d; background:transparent; color:#2d5a2d; font-size:12px; cursor:pointer; text-decoration:none; transition:all .2s; }
+    .rec-btn:hover { background:#2d5a2d; color:#fff; }
     .kpi-row { display:flex; gap:12px; margin-bottom:16px; }
     .kpi-card { flex:1; background:#fff; border-radius:8px; padding:12px 16px; border:1px solid #e8e4db; }
     .kpi-label { font-size:11px; color:#999; text-transform:uppercase; }
@@ -77,6 +79,7 @@
         <button class="preset-btn active" onclick="switchPreset('short')" data-preset="short">短期</button>
         <button class="preset-btn" onclick="switchPreset('medium')" data-preset="medium">中期</button>
         <button class="preset-btn" onclick="switchPreset('long')" data-preset="long">长期</button>
+        <a href="/analysis/investment-recommendation" class="rec-btn">投资建议</a>
         <a href="/analysis/tech-notes" class="tech-btn">技术说明</a>
         <span class="preset-freshness" id="freshness-label">--</span>
     </div>

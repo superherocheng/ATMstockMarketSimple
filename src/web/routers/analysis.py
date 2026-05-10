@@ -28,6 +28,12 @@ async def page_tech_notes(request: Request):
     return templates.TemplateResponse("tech_notes.html", {"request": request})
 
 
+@router.get("/analysis/investment-recommendation", response_class=HTMLResponse)
+async def page_investment_recommendation(request: Request):
+    return templates.TemplateResponse("investment_recommendation.html", {"request": request})
+
+
+
 @router.get("/api/analysis/presets")
 async def api_presets():
     return {"presets": list(PRESETS.values()), "default": "short"}

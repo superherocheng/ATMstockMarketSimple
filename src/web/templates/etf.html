@@ -67,36 +67,51 @@
             </div>
         </div>
 
-        <div class="glass rounded-xl p-4 sm:p-6">
-            <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
-                <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                K线走势
-                <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">红色标记 = 异常涨跌幅</span>
-            </h3>
-            <div id="kline-chart" class="chart-main" style="height: 380px;">
-                <div class="skeleton skeleton-chart"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="glass rounded-xl p-4 sm:p-6">
+                <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
+                    <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
+                    K线走势
+                    <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">红色标记 = 异常涨跌幅</span>
+                </h3>
+                <div id="kline-chart" class="chart-main" style="height: 380px;">
+                    <div class="skeleton skeleton-chart"></div>
+                </div>
+            </div>
+
+            <div class="glass rounded-xl p-4 sm:p-6">
+                <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
+                    <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
+                    份额实际值
+                    <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">折线：120日绝对值 &nbsp; 柱状：每日变化ZSCORE</span>
+                </h3>
+                <div id="share-value-chart" class="chart-sub" style="height: 380px;">
+                    <div class="skeleton skeleton-chart"></div>
+                </div>
             </div>
         </div>
 
-        <div class="glass rounded-xl p-4 sm:p-6">
-            <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
-                <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                份额实际值
-                <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">折线：120日绝对值 &nbsp;柱状：每日变化ZSCORE</span>
-            </h3>
-            <div id="share-value-chart" class="chart-sub" style="height: 300px;">
-                <div class="skeleton skeleton-chart"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="glass rounded-xl p-4 sm:p-6">
+                <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
+                    <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
+                    份额异常事件
+                    <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">超过2倍标准差</span>
+                </h3>
+                <div id="share-anomalies" class="space-y-2 text-sm">
+                    <div class="skeleton skeleton-text"><span class="spinner inline-block mr-2"></span></div>
+                </div>
             </div>
-        </div>
 
-        <div class="glass rounded-xl p-4 sm:p-6">
-            <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
-                <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                份额异常事件
-                <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">超过2倍标准差</span>
-            </h3>
-            <div id="share-anomalies" class="space-y-2 text-sm">
-                <div class="skeleton skeleton-text"><span class="spinner inline-block mr-2"></span></div>
+            <div class="glass rounded-xl p-4 sm:p-6">
+                <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
+                    <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
+                    近10日份额变化标准差
+                    <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">统计近10个交易日</span>
+                </h3>
+                <div id="share-std-card" class="space-y-3">
+                    <div class="skeleton skeleton-text"><span class="spinner inline-block mr-2"></span></div>
+                </div>
             </div>
         </div>
     </main>
@@ -156,8 +171,20 @@
             renderKline(data);
             renderShareDetail(data);
             renderAnomalies(data);
+            loadShareStd(code);
         } catch(e) {
             console.error('加载失败:', e);
+        }
+    }
+
+    async function loadShareStd(code) {
+        try {
+            var resp = await fetch('/api/share-std/' + code);
+            var data = await resp.json();
+            renderShareStd(data);
+        } catch(e) {
+            console.error('加载份额标准差失败:', e);
+            document.getElementById('share-std-card').innerHTML = '<div style="color:var(--c-text-tertiary);">加载失败</div>';
         }
     }
 
@@ -449,6 +476,84 @@
                     '</div></div>';
             }).join('');
         }
+    }
+
+    function renderShareStd(data) {
+        var el = document.getElementById('share-std-card');
+        
+        if (data.error) {
+            el.innerHTML = '<div style="color:var(--c-text-tertiary);">数据不足</div>';
+            return;
+        }
+
+        var stdDev = data.std_dev;
+        var latestChange = data.latest_change;
+        var zScore = data.z_score;
+        var totalChange = data.total_change;
+        var positiveDays = data.positive_days;
+        var negativeDays = data.negative_days;
+
+        var zScoreColor = '#888';
+        var zScoreLabel = '正常';
+        if (Math.abs(zScore) >= 2) {
+            zScoreColor = zScore > 0 ? 'var(--c-up)' : 'var(--c-down)';
+            zScoreLabel = zScore > 0 ? '显著增加' : '显著减少';
+        } else if (Math.abs(zScore) >= 1) {
+            zScoreColor = zScore > 0 ? '#10b981' : '#f59e0b';
+            zScoreLabel = zScore > 0 ? '小幅增加' : '小幅减少';
+        }
+
+        var latestChangeColor = latestChange >= 0 ? 'var(--c-up)' : 'var(--c-down)';
+        var totalChangeColor = totalChange >= 0 ? 'var(--c-up)' : 'var(--c-down)';
+
+        el.innerHTML = 
+            '<div class="space-y-3">' +
+                '<div class="flex items-center justify-between p-3 rounded" style="background:var(--c-accent-bg);">' +
+                    '<div>' +
+                        '<div class="text-xs" style="color:var(--c-text-tertiary);">标准差</div>' +
+                        '<div class="text-lg font-bold num-mono font-mono">' + stdDev.toFixed(4) + '%</div>' +
+                    '</div>' +
+                    '<div class="text-right">' +
+                        '<div class="text-xs" style="color:var(--c-text-tertiary);">最新变化</div>' +
+                        '<div class="text-lg font-bold num-mono font-mono" style="color:' + latestChangeColor + '">' +
+                            (latestChange >= 0 ? '+' : '') + latestChange.toFixed(4) + '%' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="flex items-center justify-between p-3 rounded" style="background:#f9fafb;">' +
+                    '<div>' +
+                        '<div class="text-xs" style="color:var(--c-text-tertiary);">Z-Score</div>' +
+                        '<div class="text-lg font-bold num-mono font-mono" style="color:' + zScoreColor + '">' +
+                            (zScore >= 0 ? '+' : '') + zScore.toFixed(2) + 'σ' +
+                        '</div>' +
+                        '<div class="text-xs mt-1" style="color:' + zScoreColor + '">' + zScoreLabel + '</div>' +
+                    '</div>' +
+                    '<div class="text-right">' +
+                        '<div class="text-xs" style="color:var(--c-text-tertiary);">10日累计变化</div>' +
+                        '<div class="text-lg font-bold num-mono font-mono" style="color:' + totalChangeColor + '">' +
+                            (totalChange >= 0 ? '+' : '') + totalChange.toFixed(4) + '%' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="grid grid-cols-2 gap-2 text-xs">' +
+                    '<div class="p-2 rounded" style="background:#ecfdf5;">' +
+                        '<div style="color:#6b7280;">增加天数</div>' +
+                        '<div class="font-bold" style="color:#059669;">' + positiveDays + ' 天</div>' +
+                    '</div>' +
+                    '<div class="p-2 rounded" style="background:#fef3c7;">' +
+                        '<div style="color:#6b7280;">减少天数</div>' +
+                        '<div class="font-bold" style="color:#d97706;">' + negativeDays + ' 天</div>' +
+                    '</div>' +
+                    '<div class="p-2 rounded" style="background:#f0f9ff;">' +
+                        '<div style="color:#6b7280;">最大增幅</div>' +
+                        '<div class="font-bold" style="color:#0284c7;">' + (data.max_change >= 0 ? '+' : '') + data.max_change.toFixed(4) + '%</div>' +
+                    '</div>' +
+                    '<div class="p-2 rounded" style="background:#fef2f2;">' +
+                        '<div style="color:#6b7280;">最大降幅</div>' +
+                        '<div class="font-bold" style="color:#dc2626;">' + (data.min_change >= 0 ? '+' : '') + data.min_change.toFixed(4) + '%</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
     }
 
     ATMChart.initPage();

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>投资建议 - ATMstockMarket</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="stylesheet" href="/static/css/app.css">
+    <script defer src="/static/js/vendor.js"></script>
+    <script defer src="/static/js/app.js"></script>
+    <style>
+    .tech-section { background:#fff; border-radius:10px; padding:20px 24px; margin-bottom:16px; border:1px solid #e8e4db; }
+    .tech-section h3 { font-size:15px; font-weight:700; color:#5a6f5a; margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+    .tech-section h3 .icon { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:6px; font-size:14px; }
+    .tech-section p, .tech-section li { font-size:13px; line-height:1.8; color:#555; }
+    .tech-section ul { padding-left:20px; margin:8px 0; }
+    .tech-section li { margin-bottom:4px; }
+    .back-link { display:inline-flex; align-items:center; gap:6px; color:#5a6f5a; font-size:13px; text-decoration:none; margin-bottom:16px; }
+    .back-link:hover { color:#8b4513; }
+    .etf-card { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:16px; margin-bottom:12px; }
+    .etf-card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .etf-name { font-size:16px; font-weight:700; color:#1f2937; }
+    .etf-code { font-size:12px; color:#6b7280; font-family:monospace; }
+    .etf-details { display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-top:12px; }
+    .etf-detail-item { font-size:12px; }
+    .etf-detail-label { color:#6b7280; }
+    .etf-detail-value { font-weight:600; color:#1f2937; }
+    .position-highlight { background:#ecfdf5; border:1px solid #10b981; border-radius:6px; padding:8px 12px; margin-top:12px; text-align:center; }
+    .position-text { font-size:14px; font-weight:700; color:#059669; }
+    .stats-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; margin-top:12px; }
+    .stat-card { background:#f9fafb; border-radius:8px; padding:12px; }
+    .stat-label { font-size:11px; color:#6b7280; margin-bottom:4px; }
+    .stat-value { font-size:18px; font-weight:700; color:#1f2937; }
+    .stat-sub { font-size:11px; color:#9ca3af; }
+    .tech-tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; margin-right:4px; }
+    .tag-green { background:#e8f5e8; color:#2d5a2d; }
+    .tag-blue { background:#e0f0ff; color:#1e40af; }
+    </style>
+    <script>
+        document.documentElement.dataset.theme = 'light';
+    </script>
+</head>
+<body class="min-h-screen">
+    <nav>
+      <div class="nav-container">
+        <a href="/" class="nav-logo">
+          <span class="nav-logo-icon">AM</span>
+          ATMstockMarket
+        </a>
+        <div class="nav-links" id="nav-links">
+          <a href="/" class="nav-link">首页</a>
+          <a href="/etf" class="nav-link">指数ETF</a>
+          <a href="/sector" class="nav-link">行业ETF</a>
+          <a href="/analysis" class="nav-link active">可视化分析</a>
+        </div>
+        <button class="mobile-menu-btn" onclick="document.getElementById('nav-links').classList.toggle('open')" aria-label="菜单">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M0 3h20v2H0V3zm0 6h20v2H0V9zm0 6h20v2H0v-2z"/></svg>
+        </button>
+      </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-8">
+        <a href="/analysis" class="back-link">&larr; 返回可视化分析</a>
+
+        <h2 style="font-size:20px;font-weight:700;color:#5a6f5a;margin-bottom:8px;">🎯 投资建议</h2>
+        <p style="font-size:13px;color:#999;margin-bottom:20px;" id="data-date">数据日期：--</p>
+
+        <div id="loading" class="tech-section">
+            <p style="text-align:center;color:#999;"><span class="spinner inline-block mr-2"></span>加载投资建议...</p>
+        </div>
+
+        <div id="content" style="display:none;">
+
+        <div class="tech-section">
+            <h3><span class="icon" style="background:#e8f5e8;">📊</span> 推荐策略</h3>
+            <div style="background:#ecfdf5;border:1px solid #10b981;border-radius:8px;padding:16px;margin-bottom:12px;">
+                <p style="font-size:18px;font-weight:700;color:#059669;margin-bottom:8px;" id="strategy-name">--</p>
+                <p style="font-size:13px;color:#047857;margin-bottom:4px;" id="strategy-desc">--</p>
+                <p style="font-size:12px;color:#059669;">持仓周期：<span id="holding-period">--</span></p>
+            </div>
+        </div>
+
+        <div class="tech-section">
+            <h3><span class="icon" style="background:#fef3c7;">✅</span> 推荐理由</h3>
+            <ul id="reasons-list">
+            </ul>
+        </div>
+
+        <div class="tech-section">
+            <h3><span class="icon" style="background:#e0f0ff;">💰</span> 具体操作建议</h3>
+            <p style="font-size:13px;color:#6b7280;margin-bottom:16px;">根据当前因子分析，建议配置以下ETF：</p>
+            <div id="recommendations-container">
+            </div>
+        </div>
+
+        <div class="tech-section">
+            <h3><span class="icon" style="background:#e8e0f4;">📈</span> 历史回测统计</h3>
+            <div class="stats-grid">
+                <div class="stat-card" style="border-left:3px solid #10b981;">
+                    <div class="stat-label">Q2潜伏策略胜率</div>
+                    <div class="stat-value" id="q2-win-rate">--</div>
+                    <div class="stat-sub">持仓20天</div>
+                </div>
+                <div class="stat-card" style="border-left:3px solid #3b82f6;">
+                    <div class="stat-label">Q1强势策略胜率</div>
+                    <div class="stat-value" id="q1-win-rate">--</div>
+                    <div class="stat-sub">持仓10天</div>
+                </div>
+                <div class="stat-card" style="border-left:3px solid #f59e0b;">
+                    <div class="stat-label">Q2平均收益</div>
+                    <div class="stat-value" id="q2-avg-return">--</div>
+                    <div class="stat-sub">夏普比率：<span id="q2-sharpe">--</span></div>
+                </div>
+                <div class="stat-card" style="border-left:3px solid:#ef4444;">
+                    <div class="stat-label">Q2最大回撤</div>
+                    <div class="stat-value" id="q2-max-loss">--</div>
+                    <div class="stat-sub">样本数：<span id="q2-samples">--</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tech-section">
+            <h3><span class="icon" style="background:#fce4e4;">⚠️</span> 风险提示</h3>
+            <ul id="risk-list">
+            </ul>
+        </div>
+
+        </div>
+    </main>
+
+    <footer>
+        <p>ATMstockMarket — 数据来源: Tushare / AKShare | 仅供学习研究，不构成投资建议</p>
+    </footer>
+
+    <div class="bottom-nav" role="navigation" aria-label="主导航">
+      <a href="/" class="bottom-nav-item" aria-label="首页">
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+        </span>
+        <span class="bottom-nav-label">首页</span>
+      </a>
+      <a href="/etf" class="bottom-nav-item" aria-label="指数ETF">
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </span>
+        <span class="bottom-nav-label">指数ETF</span>
+      </a>
+      <a href="/sector" class="bottom-nav-item" aria-label="行业ETF">
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </span>
+        <span class="bottom-nav-label">行业ETF</span>
+      </a>
+      <a href="/analysis" class="bottom-nav-item active" aria-label="可视化分析">
+        <span class="bottom-nav-icon">📊</span>
+        <span class="bottom-nav-label">分析</span>
+      </a>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', async function() {
+        try {
+            var resp = await fetch('/api/investment-recommendation');
+            var data = await resp.json();
+            
+            if (data.error) {
+                document.getElementById('loading').innerHTML = '<p style="text-align:center;color:#999;">暂无投资建议数据</p>';
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+            document.getElementById('data-date').textContent = '数据日期：' + data.date;
+
+            document.getElementById('strategy-name').textContent = data.strategy.name;
+            document.getElementById('strategy-desc').textContent = data.strategy.description;
+            document.getElementById('holding-period').textContent = data.strategy.holding_period;
+
+            var reasonsList = document.getElementById('reasons-list');
+            data.reasons.forEach(function(reason) {
+                var li = document.createElement('li');
+                li.textContent = reason;
+                reasonsList.appendChild(li);
+            });
+
+            var recContainer = document.getElementById('recommendations-container');
+            data.recommendations.forEach(function(rec) {
+                var card = document.createElement('div');
+                card.className = 'etf-card';
+                var strategyTag = rec.strategy === 'Q2潜伏' ? 'tag-green' : 'tag-blue';
+                card.innerHTML = 
+                    '<div class="etf-card-header">' +
+                        '<div>' +
+                            '<div class="etf-name">' + rec.name + '</div>' +
+                            '<div class="etf-code">' + rec.code + '</div>' +
+                        '</div>' +
+                        '<span class="tech-tag ' + strategyTag + '">' + rec.strategy + '</span>' +
+                    '</div>' +
+                    '<div class="etf-details">' +
+                        '<div class="etf-detail-item"><span class="etf-detail-label">资金流：</span><span class="etf-detail-value">' + (rec.flow_pct > 0 ? '+' : '') + rec.flow_pct + '%</span></div>' +
+                        '<div class="etf-detail-item"><span class="etf-detail-label">动量：</span><span class="etf-detail-value">' + rec.momentum + '</span></div>' +
+                        '<div class="etf-detail-item"><span class="etf-detail-label">因子得分：</span><span class="etf-detail-value">' + rec.factor_score + '</span></div>' +
+                        '<div class="etf-detail-item"><span class="etf-detail-label">持仓周期：</span><span class="etf-detail-value">' + rec.holding_days + '</span></div>' +
+                    '</div>' +
+                    '<div class="position-highlight">' +
+                        '<div class="position-text">建议仓位：' + rec.position_ratio + '</div>' +
+                    '</div>';
+                recContainer.appendChild(card);
+            });
+
+            var riskList = document.getElementById('risk-list');
+            data.risk_warning.forEach(function(warning) {
+                var li = document.createElement('li');
+                li.textContent = warning;
+                riskList.appendChild(li);
+            });
+
+            if (data.stats) {
+                document.getElementById('q2-win-rate').textContent = data.stats.q2.win_rate + '%';
+                document.getElementById('q1-win-rate').textContent = data.stats.q1.win_rate + '%';
+                document.getElementById('q2-avg-return').textContent = data.stats.q2.avg_return + '%';
+                document.getElementById('q2-sharpe').textContent = data.stats.q2.sharpe_ratio;
+                document.getElementById('q2-max-loss').textContent = data.stats.q2.max_loss + '%';
+                document.getElementById('q2-samples').textContent = data.stats.q2.samples;
+            }
+        } catch(e) {
+            console.error('加载失败:', e);
+            document.getElementById('loading').innerHTML = '<p style="text-align:center;color:#999;">加载投资建议失败</p>';
+        }
+    });
+    </script>
+</body>
+</html>

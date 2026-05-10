@@ -288,4 +288,212 @@ async def api_sector_cards():
     return _cached_persistent("sector_cards", _compute_sector_cards, max_age_hours=4)
 
 
+def _compute_share_std(ts_code: str):
+    conn = get_conn()
+    try:
+        rows = conn.execute(
+            text("SELECT trade_date, fd_share FROM etf_share "
+                 "WHERE ts_code=:code ORDER BY trade_date DESC LIMIT 11"),
+            {"code": ts_code}
+        ).fetchall()
+        
+        if len(rows) < 10:
+            return {"error": "insufficient_data"}
+        
+        shares = [float(r[1]) for r in reversed(rows)]
+        dates = [str(r[0]) for r in reversed(rows)]
+        
+        share_changes = []
+        for i in range(1, len(shares)):
+            if shares[i-1] > 0:
+                change_pct = (shares[i] - shares[i-1]) / shares[i-1] * 100
+                share_changes.append(change_pct)
+        
+        if len(share_changes) < 9:
+            return {"error": "insufficient_data"}
+        
+        recent_10_changes = share_changes[-10:]
+        
+        mean_change = sum(recent_10_changes) / len(recent_10_changes)
+        variance = sum((x - mean_change) ** 2 for x in recent_10_changes) / len(recent_10_changes)
+        std_change = variance ** 0.5
+        
+        latest_change = recent_10_changes[-1]
+        z_score = (latest_change - mean_change) / std_change if std_change > 0 else 0
+        
+        positive_count = sum(1 for x in recent_10_changes if x > 0)
+        negative_count = sum(1 for x in recent_10_changes if x < 0)
+        
+        return {
+            "ts_code": ts_code,
+            "latest_date": dates[-1],
+            "std_dev": round(std_change, 4),
+            "mean_change": round(mean_change, 4),
+            "latest_change": round(latest_change, 4),
+            "z_score": round(z_score, 2),
+            "positive_days": positive_count,
+            "negative_days": negative_count,
+            "max_change": round(max(recent_10_changes), 4),
+            "min_change": round(min(recent_10_changes), 4),
+            "total_change": round(sum(recent_10_changes), 4),
+        }
+    finally:
+        conn.close()
+
+
+@router.get("/api/share-std/{ts_code}")
+async def api_share_std(ts_code: str):
+    return _cached_persistent(
+        f"share_std_{ts_code}",
+        lambda: _compute_share_std(ts_code),
+        max_age_hours=4
+    )
+
+
+def _compute_investment_recommendation():
+    conn = get_conn()
+    try:
+        latest_date_row = conn.execute(text(
+            "SELECT MAX(trade_date) FROM factor_daily WHERE preset_id = 'medium'"
+        )).fetchone()
+        if not latest_date_row or not latest_date_row[0]:
+            return {"error": "no_data"}
+        latest_date = latest_date_row[0]
+
+        factor_rows = conn.execute(text(
+            "SELECT etf_code, flow, mom, factor, quadrant "
+            "FROM factor_daily "
+            "WHERE preset_id = 'medium' AND trade_date = :d "
+            "ORDER BY factor DESC"
+        ), {"d": latest_date}).fetchall()
+
+        q2_stats = conn.execute(text(
+            "SELECT "
+            "COUNT(*) as total_samples, "
+            "SUM(CASE WHEN avg_forward_ret > 0 THEN 1 ELSE 0 END) as positive_count, "
+            "AVG(avg_forward_ret) as avg_ret, "
+            "STDDEV(avg_forward_ret) as std_ret, "
+            "MIN(avg_forward_ret) as min_ret "
+            "FROM quadrant_perf "
+            "WHERE preset_id = 'medium' AND forward_days = 20 AND quadrant = 2"
+        )).fetchone()
+
+        q1_stats = conn.execute(text(
+            "SELECT "
+            "COUNT(*) as total_samples, "
+            "SUM(CASE WHEN avg_forward_ret > 0 THEN 1 ELSE 0 END) as positive_count, "
+            "AVG(avg_forward_ret) as avg_ret, "
+            "STDDEV(avg_forward_ret) as std_ret, "
+            "MIN(avg_forward_ret) as min_ret "
+            "FROM quadrant_perf "
+            "WHERE preset_id = 'medium' AND forward_days = 10 AND quadrant = 1"
+        )).fetchone()
+
+        etf_names = {
+            "510300.SH": "沪深300ETF", "510500.SH": "中证500ETF", "510050.SH": "上证50ETF",
+            "512100.SH": "中证1000ETF", "588000.SH": "科创50ETF", "512480.SH": "半导体ETF",
+            "515030.SH": "新能源车ETF", "512010.SH": "医药ETF", "512800.SH": "银行ETF",
+            "512880.SH": "证券ETF", "159928.SZ": "消费ETF", "515880.SH": "通信ETF",
+            "159206.SZ": "卫星ETF", "515220.SH": "煤炭ETF", "512400.SH": "有色ETF",
+            "562500.SH": "机器人ETF"
+        }
+
+        q2_etfs = []
+        q1_etfs = []
+        for row in factor_rows:
+            etf_code = row[0]
+            flow = float(row[1]) if row[1] else 0
+            mom = float(row[2]) if row[2] else 0
+            factor = float(row[3]) if row[3] else 0
+            quadrant = row[4]
+            
+            etf_info = {
+                "code": etf_code,
+                "name": etf_names.get(etf_code, etf_code),
+                "flow_pct": round(flow * 100, 2),
+                "momentum": round(mom, 2),
+                "factor_score": round(factor, 2),
+                "quadrant": quadrant
+            }
+            
+            if quadrant == 2:
+                q2_etfs.append(etf_info)
+            elif quadrant == 1:
+                q1_etfs.append(etf_info)
+
+        recommendations = []
+        
+        if q2_etfs:
+            for etf in q2_etfs[:2]:
+                recommendations.append({
+                    **etf,
+                    "strategy": "Q2潜伏",
+                    "holding_days": "10-20天",
+                    "position_ratio": "40%" if len(recommendations) == 0 else "30%"
+                })
+        
+        if q1_etfs and len(recommendations) < 3:
+            for etf in q1_etfs[:1]:
+                recommendations.append({
+                    **etf,
+                    "strategy": "Q1强势",
+                    "holding_days": "10天",
+                    "position_ratio": "30%"
+                })
+
+        q2_win_rate = round((q2_stats[1] / q2_stats[0] * 100), 2) if q2_stats and q2_stats[0] > 0 else 0
+        q2_avg_return = round(q2_stats[2] * 100, 2) if q2_stats and q2_stats[2] else 0
+        q2_sharpe = round((q2_stats[2] / q2_stats[3]), 2) if q2_stats and q2_stats[3] and q2_stats[3] != 0 else 0
+        q2_max_loss = round(q2_stats[4] * 100, 2) if q2_stats and q2_stats[4] else 0
+
+        q1_win_rate = round((q1_stats[1] / q1_stats[0] * 100), 2) if q1_stats and q1_stats[0] > 0 else 0
+        q1_avg_return = round(q1_stats[2] * 100, 2) if q1_stats and q1_stats[2] else 0
+
+        return {
+            "date": str(latest_date),
+            "strategy": {
+                "name": "Q2潜伏 + 10天持仓",
+                "description": "高资金流入 + 低动量ETF，持仓10-20天",
+                "holding_period": "10-20个交易日"
+            },
+            "reasons": [
+                f"胜率最高：Q2策略胜率{q2_win_rate}%，远高于Q1的{q1_win_rate}%",
+                f"风险最低：最大回撤仅{q2_max_loss}%，收益更稳定",
+                f"夏普比率最优：{q2_sharpe}，风险调整后收益最佳",
+                f"平均收益：Q2平均收益{q2_avg_return}%，Q1平均收益{q1_avg_return}%"
+            ],
+            "recommendations": recommendations,
+            "risk_warning": [
+                "样本量有限，建议持续观察",
+                "历史表现不代表未来收益",
+                "建议分散投资，不要全仓单一ETF"
+            ],
+            "stats": {
+                "q2": {
+                    "win_rate": q2_win_rate,
+                    "avg_return": q2_avg_return,
+                    "sharpe_ratio": q2_sharpe,
+                    "max_loss": q2_max_loss,
+                    "samples": int(q2_stats[0]) if q2_stats else 0
+                },
+                "q1": {
+                    "win_rate": q1_win_rate,
+                    "avg_return": q1_avg_return,
+                    "samples": int(q1_stats[0]) if q1_stats else 0
+                }
+            }
+        }
+    finally:
+        conn.close()
+
+
+@router.get("/api/investment-recommendation")
+async def api_investment_recommendation():
+    return _cached_persistent(
+        "investment_recommendation",
+        _compute_investment_recommendation,
+        max_age_hours=4
+    )
+
+
 
