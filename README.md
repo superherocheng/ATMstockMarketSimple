@@ -17,7 +17,7 @@
 
 ## 📖 项目简介
 
-ATMstockMarketSimple 是一个专注于中国A股市场的量化分析平台，提供ETF指数跟踪、行业轮动可视化、异常检测等功能。采用 **FastAPI + PostgreSQL + Redis** 架构，前端使用 **Jinja2 + Tailwind CSS + ECharts 5**，实现高性能数据展示。
+ATMstockMarketSimple 是一个专注于中国A股市场的量化分析平台，提供ETF指数跟踪、行业轮动可视化、因子分析、异常检测等功能。采用 **FastAPI + PostgreSQL + Redis** 架构，前端使用 **Jinja2 + Tailwind CSS + ECharts 5**，实现高性能数据展示。
 
 > **简化版特性**：移除了React SPA、BARRA分析、AKShare数据源等冗余模块，保留核心功能，代码更简洁、部署更轻松。
 
@@ -26,6 +26,7 @@ ATMstockMarketSimple 是一个专注于中国A股市场的量化分析平台，�
 - 🎯 **指数ETF监控** - 实时追踪沪深300、中证500、上证50、中证1000、科创50等核心指数
 - 📊 **行业轮动分析** - 可视化行业ETF资金流向，发现板块轮动机会
 - 📈 **K线图表展示** - 基于ECharts 5的专业K线图，支持多维度数据分析
+- 🔬 **因子分析** - 因子分布可视化、IC值分析、因子收益预测
 - 🔍 **异常检测** - 自动识别ETF份额异常变动，捕捉市场信号
 - 🚀 **高性能缓存** - Redis + 内存LRU两级缓存，响应速度提升10倍
 - 🐳 **容器化部署** - 完整的Docker支持，一键部署到生产环境
@@ -51,11 +52,13 @@ ATMstockMarketSimple/
 │   │   ├── routers/                    # API路由模块
 │   │   │   ├── overview.py             # 首页/仪表盘
 │   │   │   ├── etf.py                  # ETF详情、行业ETF
-│   │   │   └── fetch.py                # 数据获取端点
+│   │   │   ├── fetch.py                # 数据获取端点
+│   │   │   └── analysis.py             # 因子分析端点
 │   │   ├── templates/                  # Jinja2 HTML模板
 │   │   │   ├── index.html              # 首页
 │   │   │   ├── etf.html                # 指数ETF K线/异常
-│   │   │   └── sector.html             # 行业ETF轮动
+│   │   │   ├── sector.html             # 行业ETF轮动
+│   │   │   └── analysis.html           # 因子分析页面
 │   │   ├── static/                     # 静态资源
 │   │   │   ├── css/app.css             # 样式文件
 │   │   │   ├── js/app.js               # 应用JS
@@ -63,6 +66,11 @@ ATMstockMarketSimple/
 │   │   │   └── favicon.svg
 │   │   └── services/
 │   │       └── cache.py                # Redis + 内存LRU缓存
+│   ├── analysis/                       # 因子分析模块
+│   │   ├── factor_engine.py            # 因子计算引擎
+│   │   ├── ic_analyzer.py              # IC值分析器
+│   │   ├── chart_builder.py            # 图表构建器
+│   │   └── presets.py                  # 分析预设配置
 │   ├── core/                           # 数据库管理、交易日历
 │   ├── data_fetchers/                  # Tushare数据获取
 │   └── __init__.py
@@ -91,7 +99,7 @@ ATMstockMarketSimple/
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/yourusername/ATMstockMarketSimple.git
+git clone https://github.com/superherocheng/ATMstockMarketSimple.git
 cd ATMstockMarketSimple
 
 # 2. 创建虚拟环境
@@ -116,7 +124,7 @@ python -c "from src.core.db_manager_postgresql import _ensure_db; _ensure_db()"
 alembic upgrade head
 
 # 7. 启动应用
-cd src/web && python app.py
+python3 -m src.web.app
 # 访问 http://localhost:8500
 ```
 
@@ -140,6 +148,7 @@ docker compose down
 | `/` | index.html | 首页 — 指数ETF行情、行业热力图、数据管理 |
 | `/etf` | etf.html | 指数ETF详情 — K线走势、份额分析、异常检测 |
 | `/sector` | sector.html | 行业ETF轮动 — 横向对比、份额趋势、资金流向矩阵 |
+| `/analysis` | analysis.html | 因子分析 — 因子分布、IC值序列、收益预测 |
 
 ## 🎯 监控ETF列表
 
@@ -164,6 +173,15 @@ docker compose down
 | GET | `/api/sector-etf` | 全部行业ETF数据 | - |
 | GET | `/api/sector-etf/{code}` | 单只行业ETF数据 | - |
 | GET | `/api/sector-cards` | 行业ETF卡片摘要 | - |
+
+### 因子分析
+
+| 方法 | 路由 | 描述 |
+|------|------|------|
+| GET | `/api/analysis/presets` | 获取分析预设列表 |
+| GET | `/api/analysis/factor-distribution` | 因子分布数据 |
+| GET | `/api/analysis/ic-series` | IC值序列数据 |
+| GET | `/api/analysis/factor-returns` | 因子收益预测 |
 
 ### 数据管理
 
@@ -202,8 +220,8 @@ docker compose down
 
 - **Redis**: 主缓存层，支持应用重启后缓存预热
 - **内存LRU**: 当Redis不可用时自动回退，避免单点故障
-- **缓存分类**: `overview`（首页）、`etf`（ETF详情）、`sector`（行业）
-- **缓存时长**: 数据范围接口缓存5分钟，避免频繁查询数据库
+- **缓存分类**: `overview`（首页）、`etf`（ETF详情）、`sector`（行业）、`analysis`（分析）
+- **缓存时长**: 数据范围接口缓存5分钟，分析数据缓存4小时
 
 ## 🧪 测试
 
@@ -280,8 +298,8 @@ alembic downgrade -1
 
 ## 📧 联系方式
 
-- 项目主页: [https://github.com/yourusername/ATMstockMarketSimple](https://github.com/yourusername/ATMstockMarketSimple)
-- 问题反馈: [Issues](https://github.com/yourusername/ATMstockMarketSimple/issues)
+- 项目主页: [https://github.com/superherocheng/ATMstockMarketSimple](https://github.com/superherocheng/ATMstockMarketSimple)
+- 问题反馈: [Issues](https://github.com/superherocheng/ATMstockMarketSimple/issues)
 
 ---
 

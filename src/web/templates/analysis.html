@@ -11,29 +11,34 @@
     <script defer src="/static/js/vendor.js"></script>
     <script defer src="/static/js/app.js"></script>
     <style>
-    .preset-bar { display:flex; align-items:center; gap:12px; padding:12px 20px; background:#eae6dc; border-bottom:1px solid #d4cfc4; }
+    .preset-bar { display:flex; align-items:center; gap:12px; padding:12px 20px; background:#eae6dc; border-bottom:1px solid #d4cfc4; border-radius:12px; margin-bottom:16px; }
     .preset-btn { padding:6px 16px; border-radius:6px; border:1px solid #d4cfc4; background:#fff; color:#5a6f5a; font-size:12px; cursor:pointer; }
     .preset-btn.active { background:#5a6f5a; color:#fff; border-color:#5a6f5a; }
     .preset-freshness { margin-left:auto; font-size:11px; color:#999; }
-    .kpi-row { display:flex; gap:12px; padding:16px 20px; }
+    .tech-btn { padding:6px 14px; border-radius:6px; border:1px solid #8b4513; background:transparent; color:#8b4513; font-size:12px; cursor:pointer; text-decoration:none; transition:all .2s; }
+    .tech-btn:hover { background:#8b4513; color:#fff; }
+    .kpi-row { display:flex; gap:12px; margin-bottom:16px; }
     .kpi-card { flex:1; background:#fff; border-radius:8px; padding:12px 16px; border:1px solid #e8e4db; }
     .kpi-label { font-size:11px; color:#999; text-transform:uppercase; }
     .kpi-value { font-size:22px; font-weight:700; color:#5a6f5a; }
     .kpi-sub { font-size:11px; color:#6b8e6b; }
-    .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:0 20px; }
-    .chart-cell { background:#fff; border-radius:8px; padding:16px; border:1px solid #e8e4db; }
+    .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .chart-cell { background:#fff; border-radius:8px; padding:16px; border:1px solid #e8e4db; overflow:hidden; }
     .chart-cell h3 { font-size:13px; font-weight:600; color:#5a6f5a; margin:0 0 8px; }
     .chart-container { width:100%; height:280px; }
-    .chart-full { padding:0 20px 12px; }
-    .summary-card { margin:0 20px 20px; background:#fff; border-radius:8px; padding:16px; border:1px solid #e8e4db; }
+    .chart-full { margin-top:12px; }
+    .summary-card { margin-top:12px; background:#fff; border-radius:8px; padding:16px; border:1px solid #e8e4db; }
     .summary-content { background:#f4f1e8; border-radius:6px; padding:12px 16px; font-size:12px; line-height:1.8; color:#555; }
     .no-data { text-align:center; padding:40px; color:#999; font-size:13px; }
-    .quadrant-grid { display:grid; grid-template-columns:1fr 1fr; gap:2px; border-radius:6px; overflow:hidden; }
-    .quadrant-cell { padding:16px; text-align:center; min-height:80px; display:flex; flex-direction:column; justify-content:center; align-items:center; }
-    .quadrant-cell .q-name { font-size:13px; font-weight:600; color:#333; margin-bottom:4px; }
+    .quadrant-grid { display:grid; grid-template-columns:1fr 1fr; gap:2px; border-radius:6px; overflow:hidden; flex:1; }
+    .quadrant-cell { padding:10px; text-align:center; display:flex; flex-direction:column; justify-content:center; align-items:center; }
+    .quadrant-cell .q-name { font-size:12px; font-weight:600; color:#333; margin-bottom:4px; }
     .quadrant-cell .q-value { font-size:18px; font-weight:700; }
-    .quadrant-axis { display:flex; justify-content:space-between; padding:4px 0; font-size:10px; color:#999; }
-    .quadrant-axis-y { display:flex; flex-direction:column; justify-content:space-between; font-size:10px; color:#999; position:absolute; left:-28px; top:0; bottom:0; }
+    .quadrant-cell .q-label { font-size:10px; color:#888; margin-top:2px; }
+    .heatmap-wrap { display:flex; flex-direction:column; height:100%; }
+    .heatmap-axis-x { display:flex; justify-content:space-between; padding:2px 0; font-size:9px; color:#999; }
+    .heatmap-body { display:flex; flex:1; align-items:stretch; min-height:0; }
+    .heatmap-axis-y { writing-mode:vertical-lr; text-align:center; font-size:9px; color:#999; padding:0 4px 0 0; display:flex; flex-direction:column; justify-content:space-between; }
 
     @media (max-width: 768px) {
       .chart-grid { grid-template-columns:1fr; }
@@ -65,11 +70,14 @@
       </div>
     </nav>
 
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-0">
+
     <!-- Preset selector bar -->
     <div class="preset-bar">
         <button class="preset-btn active" onclick="switchPreset('short')" data-preset="short">短期</button>
-        <button class="preset-btn" onclick="switchPreset('mid')" data-preset="mid">中期</button>
+        <button class="preset-btn" onclick="switchPreset('medium')" data-preset="medium">中期</button>
         <button class="preset-btn" onclick="switchPreset('long')" data-preset="long">长期</button>
+        <a href="/analysis/tech-notes" class="tech-btn">技术说明</a>
         <span class="preset-freshness" id="freshness-label">--</span>
     </div>
 
@@ -146,10 +154,10 @@
     </div>
 
     <!-- Full width: Industry weight recommendation -->
-    <div class="chart-full" style="margin-top:12px;">
+    <div class="chart-full">
         <div class="chart-cell">
             <h3>行业配置权重建议图</h3>
-            <div id="chart-weight-rec" class="chart-container" style="height:320px;">
+            <div id="chart-weight-rec" class="chart-container" style="height:300px;">
                 <div class="no-data">加载中...</div>
             </div>
         </div>
@@ -159,6 +167,8 @@
     <div class="summary-card">
         <div class="summary-content" id="summary-text">加载中...</div>
     </div>
+
+    </main>
 
     <footer>
         <p>ATMstockMarket — 数据来源: Tushare / AKShare | 仅供学习研究，不构成投资建议</p>
@@ -293,21 +303,10 @@
             return;
         }
 
-        // Extract KPI values from summary text or direct fields
-        var icMean = summary.ic_mean !== undefined ? summary.ic_mean : null;
-        var icir = summary.icir !== undefined ? summary.icir : null;
-        var icWin = summary.ic_win_rate !== undefined ? summary.ic_win_rate : null;
+        var icMean = summary.ic_mean !== undefined && summary.ic_mean !== null ? summary.ic_mean : null;
+        var icir = summary.icir !== undefined && summary.icir !== null ? summary.icir : null;
+        var icWin = summary.ic_win_rate !== undefined && summary.ic_win_rate !== null ? summary.ic_win_rate : null;
         var strongCount = summary.q1_count !== undefined ? summary.q1_count : null;
-
-        // Try parsing from factor_validity text if direct fields missing
-        if (icMean === null && summary.factor_validity) {
-            var m = summary.factor_validity.match(/IC均值([+-]?\d+\.?\d*)/);
-            if (m) icMean = parseFloat(m[1]);
-        }
-        if (icir === null && summary.factor_validity) {
-            var m2 = summary.factor_validity.match(/ICIR\s*([+-]?\d+\.?\d*)/);
-            if (m2) icir = parseFloat(m2[1]);
-        }
 
         document.getElementById('kpi-ic-mean').textContent = icMean !== null ? icMean.toFixed(3) : '--';
         document.getElementById('kpi-icir').textContent = icir !== null ? icir.toFixed(2) : '--';
@@ -381,29 +380,17 @@
         }
 
         var quads = chartData.quadrants;
-        var axisLabels = chartData.axis_labels || { x: 'Z_Mom (价格动量)', y: 'Z_Flow (资金流)' };
 
-        // Order: Q2(潜伏), Q1(强势), Q3(逃顶), Q4(风险)
-        // Grid layout:
-        // Row 1: Q2 (z_flow>0, z_mom<0) | Q1 (z_flow>0, z_mom>0)
-        // Row 2: Q3 (z_flow<0, z_mom<0) | Q4 (z_flow<0, z_mom>0)
-        // API returns them in order: Q2, Q1, Q3, Q4
-        var html = '<div style="position:relative;">';
-        html += '<div style="display:flex;justify-content:space-between;padding:0 4px 4px;font-size:10px;color:#999;">';
-        html += '<span>' + (axisLabels.x || '').split('(')[0].trim() + ' (-)</span>';
-        html += '<span>' + (axisLabels.x || '').split('(')[0].trim() + ' (+)</span>';
-        html += '</div>';
-        html += '<div style="display:flex;align-items:stretch;">';
-        html += '<div style="writing-mode:vertical-lr;text-align:center;font-size:10px;color:#999;padding:0 2px;display:flex;flex-direction:column;justify-content:space-between;height:100%;min-height:120px;">';
-        html += '<span>' + (axisLabels.y || '').split('(')[0].trim() + ' (+)</span>';
-        html += '<span>' + (axisLabels.y || '').split('(')[0].trim() + ' (-)</span>';
-        html += '</div>';
-        html += '<div class="quadrant-grid" style="flex:1;">';
+        var html = '<div class="heatmap-wrap">';
+        html += '<div class="heatmap-axis-x"><span>Z_Mom (-)</span><span>Z_Mom (+)</span></div>';
+        html += '<div class="heatmap-body">';
+        html += '<div class="heatmap-axis-y"><span>Z_Flow (+)</span><span>Z_Flow (-)</span></div>';
+        html += '<div class="quadrant-grid">';
         quads.forEach(function(q) {
             var val = q.value !== undefined ? q.value : 0;
             var color = (q.itemStyle && q.itemStyle.color) ? q.itemStyle.color : '#e8e4db';
             var valColor = val > 0 ? '#2d5a2d' : val < 0 ? '#8b4513' : '#666';
-            var valStr = val > 0 ? '+' + val.toFixed(2) : val.toFixed(2);
+            var valStr = val > 0 ? '+' + val.toFixed(2) + '%' : val.toFixed(2) + '%';
             html += '<div class="quadrant-cell" style="background:' + color + ';">';
             html += '<div class="q-name">' + q.name + '</div>';
             html += '<div class="q-value" style="color:' + valColor + ';">' + valStr + '</div>';
@@ -418,7 +405,6 @@
 
     function switchPreset(presetId) {
         currentPreset = presetId;
-        // Update button active states
         var btns = document.querySelectorAll('.preset-btn');
         btns.forEach(function(btn) {
             if (btn.getAttribute('data-preset') === presetId) {
@@ -430,7 +416,6 @@
         loadAllData(presetId);
     }
 
-    // Expose switchPreset for onclick handlers
     window.switchPreset = switchPreset;
 
     ATMChart.initPage();
@@ -454,7 +439,6 @@
         });
     });
 
-    // Wait for ECharts to be available, then load data
     try { ATMChart.load(); } catch(e) { console.warn('ECharts load failed:', e); }
     loadAllData('short');
     window.__atmPageReady();

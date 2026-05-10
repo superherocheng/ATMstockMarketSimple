@@ -246,7 +246,13 @@ def build_rolling_icir(preset_id: str, forward_days: int = 5, window: int = 60) 
     finally:
         conn.close()
 
-    if not rows or len(rows) < window:
+    if not rows:
+        return {"error": "no_data"}
+
+    # Auto-reduce window if not enough data points
+    if len(rows) < window:
+        window = max(20, len(rows) // 2)
+    if len(rows) < 20:
         return {"error": "no_data"}
 
     dates_all = [str(r[0]) for r in rows]
@@ -385,6 +391,12 @@ def build_summary(preset_id: str) -> dict:
             if summary_rows:
                 decay_period = f">{summary_rows[-1][0]}日"
 
+    # Top-level KPI values from the first forward period
+    first_summary = summary_rows[0] if summary_rows else None
+    top_ic_mean = float(first_summary[1]) if first_summary and first_summary[1] is not None else None
+    top_icir = float(first_summary[2]) if first_summary and first_summary[2] is not None else None
+    top_ic_win = float(first_summary[3]) if first_summary and first_summary[3] is not None else None
+
     q1_etfs = [f for f in latest_factors if f["quadrant"] == 1]
     q2_etfs = [f for f in latest_factors if f["quadrant"] == 2]
     strong_buy = "、".join([e["name"] for e in q1_etfs[:5]]) or "无"
@@ -392,6 +404,9 @@ def build_summary(preset_id: str) -> dict:
 
     return _safe_dict({
         "date": str(latest_date) if latest_date else None,
+        "ic_mean": top_ic_mean,
+        "icir": top_icir,
+        "ic_win_rate": top_ic_win,
         "factor_validity": factor_validity,
         "decay_period": decay_period,
         "strong_buy": strong_buy,
