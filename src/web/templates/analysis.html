@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>可视化分析 - ATMstockMarket</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="stylesheet" href="/static/css/app.css">
+    <script defer src="/static/js/vendor.js"></script>
+    <script defer src="/static/js/app.js"></script>
+    <style>
+    .preset-bar { display:flex; align-items:center; gap:12px; padding:12px 20px; background:#eae6dc; border-bottom:1px solid #d4cfc4; }
+    .preset-btn { padding:6px 16px; border-radius:6px; border:1px solid #d4cfc4; background:#fff; color:#5a6f5a; font-size:12px; cursor:pointer; }
+    .preset-btn.active { background:#5a6f5a; color:#fff; border-color:#5a6f5a; }
+    .preset-freshness { margin-left:auto; font-size:11px; color:#999; }
+    .kpi-row { display:flex; gap:12px; padding:16px 20px; }
+    .kpi-card { flex:1; background:#fff; border-radius:8px; padding:12px 16px; border:1px solid #e8e4db; }
+    .kpi-label { font-size:11px; color:#999; text-transform:uppercase; }
+    .kpi-value { font-size:22px; font-weight:700; color:#5a6f5a; }
+    .kpi-sub { font-size:11px; color:#6b8e6b; }
+    .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:0 20px; }
+    .chart-cell { background:#fff; border-radius:8px; padding:16px; border:1px solid #e8e4db; }
+    .chart-cell h3 { font-size:13px; font-weight:600; color:#5a6f5a; margin:0 0 8px; }
+    .chart-container { width:100%; height:280px; }
+    .chart-full { padding:0 20px 12px; }
+    .summary-card { margin:0 20px 20px; background:#fff; border-radius:8px; padding:16px; border:1px solid #e8e4db; }
+    .summary-content { background:#f4f1e8; border-radius:6px; padding:12px 16px; font-size:12px; line-height:1.8; color:#555; }
+    .no-data { text-align:center; padding:40px; color:#999; font-size:13px; }
+    .quadrant-grid { display:grid; grid-template-columns:1fr 1fr; gap:2px; border-radius:6px; overflow:hidden; }
+    .quadrant-cell { padding:16px; text-align:center; min-height:80px; display:flex; flex-direction:column; justify-content:center; align-items:center; }
+    .quadrant-cell .q-name { font-size:13px; font-weight:600; color:#333; margin-bottom:4px; }
+    .quadrant-cell .q-value { font-size:18px; font-weight:700; }
+    .quadrant-axis { display:flex; justify-content:space-between; padding:4px 0; font-size:10px; color:#999; }
+    .quadrant-axis-y { display:flex; flex-direction:column; justify-content:space-between; font-size:10px; color:#999; position:absolute; left:-28px; top:0; bottom:0; }
+
+    @media (max-width: 768px) {
+      .chart-grid { grid-template-columns:1fr; }
+      .kpi-row { flex-wrap:wrap; }
+      .kpi-card { flex:1 1 45%; }
+      .preset-bar { flex-wrap:wrap; }
+    }
+    </style>
+    <script>
+        document.documentElement.dataset.theme = 'light';
+    </script>
+</head>
+<body class="min-h-screen">
+    <nav>
+      <div class="nav-container">
+        <a href="/" class="nav-logo">
+          <span class="nav-logo-icon">AM</span>
+          ATMstockMarket
+        </a>
+        <div class="nav-links" id="nav-links">
+          <a href="/" class="nav-link">首页</a>
+          <a href="/etf" class="nav-link">指数ETF</a>
+          <a href="/sector" class="nav-link">行业ETF</a>
+          <a href="/analysis" class="nav-link active">可视化分析</a>
+        </div>
+        <button class="mobile-menu-btn" onclick="document.getElementById('nav-links').classList.toggle('open')" aria-label="菜单">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M0 3h20v2H0V3zm0 6h20v2H0V9zm0 6h20v2H0v-2z"/></svg>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Preset selector bar -->
+    <div class="preset-bar">
+        <button class="preset-btn active" onclick="switchPreset('short')" data-preset="short">短期</button>
+        <button class="preset-btn" onclick="switchPreset('mid')" data-preset="mid">中期</button>
+        <button class="preset-btn" onclick="switchPreset('long')" data-preset="long">长期</button>
+        <span class="preset-freshness" id="freshness-label">--</span>
+    </div>
+
+    <!-- KPI cards -->
+    <div class="kpi-row">
+        <div class="kpi-card">
+            <div class="kpi-label">IC均值</div>
+            <div class="kpi-value" id="kpi-ic-mean">--</div>
+            <div class="kpi-sub" id="kpi-ic-mean-sub">&nbsp;</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">ICIR</div>
+            <div class="kpi-value" id="kpi-icir">--</div>
+            <div class="kpi-sub" id="kpi-icir-sub">&nbsp;</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">IC胜率</div>
+            <div class="kpi-value" id="kpi-ic-win">--</div>
+            <div class="kpi-sub" id="kpi-ic-win-sub">&nbsp;</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">强势ETF数</div>
+            <div class="kpi-value" id="kpi-strong">--</div>
+            <div class="kpi-sub" id="kpi-strong-sub">&nbsp;</div>
+        </div>
+    </div>
+
+    <!-- Row 1: Factor distribution histogram + Quadrant heatmap -->
+    <div class="chart-grid">
+        <div class="chart-cell">
+            <h3>因子分布直方图</h3>
+            <div id="chart-factor-dist" class="chart-container">
+                <div class="no-data">加载中...</div>
+            </div>
+        </div>
+        <div class="chart-cell">
+            <h3>四象限收益热力图</h3>
+            <div id="chart-quadrant" class="chart-container">
+                <div class="no-data">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 2: IC series curve + IC decay chart -->
+    <div class="chart-grid" style="margin-top:12px;">
+        <div class="chart-cell">
+            <h3>IC序列曲线</h3>
+            <div id="chart-ic-series" class="chart-container">
+                <div class="no-data">加载中...</div>
+            </div>
+        </div>
+        <div class="chart-cell">
+            <h3>IC衰减图</h3>
+            <div id="chart-ic-decay" class="chart-container">
+                <div class="no-data">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 3: Group cumulative return curves + Rolling ICIR -->
+    <div class="chart-grid" style="margin-top:12px;">
+        <div class="chart-cell">
+            <h3>分组累计收益曲线</h3>
+            <div id="chart-group-returns" class="chart-container">
+                <div class="no-data">加载中...</div>
+            </div>
+        </div>
+        <div class="chart-cell">
+            <h3>因子滚动ICIR</h3>
+            <div id="chart-rolling-icir" class="chart-container">
+                <div class="no-data">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full width: Industry weight recommendation -->
+    <div class="chart-full" style="margin-top:12px;">
+        <div class="chart-cell">
+            <h3>行业配置权重建议图</h3>
+            <div id="chart-weight-rec" class="chart-container" style="height:320px;">
+                <div class="no-data">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Text summary card -->
+    <div class="summary-card">
+        <div class="summary-content" id="summary-text">加载中...</div>
+    </div>
+
+    <footer>
+        <p>ATMstockMarket — 数据来源: Tushare / AKShare | 仅供学习研究，不构成投资建议</p>
+    </footer>
+
+    <div class="bottom-nav" role="navigation" aria-label="主导航">
+      <a href="/" class="bottom-nav-item" aria-label="首页">
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+        </span>
+        <span class="bottom-nav-label">首页</span>
+      </a>
+      <a href="/etf" class="bottom-nav-item" aria-label="指数ETF">
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </span>
+        <span class="bottom-nav-label">指数ETF</span>
+      </a>
+      <a href="/sector" class="bottom-nav-item" aria-label="行业ETF">
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </span>
+        <span class="bottom-nav-label">行业ETF</span>
+      </a>
+      <a href="/analysis" class="bottom-nav-item active" aria-label="可视化分析">
+        <span class="bottom-nav-icon">📊</span>
+        <span class="bottom-nav-label">分析</span>
+      </a>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+    try {
+
+    var currentPreset = 'short';
+
+    // Chart instances
+    var chartInstances = {};
+
+    function getChartEl(id) {
+        return document.getElementById(id);
+    }
+
+    function initChartInstance(key, elId) {
+        var el = getChartEl(elId);
+        if (!el) return null;
+        if (chartInstances[key] && !chartInstances[key].isDisposed()) {
+            chartInstances[key].dispose();
+        }
+        el.innerHTML = '';
+        if (typeof echarts === 'undefined') { console.warn('echarts not available'); return null; }
+        var chart = echarts.init(el);
+        chartInstances[key] = chart;
+        return chart;
+    }
+
+    function noDataHtml() {
+        return '<div class="no-data">暂无数据</div>';
+    }
+
+    async function loadAllData(presetId) {
+        try {
+            var results = await Promise.all([
+                fetch('/api/analysis/summary?preset_id=' + presetId).then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
+                fetch('/api/analysis/factor-distribution?preset_id=' + presetId).then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
+                fetch('/api/analysis/ic-series?preset_id=' + presetId + '&forward_days=5').then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
+                fetch('/api/analysis/ic-decay?preset_id=' + presetId).then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
+                fetch('/api/analysis/quadrant-heatmap?preset_id=' + presetId).then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
+                fetch('/api/analysis/group-returns?preset_id=' + presetId).then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
+                fetch('/api/analysis/rolling-icir?preset_id=' + presetId + '&forward_days=5&window=60').then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
+                fetch('/api/analysis/weight-recommendation?preset_id=' + presetId).then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; })
+            ]);
+
+            var summary = results[0];
+            var factorDist = results[1];
+            var icSeries = results[2];
+            var icDecay = results[3];
+            var quadrant = results[4];
+            var groupReturns = results[5];
+            var rollingIcir = results[6];
+            var weightRec = results[7];
+
+            // Render KPIs from summary
+            renderKPIs(summary);
+
+            // Render text summary
+            renderSummary(summary);
+
+            // Render freshness label
+            if (summary && summary.date) {
+                document.getElementById('freshness-label').textContent = '数据日期: ' + summary.date;
+            }
+
+            // Render ECharts charts
+            renderEChart('factorDist', 'chart-factor-dist', factorDist);
+            renderEChart('icSeries', 'chart-ic-series', icSeries);
+            renderEChart('icDecay', 'chart-ic-decay', icDecay);
+            renderEChart('groupReturns', 'chart-group-returns', groupReturns);
+            renderEChart('rollingIcir', 'chart-rolling-icir', rollingIcir);
+            renderEChart('weightRec', 'chart-weight-rec', weightRec);
+
+            // Render CSS quadrant heatmap
+            renderHeatmap(quadrant);
+
+        } catch(e) {
+            console.error('loadAllData error:', e);
+        }
+    }
+
+    function renderEChart(key, elId, data) {
+        if (!data || data.error === 'no_data' || data.error === 'fetch_failed') {
+            var el = getChartEl(elId);
+            if (el) el.innerHTML = noDataHtml();
+            return;
+        }
+        var chart = initChartInstance(key, elId);
+        if (!chart) return;
+        if (data.chart) {
+            chart.setOption(data.chart, true);
+        } else {
+            var el = getChartEl(elId);
+            if (el) el.innerHTML = noDataHtml();
+        }
+    }
+
+    function renderKPIs(summary) {
+        if (!summary || summary.error === 'no_data') {
+            document.getElementById('kpi-ic-mean').textContent = '--';
+            document.getElementById('kpi-icir').textContent = '--';
+            document.getElementById('kpi-ic-win').textContent = '--';
+            document.getElementById('kpi-strong').textContent = '--';
+            return;
+        }
+
+        // Extract KPI values from summary text or direct fields
+        var icMean = summary.ic_mean !== undefined ? summary.ic_mean : null;
+        var icir = summary.icir !== undefined ? summary.icir : null;
+        var icWin = summary.ic_win_rate !== undefined ? summary.ic_win_rate : null;
+        var strongCount = summary.q1_count !== undefined ? summary.q1_count : null;
+
+        // Try parsing from factor_validity text if direct fields missing
+        if (icMean === null && summary.factor_validity) {
+            var m = summary.factor_validity.match(/IC均值([+-]?\d+\.?\d*)/);
+            if (m) icMean = parseFloat(m[1]);
+        }
+        if (icir === null && summary.factor_validity) {
+            var m2 = summary.factor_validity.match(/ICIR\s*([+-]?\d+\.?\d*)/);
+            if (m2) icir = parseFloat(m2[1]);
+        }
+
+        document.getElementById('kpi-ic-mean').textContent = icMean !== null ? icMean.toFixed(3) : '--';
+        document.getElementById('kpi-icir').textContent = icir !== null ? icir.toFixed(2) : '--';
+        document.getElementById('kpi-ic-win').textContent = icWin !== null ? (icWin * 100).toFixed(1) + '%' : '--';
+        document.getElementById('kpi-strong').textContent = strongCount !== null ? strongCount : '--';
+
+        // Sub labels
+        document.getElementById('kpi-ic-mean-sub').textContent = icMean !== null ? (icMean > 0 ? '正向显著' : '负向') : '';
+        document.getElementById('kpi-icir-sub').textContent = icir !== null ? (Math.abs(icir) > 2 ? '强稳定' : Math.abs(icir) > 1 ? '稳定' : '不稳定') : '';
+        document.getElementById('kpi-ic-win-sub').textContent = icWin !== null ? (icWin > 0.5 ? '有效' : '偏弱') : '';
+        document.getElementById('kpi-strong-sub').textContent = summary.strong_buy ? summary.strong_buy : '';
+    }
+
+    function renderSummary(summary) {
+        var el = document.getElementById('summary-text');
+        if (!summary || summary.error === 'no_data') {
+            el.textContent = '暂无分析数据，请先运行数据采集和因子计算。';
+            return;
+        }
+
+        var lines = [];
+
+        if (summary.factor_validity) {
+            lines.push('因子有效性: ' + summary.factor_validity);
+        }
+        if (summary.decay_period) {
+            lines.push('衰减周期: ' + summary.decay_period);
+        }
+        if (summary.strong_buy) {
+            lines.push('强势板块: ' + summary.strong_buy);
+        }
+        if (summary.contrarian) {
+            lines.push('逆向关注: ' + summary.contrarian);
+        }
+        if (summary.q1_count !== undefined) {
+            lines.push('Q1强势ETF数: ' + summary.q1_count);
+        }
+        if (summary.q2_count !== undefined) {
+            lines.push('Q2潜伏ETF数: ' + summary.q2_count);
+        }
+
+        if (summary.summary_rows && summary.summary_rows.length > 0) {
+            lines.push('');
+            summary.summary_rows.forEach(function(row) {
+                if (typeof row === 'string') {
+                    lines.push(row);
+                } else if (row.text) {
+                    lines.push(row.text);
+                }
+            });
+        }
+
+        if (lines.length === 0) {
+            lines.push('暂无详细分析内容。');
+        }
+
+        el.innerHTML = lines.join('<br>');
+    }
+
+    function renderHeatmap(data) {
+        var el = document.getElementById('chart-quadrant');
+        if (!data || data.error === 'no_data' || data.error === 'fetch_failed') {
+            el.innerHTML = noDataHtml();
+            return;
+        }
+
+        var chartData = data.chart;
+        if (!chartData || !chartData.quadrants) {
+            el.innerHTML = noDataHtml();
+            return;
+        }
+
+        var quads = chartData.quadrants;
+        var axisLabels = chartData.axis_labels || { x: 'Z_Mom (价格动量)', y: 'Z_Flow (资金流)' };
+
+        // Order: Q2(潜伏), Q1(强势), Q3(逃顶), Q4(风险)
+        // Grid layout:
+        // Row 1: Q2 (z_flow>0, z_mom<0) | Q1 (z_flow>0, z_mom>0)
+        // Row 2: Q3 (z_flow<0, z_mom<0) | Q4 (z_flow<0, z_mom>0)
+        // API returns them in order: Q2, Q1, Q3, Q4
+        var html = '<div style="position:relative;">';
+        html += '<div style="display:flex;justify-content:space-between;padding:0 4px 4px;font-size:10px;color:#999;">';
+        html += '<span>' + (axisLabels.x || '').split('(')[0].trim() + ' (-)</span>';
+        html += '<span>' + (axisLabels.x || '').split('(')[0].trim() + ' (+)</span>';
+        html += '</div>';
+        html += '<div style="display:flex;align-items:stretch;">';
+        html += '<div style="writing-mode:vertical-lr;text-align:center;font-size:10px;color:#999;padding:0 2px;display:flex;flex-direction:column;justify-content:space-between;height:100%;min-height:120px;">';
+        html += '<span>' + (axisLabels.y || '').split('(')[0].trim() + ' (+)</span>';
+        html += '<span>' + (axisLabels.y || '').split('(')[0].trim() + ' (-)</span>';
+        html += '</div>';
+        html += '<div class="quadrant-grid" style="flex:1;">';
+        quads.forEach(function(q) {
+            var val = q.value !== undefined ? q.value : 0;
+            var color = (q.itemStyle && q.itemStyle.color) ? q.itemStyle.color : '#e8e4db';
+            var valColor = val > 0 ? '#2d5a2d' : val < 0 ? '#8b4513' : '#666';
+            var valStr = val > 0 ? '+' + val.toFixed(2) : val.toFixed(2);
+            html += '<div class="quadrant-cell" style="background:' + color + ';">';
+            html += '<div class="q-name">' + q.name + '</div>';
+            html += '<div class="q-value" style="color:' + valColor + ';">' + valStr + '</div>';
+            html += '</div>';
+        });
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
+
+        el.innerHTML = html;
+    }
+
+    function switchPreset(presetId) {
+        currentPreset = presetId;
+        // Update button active states
+        var btns = document.querySelectorAll('.preset-btn');
+        btns.forEach(function(btn) {
+            if (btn.getAttribute('data-preset') === presetId) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        loadAllData(presetId);
+    }
+
+    // Expose switchPreset for onclick handlers
+    window.switchPreset = switchPreset;
+
+    ATMChart.initPage();
+
+    window.addEventListener('theme-changed', function() {
+        loadAllData(currentPreset);
+    });
+
+    ATMPerf.VisibilityManager.register(
+        function() {},
+        function() {
+            setTimeout(function() { ATMChart.resizeAll(); }, 200);
+        }
+    );
+
+    window.addEventListener('beforeunload', function() {
+        Object.keys(chartInstances).forEach(function(key) {
+            if (chartInstances[key] && !chartInstances[key].isDisposed()) {
+                chartInstances[key].dispose();
+            }
+        });
+    });
+
+    // Wait for ECharts to be available, then load data
+    try { ATMChart.load(); } catch(e) { console.warn('ECharts load failed:', e); }
+    loadAllData('short');
+    window.__atmPageReady();
+
+    } catch(e) { console.error('Analysis page init error:', e); }
+    });
+    </script>
+</body>
+</html>
