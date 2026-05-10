@@ -40,7 +40,7 @@
                 行业板块热力图
             </h2>
             <div class="glass rounded-xl p-5">
-                <div id="heatmap" class="grid grid-cols-4 gap-2"></div>
+                <div id="heatmap" class="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2"></div>
             </div>
         </section>
 
@@ -337,9 +337,9 @@
             var bg = pct > 0 ? 'rgba(212, 114, 106, ' + (0.08 + intensity * 0.12) + ')'
                     : pct < 0 ? 'rgba(106, 175, 124, ' + (0.08 + intensity * 0.12) + ')'
                     : 'var(--c-bg-tertiary)';
-            return '<div class="heat-cell rounded-lg p-4 cursor-pointer" style="background:' + bg + '" onclick="location.href=\'/sector?code=' + s.ts_code + '\'" title="' + s.name + ': ' + ATM.pctText(pct) + '">' +
-                '<div class="font-medium text-sm mb-1">' + s.name + '</div>' +
-                '<div class="text-lg font-bold font-mono" style="color:' + ATM.pctColor(pct) + '">' + ATM.pctText(pct) + '</div></div>';
+            return '<div class="heat-cell rounded-lg p-2 sm:p-4 cursor-pointer" style="background:' + bg + '" onclick="location.href=\'/sector?code=' + s.ts_code + '\'" title="' + s.name + ': ' + ATM.pctText(pct) + '">' +
+                '<div class="font-medium text-xs sm:text-sm mb-0.5 sm:mb-1">' + s.name + '</div>' +
+                '<div class="text-base sm:text-lg font-bold font-mono" style="color:' + ATM.pctColor(pct) + '">' + ATM.pctText(pct) + '</div></div>';
         }).join('');
     }
 
