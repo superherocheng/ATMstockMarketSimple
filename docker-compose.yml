@@ -10,6 +10,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - docker_network
     restart: unless-stopped
     volumes:
       - ./logs:/app/logs
@@ -22,8 +24,8 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
       - POSTGRES_DB=${POSTGRES_DB:-atm_stock_market}
-    ports:
-      - "5432:5432"
+    # ports:
+    #   - "5432:5432"  # Commented: host port 5432 conflict with local PG
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
@@ -33,7 +35,13 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    networks:
+      - docker_network
 
 volumes:
   pgdata:
     driver: local
+
+networks:
+  docker_network:
+    external: true

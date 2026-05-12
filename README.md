@@ -131,8 +131,26 @@ python3 -m src.web.app
 ### Docker 部署
 
 ```bash
-# 使用 Docker Compose 一键启动
+# 1. 启动服务（数据库 + Web应用）
 docker compose up -d
+
+# 2. 查看日志
+docker compose logs -f
+
+# 3. 初始化数据库表结构（首次部署必须执行）
+docker exec -e DATABASE_URL=postgresql://postgres:password@db:5432/atm_stock_market \
+    atmstockmarket alembic upgrade head
+
+# 4. 拉取数据（首次部署或数据过期时）
+docker exec -e PYTHONPATH=/app atmstockmarket \
+    python3 -u /app/src/data_fetchers/tushare_fetcher.py --etf
+
+# 可选：拉取个股数据
+docker exec -e PYTHONPATH=/app atmstockmarket \
+    python3 -u /app/src/data_fetchers/tushare_fetcher.py --stocks
+
+# 5. 重启应用使缓存刷新
+docker restart atmstockmarket
 
 # 查看日志
 docker compose logs -f
@@ -140,6 +158,10 @@ docker compose logs -f
 # 停止服务
 docker compose down
 ```
+
+> **注意**：Web 应用启动时只建立数据库连接池，**不会自动创建表结构**。首次部署或 VPS 重启后，必须先执行 `alembic upgrade head` 创建表，再运行数据拉取脚本导入数据。
+
+> **网络配置**：docker-compose 配置了外部网桥 `docker_network`，用于与 nginx-proxy-manager 集成。如不使用，需移除 `networks` 相关配置，或先创建网络：`docker network create docker_network`。
 
 ## 📊 路由 & 页面
 
@@ -271,6 +293,43 @@ alembic upgrade head
 # 回滚迁移
 alembic downgrade -1
 ```
+
+## 🐛 常见问题
+
+### Docker 部署后首页显示"无数据"
+
+**原因**：Web 应用启动时只连接数据库，不会自动建表和拉取数据。
+
+**解决**：按顺序执行以下命令：
+
+```bash
+# 1. 建表
+docker exec -e DATABASE_URL=postgresql://postgres:password@db:5432/atm_stock_market \
+    atmstockmarket alembic upgrade head
+
+# 2. 拉取 ETF 数据
+docker exec -e PYTHONPATH=/app atmstockmarket \
+    python3 -u /app/src/data_fetchers/tushare_fetcher.py --etf
+
+# 3. 拉取个股数据
+docker exec -e PYTHONPATH=/app atmstockmarket \
+    python3 -u /app/src/data_fetchers/tushare_fetcher.py --stocks
+
+# 4. 重启应用
+docker restart atmstockmarket
+```
+
+### VPS 重启后数据库连不上
+
+**原因**：Docker 数据卷（`pgdata`）在重启后仍然存在，数据不会丢失。但表结构需要重建：
+- 检查容器状态：`docker ps | grep atmstockmarket`
+- 检查 DB 是否有表：`docker exec atmstockmarket-db psql -U postgres -d atm_stock_market -c "\dt"`
+- 如果无表，重新运行 `alembic upgrade head`
+
+### 健康检查显示 stale
+
+健康端点返回 `data_freshness.status: "stale"` 表示数据库数据尚未同步到最新交易日。
+运行数据拉取脚本即可刷新。
 
 ## 📚 文档
 
