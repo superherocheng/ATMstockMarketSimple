@@ -343,21 +343,29 @@
         });
         var values = chartData.map(function(sh) { return parseFloat(sh.fd_share || 0); });
 
-        // 计算每日变化量: delta[i] = values[i] - values[i-1]
         var dailyChanges = [];
+        var pctChanges = [];
         for (var i = 0; i < values.length; i++) {
-            dailyChanges.push(i === 0 ? null : values[i] - values[i-1]);
+            if (i === 0) {
+                dailyChanges.push(null);
+                pctChanges.push(null);
+            } else {
+                dailyChanges.push(values[i] - values[i-1]);
+                if (values[i-1] > 0) {
+                    pctChanges.push((values[i] - values[i-1]) / values[i-1] * 100);
+                } else {
+                    pctChanges.push(0);
+                }
+            }
         }
 
-        // 计算变化量的均值和标准差
-        var validChanges = dailyChanges.filter(function(v) { return v !== null; });
-        var chgMean = validChanges.reduce(function(a, b) { return a + b; }, 0) / validChanges.length;
-        var chgVariance = validChanges.reduce(function(a, b) { return a + Math.pow(b - chgMean, 2); }, 0) / validChanges.length;
-        var chgStd = Math.sqrt(chgVariance) || 1;
+        var validPctChanges = pctChanges.filter(function(v) { return v !== null; });
+        var pctMean = validPctChanges.reduce(function(a, b) { return a + b; }, 0) / validPctChanges.length;
+        var pctVariance = validPctChanges.reduce(function(a, b) { return a + Math.pow(b - pctMean, 2); }, 0) / validPctChanges.length;
+        var pctStd = Math.sqrt(pctVariance) || 1;
 
-        // ZSCORE = (每日变化 - 均值) / 标准差
-        var zscores = dailyChanges.map(function(v) {
-            return v === null ? null : (v - chgMean) / chgStd;
+        var zscores = pctChanges.map(function(v) {
+            return v === null ? null : (v - pctMean) / pctStd;
         });
 
         shareDetailChart.setOption({
@@ -505,6 +513,22 @@
 
         var latestChangeColor = latestChange >= 0 ? 'var(--c-up)' : 'var(--c-down)';
         var totalChangeColor = totalChange >= 0 ? 'var(--c-up)' : 'var(--c-down)';
+        
+        var direction = latestChange >= 0 ? '↑ 流入' : '↓ 流出';
+        var directionColor = latestChange >= 0 ? 'var(--c-up)' : 'var(--c-down)';
+
+        var zScoreInterpretation = '';
+        if (zScore > 1.5) {
+            zScoreInterpretation = '变化显著偏大';
+        } else if (zScore < -1.5) {
+            zScoreInterpretation = '变化显著偏小';
+        } else if (zScore > 0.5) {
+            zScoreInterpretation = '变化偏大';
+        } else if (zScore < -0.5) {
+            zScoreInterpretation = '变化偏小';
+        } else {
+            zScoreInterpretation = '变化正常';
+        }
 
         el.innerHTML = 
             '<div class="space-y-3">' +
@@ -520,13 +544,25 @@
                         '</div>' +
                     '</div>' +
                 '</div>' +
+                '<div class="p-3 rounded text-center" style="background:' + (latestChange >= 0 ? '#ecfdf5' : '#fef2f2') + ';">' +
+                    '<div class="text-xs" style="color:var(--c-text-tertiary);">最新份额变化</div>' +
+                    '<div class="flex items-center justify-center gap-2 mt-1">' +
+                        '<span class="text-2xl font-bold num-mono font-mono" style="color:' + directionColor + '">' +
+                            (latestChange >= 0 ? '+' : '') + latestChange.toFixed(4) + '%' +
+                        '</span>' +
+                        '<span class="text-sm font-medium px-2 py-1 rounded" style="background:' + directionColor + '22;color:' + directionColor + ';">' +
+                            direction +
+                        '</span>' +
+                    '</div>' +
+                    '<div class="text-xs mt-2" style="color:var(--c-text-tertiary);">Z-Score: <span style="color:' + zScoreColor + ';font-weight:bold;">' + (zScore >= 0 ? '+' : '') + zScore.toFixed(2) + 'σ</span> (' + zScoreInterpretation + ')</div>' +
+                '</div>' +
                 '<div class="flex items-center justify-between p-3 rounded" style="background:#f9fafb;">' +
                     '<div>' +
                         '<div class="text-xs" style="color:var(--c-text-tertiary);">Z-Score</div>' +
                         '<div class="text-lg font-bold num-mono font-mono" style="color:' + zScoreColor + '">' +
                             (zScore >= 0 ? '+' : '') + zScore.toFixed(2) + 'σ' +
                         '</div>' +
-                        '<div class="text-xs mt-1" style="color:' + zScoreColor + '">' + zScoreLabel + '</div>' +
+                        '<div class="text-xs mt-1" style="color:' + zScoreColor + ';">' + zScoreInterpretation + '</div>' +
                     '</div>' +
                     '<div class="text-right">' +
                         '<div class="text-xs" style="color:var(--c-text-tertiary);">10日累计变化</div>' +

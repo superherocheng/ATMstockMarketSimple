@@ -52,8 +52,8 @@
                         数据管理
                     </h2>
                     <div class="data-mgmt-buttons">
-                        <button onclick="fetchTushare()" id="btn-tushare" class="btn btn-secondary data-mgmt-btn">Tushare数据</button>
-                        <button onclick="oneClickUpdate()" id="btn-update" class="btn btn-primary data-mgmt-btn">全部数据</button>
+                        <button onclick="fetchEtfShare()" id="btn-etf-share" class="btn btn-secondary data-mgmt-btn">ETF份额</button>
+                        <button onclick="oneClickUpdate()" id="btn-update" class="btn btn-primary data-mgmt-btn">一键更新</button>
                     </div>
                 </div>
                 <div id="data-status" class="mb-2"><div class="skeleton skeleton-card"></div></div>
@@ -146,10 +146,7 @@
 
     function renderDataStatus(info) {
         var rows = [
-            { group: '股票分类', items: ['stock_info','concept_dict'] },
             { group: 'ETF数据', items: ['index_etf_daily','sector_etf_daily','etf_share'] },
-            { group: '个股数据', items: ['stock_daily','stock_basic'] },
-            { group: '基本面数据', items: ['stock_daily_basic','stock_fina_indicator'] },
         ];
         var anyNeedUpdate = false;
         var html = '<div class="overflow-x-auto" style="-webkit-overflow-scrolling:touch;overflow-x:auto;"><table class="w-full text-sm zebra-table" style="min-width:520px;">';
@@ -179,9 +176,9 @@
         var btn = document.getElementById('btn-update');
         if (btn && !btn.disabled) {
             if (Object.values(info).every(function(d) { return !d.exists || d.count === 0; })) {
-                btn.innerHTML = '首次获取全部数据';
+                btn.innerHTML = '首次获取ETF数据';
             } else if (anyNeedUpdate) {
-                btn.innerHTML = '一键更新全部数据';
+                btn.innerHTML = '一键更新ETF数据';
             } else {
                 btn.innerHTML = '数据已是最新';
             }
@@ -221,12 +218,12 @@
     }
 
     function disableAllButtons() {
-        document.getElementById("btn-tushare").disabled = true;
+        document.getElementById("btn-etf-share").disabled = true;
         document.getElementById("btn-update").disabled = true;
     }
 
     function enableAllButtons() {
-        document.getElementById("btn-tushare").disabled = false;
+        document.getElementById("btn-etf-share").disabled = false;
         document.getElementById("btn-update").disabled = false;
     }
 
@@ -235,32 +232,80 @@
         btn.innerHTML = '<span class="spinner spinner-sm"></span> ' + text;
     }
 
-    function resetButtonTushare() { document.getElementById("btn-tushare").innerHTML = 'Tushare数据'; }
-    function resetButtonAll() { document.getElementById("btn-update").innerHTML = '全部数据'; }
+    function resetButtonEtfShare() { document.getElementById("btn-etf-share").innerHTML = 'ETF份额'; }
+    function resetButtonAll() { document.getElementById("btn-update").innerHTML = '一键更新'; }
 
-    async function fetchTushare() {
+    async function fetchEtfShare() {
         disableAllButtons();
-        setButtonLoading("btn-tushare", "获取中...");
+        setButtonLoading("btn-etf-share", "检查中...");
         try {
-            var resp = await fetch("/api/fetch/tushare", { method: "POST" });
-            if (resp.status === 409) {
-                setButtonLoading("btn-tushare", "获取中...");
-                document.getElementById("fetch-progress").classList.remove("hidden");
-                if (!pollTimer) { pollTimer = setInterval(pollStatus, 1500); pollStatus(); }
+            var resp = await fetch("/api/etf-share/status");
+            var status = await resp.json();
+            
+            if (status.error) {
+                alert("检查失败: " + status.error);
+                enableAllButtons();
+                resetButtonEtfShare();
                 return;
             }
-            document.getElementById("fetch-progress").classList.remove("hidden");
-            document.getElementById("fetch-log").innerHTML = '<div style="color:#D97706;">正在启动 Tushare 数据获取...</div>';
-            updateProgressBar(0, "running");
-            document.getElementById("fetch-status-text").textContent = "获取中...";
-            if (pollTimer) clearInterval(pollTimer);
-            pollTimer = setInterval(pollStatus, 1500);
-            setTimeout(pollStatus, 800);
+            
+            if (status.is_up_to_date) {
+                var msg = "ETF份额数据已是最新！\n\n";
+                msg += "最新交易日: " + fmtDateDisplay(status.latest_trading_date) + "\n";
+                msg += "宽基ETF: " + status.index_etf.length + " 只\n";
+                msg += "行业ETF: " + status.sector_etf.length + " 只\n";
+                msg += "总计: " + status.summary.total + " 只";
+                alert(msg);
+                enableAllButtons();
+                resetButtonEtfShare();
+            } else {
+                var notFresh = status.summary.not_fresh_codes;
+                var confirmMsg = "发现 " + notFresh.length + " 只ETF份额数据需要更新：\n\n";
+                for (var i = 0; i < Math.min(notFresh.length, 5); i++) {
+                    var item = notFresh[i];
+                    confirmMsg += item.name + " (" + item.code + "): " + (item.max_date ? fmtDateDisplay(item.max_date) : "无数据") + "\n";
+                }
+                if (notFresh.length > 5) {
+                    confirmMsg += "... 还有 " + (notFresh.length - 5) + " 只\n";
+                }
+                confirmMsg += "\n最新交易日: " + fmtDateDisplay(status.latest_trading_date) + "\n\n";
+                confirmMsg += "是否尝试更新？";
+                
+                if (confirm(confirmMsg)) {
+                    setButtonLoading("btn-etf-share", "更新中...");
+                    var updateResp = await fetch("/api/etf-share/update", { method: "POST" });
+                    var updateResult = await updateResp.json();
+                    
+                    if (updateResult.error) {
+                        alert("更新失败: " + updateResult.error);
+                    } else if (updateResult.status === "already_fresh") {
+                        alert(updateResult.message);
+                    } else if (updateResult.status === "data_not_ready") {
+                        var warnMsg = updateResult.message + "\n\n";
+                        for (var j = 0; j < updateResult.not_ready.length; j++) {
+                            var nr = updateResult.not_ready[j];
+                            warnMsg += nr.name + " (" + nr.code + "): " + (nr.max_date ? fmtDateDisplay(nr.max_date) : "无数据") + "\n";
+                        }
+                        warnMsg += "\n请稍后再试，Tushare数据通常在交易日16:00后更新。";
+                        alert(warnMsg);
+                    } else if (updateResult.status === "updated") {
+                        alert("更新成功！\n\n" + updateResult.message + "\n最新数据: " + fmtDateDisplay(updateResult.latest_trading_date));
+                        loadDataRange();
+                    }
+                }
+                enableAllButtons();
+                resetButtonEtfShare();
+            }
         } catch(e) {
-            alert("启动失败: " + e.message);
+            alert("操作失败: " + e.message);
             enableAllButtons();
-            resetButtonTushare();
+            resetButtonEtfShare();
         }
+    }
+    
+    function fmtDateDisplay(dateStr) {
+        if (!dateStr) return "-";
+        return dateStr.substring(0, 4) + "-" + dateStr.substring(4, 6) + "-" + dateStr.substring(6, 8);
     }
 
     var pollTimer = null;
@@ -288,7 +333,7 @@
                 document.getElementById('fetch-status-text').style.color = hasError ? 'var(--c-up)' : 'var(--c-down)';
                 if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
                 enableAllButtons();
-                resetButtonTushare();
+                resetButtonEtfShare();
                 resetButtonAll();
                 loadDataRange();
                 loadOverview();
@@ -352,7 +397,7 @@
     window.__atmPageReady();
     
     // Expose handler functions for inline onclick attributes
-    window.fetchTushare = fetchTushare;
+    window.fetchEtfShare = fetchEtfShare;
     window.oneClickUpdate = oneClickUpdate;
     } catch(e) { console.error('Page init error:', e);
         document.getElementById('data-status').innerHTML = '<div class="error-message"><div class="error-message-title">页面加载错误</div><div class="error-message-detail">' + e.message + '</div></div>';

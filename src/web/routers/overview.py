@@ -248,15 +248,9 @@ def _compute_data_range():
 
         tables_info = {}
         table_configs = [
-            ("stock_info", "股票分类信息", False, None),
-            ("concept_dict", "概念字典", False, None),
             ("index_etf_daily", "指数ETF日线", True, "trade_date"),
             ("etf_share", "ETF份额", True, "trade_date"),
             ("sector_etf_daily", "行业ETF日线", True, "trade_date"),
-            ("stock_daily", "个股日线", True, "trade_date"),
-            ("stock_basic", "股票列表", False, None),
-            ("stock_daily_basic", "每日估值(PE/PB)", True, "trade_date"),
-            ("stock_fina_indicator", "财务指标(季报)", True, "end_date"),
         ]
 
         for table_name, display_name, has_date, date_col in table_configs:
@@ -281,22 +275,6 @@ def _compute_data_range():
                 tables_info[table_name] = {
                     "display_name": display_name, "exists": False,
                     "count": 0, "min_date": None, "max_date": None, "error": str(e),
-                }
-
-        csv_dir = DATA_DIR / "akshare"
-        for prefix, display in [("lhb", "龙虎榜(CSV)")]:
-            files = sorted(csv_dir.glob(f"{prefix}_*.csv")) if csv_dir.exists() else []
-            if files:
-                latest = files[-1]
-                date_str = latest.stem.replace(f"{prefix}_", "")
-                tables_info[prefix] = {
-                    "display_name": display, "exists": True,
-                    "count": 1, "min_date": date_str, "max_date": date_str,
-                }
-            else:
-                tables_info[prefix] = {
-                    "display_name": display, "exists": False,
-                    "count": 0, "min_date": None, "max_date": None,
                 }
 
         return tables_info

@@ -3,17 +3,19 @@ import sys
 import logging
 import subprocess
 import threading
+import time
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from src.core.db_manager_postgresql import get_conn
+from src.core.db_manager_postgresql import get_conn, get_db_manager
 from src.web.services.cache import _cache_invalidate
-from src.core.trading_calendar import now_beijing
+from src.core.trading_calendar import now_beijing, get_latest_trading_date, get_open_trade_dates
 from src.core.db_manager_postgresql import close_db_manager, _ensure_db
-from config.config import DATA_DIR
+from config.config import DATA_DIR, INDEX_ETF, SECTOR_ETF, get_pro
 
 logger = logging.getLogger(__name__)
 
@@ -92,49 +94,6 @@ def _run_subprocess(fetch_script, cmd, cwd, phase_label, progress_base, progress
         return False
 
 
-def _check_stock_info_exists():
-    """检查 stock_info 表是否已有数据"""
-    conn = None
-    try:
-        conn = get_conn()
-        result = conn.execute(text("SELECT COUNT(*) FROM stock_info")).fetchone()
-        count = result[0] if result else 0
-        return count > 0
-    except Exception:
-        return False
-    finally:
-        if conn:
-            conn.close()
-
-
-def _load_allsymbol_data():
-    """加载 ALLSYMBOL.csv 数据到数据库"""
-    allsymbol_csv = DATA_DIR / "external" / "ALLSYMBOL.csv"
-
-    if not allsymbol_csv.exists():
-        _add_log("[SKIP] ALLSYMBOL.csv 文件不存在，跳过股票分类数据加载")
-        return False
-
-    if _check_stock_info_exists():
-        _add_log("[SKIP] stock_info 表已有数据，跳过 ALLSYMBOL.csv 加载")
-        return True
-
-    _add_log("--- 开始加载股票分类数据 (ALLSYMBOL.csv) ---")
-
-    load_script = str(BASE_DIR.parent.parent / "scripts" / "load_allsymbol.py")
-    work_dir = str(BASE_DIR.parent.parent)
-
-    cmd = [sys.executable, "-u", load_script]
-    success = _run_subprocess(load_script, cmd, work_dir, "股票分类数据", 0, 100)
-
-    if success:
-        _add_log("[OK] 股票分类数据加载完成")
-    else:
-        _add_log("[ERROR] 股票分类数据加载失败")
-
-    return success
-
-
 def _run_fetch(task_type):
     """在子线程中运行数据获取"""
     with _fetch_lock:
@@ -152,31 +111,20 @@ def _run_fetch(task_type):
 
     try:
         if task_type == "all":
-            _load_allsymbol_data()
-
-            cmd = [sys.executable, "-u", tushare_script]
-            _run_subprocess(tushare_script, cmd, work_dir, "Tushare", 10, 60)
+            cmd = [sys.executable, "-u", tushare_script, "--etf"]
+            _run_subprocess(tushare_script, cmd, work_dir, "ETF数据", 0, 100)
 
         elif task_type == "tushare":
-            cmd = [sys.executable, "-u", tushare_script]
-            _run_subprocess(tushare_script, cmd, work_dir, "Tushare", 0, 100)
+            cmd = [sys.executable, "-u", tushare_script, "--etf"]
+            _run_subprocess(tushare_script, cmd, work_dir, "ETF数据", 0, 100)
 
-        elif task_type in ("etf", "stocks"):
-            cmd = [sys.executable, "-u", tushare_script]
-            if task_type == "etf":
-                cmd.append("--etf")
-            elif task_type == "stocks":
-                cmd.append("--stocks")
-            _run_subprocess(tushare_script, cmd, work_dir, "Tushare", 0, 100)
+        elif task_type == "etf":
+            cmd = [sys.executable, "-u", tushare_script, "--etf"]
+            _run_subprocess(tushare_script, cmd, work_dir, "ETF数据", 0, 100)
 
         _add_log("[DONE] 数据获取完成！")
 
-        if task_type == "etf":
-            _cache_invalidate("etf", "overview", "analysis")
-        elif task_type == "stocks":
-            _cache_invalidate("overview")
-        else:
-            _cache_invalidate()
+        _cache_invalidate("etf", "overview", "analysis")
         with _fetch_lock:
             _fetch_status["progress"] = 100
     except Exception as e:
@@ -186,7 +134,6 @@ def _run_fetch(task_type):
             _fetch_status["running"] = False
             _fetch_status["finished_at"] = now_beijing().strftime("%Y-%m-%d %H:%M:%S")
             _fetch_status["current_step"] = "完成"
-        # Re-initialize DB connection after fetch (close_db_manager was called above)
         try:
             _ensure_db()
             _add_log("[OK] 数据库连接已恢复")
@@ -196,8 +143,8 @@ def _run_fetch(task_type):
 
 @router.post("/api/fetch/{task_type}")
 async def api_fetch_data(task_type: str):
-    if task_type not in ("all", "tushare", "etf", "stocks"):
-        return JSONResponse({"error": "无效的任务类型"}, status_code=400)
+    if task_type not in ("all", "tushare", "etf"):
+        return JSONResponse({"error": "无效的任务类型，只支持 ETF 数据更新"}, status_code=400)
 
     with _fetch_lock:
         if _fetch_status["running"]:
@@ -224,3 +171,243 @@ async def api_fetch_status():
             "current_step": _fetch_status["current_step"],
             "progress": _fetch_status["progress"],
         }
+
+
+@router.get("/api/etf-share/status")
+async def api_etf_share_status():
+    """
+    检查ETF份额数据状态
+    
+    返回：
+    - latest_trading_date: 最新交易日
+    - is_up_to_date: 是否已更新到最新
+    - index_etf: 宽基ETF份额状态列表
+    - sector_etf: 行业ETF份额状态列表
+    - summary: 汇总信息
+    """
+    try:
+        latest_td = get_latest_trading_date()
+        if not latest_td:
+            return JSONResponse({"error": "无法确定最新交易日"}, status_code=500)
+        
+        conn = get_conn()
+        
+        all_etf_codes = list(INDEX_ETF.keys()) + list(SECTOR_ETF.keys())
+        placeholders = ",".join([f":p{i}" for i in range(len(all_etf_codes))])
+        params = {f"p{i}": c for i, c in enumerate(all_etf_codes)}
+        
+        sql = f"""
+            SELECT ts_code, MAX(trade_date) as max_date, COUNT(*) as cnt
+            FROM etf_share
+            WHERE ts_code IN ({placeholders})
+            GROUP BY ts_code
+        """
+        results = conn.execute(text(sql), params).fetchall()
+        db_dates = {row[0]: {"max_date": row[1], "count": row[2]} for row in results}
+        conn.close()
+        
+        index_etf_status = []
+        sector_etf_status = []
+        
+        for code, name in INDEX_ETF.items():
+            info = db_dates.get(code, {"max_date": None, "count": 0})
+            is_fresh = info["max_date"] and info["max_date"] >= latest_td
+            index_etf_status.append({
+                "code": code,
+                "name": name,
+                "max_date": info["max_date"],
+                "count": info["count"],
+                "is_fresh": is_fresh,
+                "type": "宽基"
+            })
+        
+        for code, name in SECTOR_ETF.items():
+            info = db_dates.get(code, {"max_date": None, "count": 0})
+            is_fresh = info["max_date"] and info["max_date"] >= latest_td
+            sector_etf_status.append({
+                "code": code,
+                "name": name,
+                "max_date": info["max_date"],
+                "count": info["count"],
+                "is_fresh": is_fresh,
+                "type": "行业"
+            })
+        
+        all_status = index_etf_status + sector_etf_status
+        fresh_count = sum(1 for s in all_status if s["is_fresh"])
+        total_count = len(all_status)
+        not_fresh_list = [s for s in all_status if not s["is_fresh"]]
+        
+        return {
+            "latest_trading_date": latest_td,
+            "is_up_to_date": fresh_count == total_count,
+            "index_etf": index_etf_status,
+            "sector_etf": sector_etf_status,
+            "summary": {
+                "total": total_count,
+                "fresh": fresh_count,
+                "not_fresh": total_count - fresh_count,
+                "not_fresh_codes": [{"code": s["code"], "name": s["name"], "max_date": s["max_date"]} for s in not_fresh_list]
+            }
+        }
+    except Exception as e:
+        logger.error(f"检查ETF份额状态失败: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+def _get_previous_trading_date(current_date_str):
+    """获取前一个交易日"""
+    dt = datetime.strptime(current_date_str, "%Y%m%d")
+    prev_dt = dt - timedelta(days=1)
+    return prev_dt.strftime("%Y%m%d")
+
+
+def _fetch_etf_share_for_code(pro, ts_code, start_date):
+    """获取单个ETF的份额数据"""
+    try:
+        df = pro.fund_share(ts_code=ts_code, start_date=start_date)
+        if df is not None and len(df) > 0:
+            df = df[["ts_code", "trade_date", "fd_share"]].copy()
+            df = df.drop_duplicates(subset=["ts_code", "trade_date"], keep="last")
+            df = df.sort_values(["ts_code", "trade_date"]).reset_index(drop=True)
+            return df
+    except Exception as e:
+        logger.error(f"获取 {ts_code} 份额失败: {e}")
+    return None
+
+
+@router.post("/api/etf-share/update")
+async def api_etf_share_update():
+    """
+    更新ETF份额数据
+    
+    逻辑：
+    1. 检查所有ETF份额是否已是最新
+    2. 如果已是最新，返回状态
+    3. 如果不是，尝试从Tushare获取新数据
+    4. 如果数据不足，返回哪些ETF数据还没更新
+    5. 如果数据足够，更新数据库并返回完成
+    """
+    try:
+        latest_td = get_latest_trading_date()
+        if not latest_td:
+            return JSONResponse({"error": "无法确定最新交易日"}, status_code=500)
+        
+        acceptable_min_td = _get_previous_trading_date(latest_td)
+        
+        conn = get_conn()
+        
+        all_etf = {**INDEX_ETF, **SECTOR_ETF}
+        all_codes = list(all_etf.keys())
+        
+        placeholders = ",".join([f":p{i}" for i in range(len(all_codes))])
+        params = {f"p{i}": c for i, c in enumerate(all_codes)}
+        
+        sql = f"""
+            SELECT ts_code, MAX(trade_date) as max_date
+            FROM etf_share
+            WHERE ts_code IN ({placeholders})
+            GROUP BY ts_code
+        """
+        results = conn.execute(text(sql), params).fetchall()
+        db_dates = {row[0]: row[1] for row in results}
+        
+        need_update = []
+        for code in all_codes:
+            max_date = db_dates.get(code)
+            if not max_date or max_date < latest_td:
+                need_update.append(code)
+        
+        if not need_update:
+            conn.close()
+            return {
+                "status": "already_fresh",
+                "message": f"所有ETF份额数据已是最新 ({latest_td})",
+                "latest_trading_date": latest_td,
+                "total_etf": len(all_codes),
+                "index_etf_count": len(INDEX_ETF),
+                "sector_etf_count": len(SECTOR_ETF)
+            }
+        
+        pro = get_pro()
+        default_start = (datetime.utcnow() - timedelta(days=365)).strftime("%Y%m%d")
+        
+        fetched_data = {}
+        not_ready = []
+        
+        for code in need_update:
+            name = all_etf.get(code, code)
+            existing_max = db_dates.get(code)
+            start_date = existing_max or default_start
+            
+            df = _fetch_etf_share_for_code(pro, code, start_date)
+            time.sleep(0.35)
+            
+            if df is not None and len(df) > 0:
+                max_date = df["trade_date"].max()
+                if max_date >= acceptable_min_td:
+                    fetched_data[code] = df
+                else:
+                    not_ready.append({
+                        "code": code,
+                        "name": name,
+                        "max_date": max_date,
+                        "required_min": acceptable_min_td
+                    })
+            else:
+                not_ready.append({
+                    "code": code,
+                    "name": name,
+                    "max_date": existing_max,
+                    "required_min": acceptable_min_td
+                })
+        
+        if not_ready:
+            conn.close()
+            return {
+                "status": "data_not_ready",
+                "message": f"Tushare数据尚未更新到 {acceptable_min_td}，以下ETF份额数据不完整：",
+                "latest_trading_date": latest_td,
+                "acceptable_min_date": acceptable_min_td,
+                "not_ready": not_ready,
+                "ready_count": len(fetched_data),
+                "total_need_update": len(need_update)
+            }
+        
+        db = get_db_manager()
+        updated_count = 0
+        update_details = []
+        
+        for code, df in fetched_data.items():
+            name = all_etf.get(code, code)
+            existing_max = db_dates.get(code)
+            
+            if existing_max:
+                n = db.upsert_dataframe(df, "etf_share", ["ts_code", "trade_date"])
+            else:
+                conn.execute(text("DELETE FROM etf_share WHERE ts_code=:p0"), {"p0": code})
+                conn.commit()
+                n = db.insert_dataframe(df, "etf_share", if_exists='append')
+            
+            updated_count += 1
+            update_details.append({
+                "code": code,
+                "name": name,
+                "rows": n,
+                "new_max_date": df["trade_date"].max()
+            })
+        
+        conn.close()
+        _cache_invalidate("etf", "overview")
+        
+        return {
+            "status": "updated",
+            "message": f"成功更新 {updated_count} 只ETF份额数据",
+            "latest_trading_date": latest_td,
+            "updated_count": updated_count,
+            "update_details": update_details
+        }
+        
+    except Exception as e:
+        logger.error(f"更新ETF份额失败: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
