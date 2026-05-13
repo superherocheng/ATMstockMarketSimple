@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>相关性热力图 - ATMstockMarket</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="stylesheet" href="/static/css/app.css">
+    <script defer src="/static/js/vendor.js"></script>
+    <script defer src="/static/js/app.js"></script>
+    <script>
+        document.documentElement.dataset.theme = 'light';
+    </script>
+    <style>
+        .heatmap-section { margin-bottom: 2rem; }
+        .heatmap-section:last-child { margin-bottom: 0; }
+        .heatmap-desc { font-size: 13px; color: var(--c-text-tertiary); margin-bottom: 12px; line-height: 1.6; }
+        .heatmap-chart { width: 100%; height: 520px; }
+        @media (max-width: 768px) {
+            .heatmap-chart { height: 420px; }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <nav>
+      <div class="nav-container">
+        <a href="/" class="nav-logo">
+          <span class="nav-logo-icon">AM</span>
+          ATMstockMarket
+        </a>
+        <div class="nav-links" id="nav-links">
+          <a href="/" class="nav-link">首页</a>
+          <a href="/etf" class="nav-link">指数ETF</a>
+          <a href="/sector" class="nav-link">行业ETF</a>
+          <a href="/analysis" class="nav-link">可视化分析</a>
+          <a href="/heatmap" class="nav-link active">热力图</a>
+        </div>
+        <button class="mobile-menu-btn" onclick="document.getElementById('nav-links').classList.toggle('open')" aria-label="菜单">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M0 3h20v2H0V3zm0 6h20v2H0V9zm0 6h20v2H0v-2z"/></svg>
+        </button>
+      </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 stagger-children">
+        <section class="heatmap-section">
+            <div class="glass rounded-xl p-4 sm:p-6">
+                <h2 class="flex items-center gap-3 text-base font-semibold mb-2">
+                    <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
+                    行业ETF份额变化波动相关性
+                </h2>
+                <p class="heatmap-desc">
+                    基于近20日滚动标准差序列，展示各行业ETF份额变化波动率之间的相关性。数值越接近1表示波动节奏越同步，越接近-1表示越反向。
+                </p>
+                <div id="chart-share-std" class="heatmap-chart">
+                    <div class="skeleton skeleton-chart"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="heatmap-section">
+            <div class="glass rounded-xl p-4 sm:p-6">
+                <h2 class="flex items-center gap-3 text-base font-semibold mb-2">
+                    <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
+                    K线中枢相关性（中证500 + 行业ETF）
+                </h2>
+                <p class="heatmap-desc">
+                    基于近20日K线中枢 (O+C+H+L)/4 序列，展示中证500ETF与各行业ETF价格走势的相关程度。数值越接近1表示走势越趋同。
+                </p>
+                <div id="chart-kline-pivot" class="heatmap-chart">
+                    <div class="skeleton skeleton-chart"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>ATMstockMarket — 数据来源: Tushare / AKShare | 仅供学习研究，不构成投资建议</p>
+    </footer>
+
+    <div class="bottom-nav" role="navigation" aria-label="主导航">
+      <a href="/" class="bottom-nav-item" aria-label="首页">
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+        </span>
+        <span class="bottom-nav-label">首页</span>
+      </a>
+      <a href="/etf" class="bottom-nav-item" aria-label="指数ETF">
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </span>
+        <span class="bottom-nav-label">指数ETF</span>
+      </a>
+      <a href="/sector" class="bottom-nav-item" aria-label="行业ETF">
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </span>
+        <span class="bottom-nav-label">行业ETF</span>
+      </a>
+      <a href="/heatmap" class="bottom-nav-item active" aria-label="热力图">
+        <span class="bottom-nav-icon">🌡️</span>
+        <span class="bottom-nav-label">热力图</span>
+      </a>
+      <a href="/analysis" class="bottom-nav-item" aria-label="可视化分析">
+        <span class="bottom-nav-icon">📊</span>
+        <span class="bottom-nav-label">分析</span>
+      </a>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+    try {
+
+    var chartShareStd = null;
+    var chartKlinePivot = null;
+
+    function buildHeatmapOption(data, title) {
+        var labels = data.labels || [];
+        var matrix = data.matrix || [];
+        var n = labels.length;
+
+        if (n === 0) {
+            return null;
+        }
+
+        var th = ATM.getChartTheme();
+
+        var heatmapData = [];
+        var minVal = 1, maxVal = -1;
+        for (var i = 0; i < n; i++) {
+            for (var j = 0; j < n; j++) {
+                var val = matrix[i][j];
+                heatmapData.push([j, i, val]);
+                if (i !== j) {
+                    if (val < minVal) minVal = val;
+                    if (val > maxVal) maxVal = val;
+                }
+            }
+        }
+
+        var visualMin = Math.min(minVal, -1);
+        var visualMax = Math.max(maxVal, 1);
+
+        return {
+            backgroundColor: 'transparent',
+            textStyle: th.textStyle,
+            title: {
+                text: title,
+                left: '3%',
+                top: '2%',
+                textStyle: {
+                    color: '#1A1C19',
+                    fontWeight: 600,
+                    fontSize: 14,
+                    fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+                }
+            },
+            tooltip: {
+                backgroundColor: th.tooltip.backgroundColor,
+                borderColor: th.tooltip.borderColor,
+                textStyle: th.tooltip.textStyle,
+                formatter: function(params) {
+                    var row = labels[params.value[1]];
+                    var col = labels[params.value[0]];
+                    var val = params.value[2];
+                    return '<b>' + row + ' ↔ ' + col + '</b><br/>相关系数: <b>' + val.toFixed(4) + '</b>';
+                }
+            },
+            grid: {
+                left: '15%',
+                right: '12%',
+                top: '10%',
+                bottom: '15%'
+            },
+            xAxis: {
+                type: 'category',
+                data: labels,
+                axisLabel: {
+                    color: th.axisLabelColor,
+                    fontSize: 10,
+                    rotate: 45,
+                    interval: 0
+                },
+                splitArea: { show: false }
+            },
+            yAxis: {
+                type: 'category',
+                data: labels,
+                axisLabel: {
+                    color: th.axisLabelColor,
+                    fontSize: 10,
+                    interval: 0
+                },
+                splitArea: { show: false }
+            },
+            visualMap: {
+                min: visualMin,
+                max: visualMax,
+                calculable: true,
+                orient: 'vertical',
+                right: '2%',
+                top: 'center',
+                inRange: {
+                    color: ['#2166AC', '#4393C3', '#92C5DE', '#D1E5F0',
+                            '#F7F7F7',
+                            '#FDDBC7', '#F4A582', '#D6604D', '#B2182B']
+                },
+                textStyle: {
+                    color: th.axisLabelColor,
+                    fontSize: 11
+                }
+            },
+            series: [{
+                name: '相关系数',
+                type: 'heatmap',
+                data: heatmapData,
+                label: {
+                    show: n <= 16,
+                    fontSize: 9,
+                    color: '#333',
+                    formatter: function(params) {
+                        return params.value[2].toFixed(2);
+                    }
+                },
+                emphasis: {
+                    itemStyle: {
+                        shadowBlur: 10,
+                        shadowColor: 'rgba(0, 0, 0, 0.3)'
+                    }
+                }
+            }]
+        };
+    }
+
+    function renderChart(elId, data, title, chartInstance) {
+        var el = document.getElementById(elId);
+        if (chartInstance && !chartInstance.isDisposed()) chartInstance.dispose();
+        el.innerHTML = '';
+
+        if (data.error || !data.labels || data.labels.length === 0) {
+            el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--c-text-tertiary);">' + (data.error || '暂无数据') + '</div>';
+            return null;
+        }
+
+        var chart = echarts.init(el);
+        var option = buildHeatmapOption(data, title);
+        if (option) {
+            chart.setOption(option, true);
+        }
+        return chart;
+    }
+
+    async function loadData() {
+        try { await ATMChart.load(); } catch(e) { console.warn('ECharts load failed:', e); }
+
+        try {
+            var resp1 = await fetch('/api/heatmap/share-std-correlation');
+            var data1 = await resp1.json();
+            chartShareStd = renderChart('chart-share-std', data1, '份额变化波动相关性', chartShareStd);
+        } catch(e) {
+            console.error('加载份额相关性失败:', e);
+            document.getElementById('chart-share-std').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--c-text-tertiary);">加载失败</div>';
+        }
+
+        try {
+            var resp2 = await fetch('/api/heatmap/kline-pivot-correlation');
+            var data2 = await resp2.json();
+            chartKlinePivot = renderChart('chart-kline-pivot', data2, 'K线中枢相关性', chartKlinePivot);
+        } catch(e) {
+            console.error('加载K线中枢相关性失败:', e);
+            document.getElementById('chart-kline-pivot').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--c-text-tertiary);">加载失败</div>';
+        }
+    }
+
+    ATMChart.initPage();
+
+    ATMPerf.VisibilityManager.register(
+        function() {
+            if (chartShareStd) chartShareStd.resize();
+            if (chartKlinePivot) chartKlinePivot.resize();
+        },
+        function() {
+            setTimeout(function() {
+                if (chartShareStd) chartShareStd.resize();
+                if (chartKlinePivot) chartKlinePivot.resize();
+            }, 200);
+        }
+    );
+
+    window.addEventListener('beforeunload', function() {
+        if (chartShareStd && !chartShareStd.isDisposed()) chartShareStd.dispose();
+        if (chartKlinePivot && !chartKlinePivot.isDisposed()) chartKlinePivot.dispose();
+    });
+
+    loadData();
+    window.__atmPageReady();
+    } catch(e) { console.error('Heatmap page init error:', e); }
+    });
+    </script>
+</body>
+</html>
