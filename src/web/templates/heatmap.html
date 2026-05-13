@@ -163,8 +163,8 @@
                 formatter: function(params) {
                     var row = labels[params.value[1]];
                     var col = labels[params.value[0]];
-                    var val = params.value[2];
-                    return '<b>' + row + ' ↔ ' + col + '</b><br/>相关系数: <b>' + val.toFixed(4) + '</b>';
+                    var val = params.value[2] * 100;
+                    return '<b>' + row + ' ↔ ' + col + '</b><br/>相关系数: <b>' + val.toFixed(1) + '%</b>';
                 }
             },
             grid: {
@@ -195,8 +195,8 @@
                 splitArea: { show: false }
             },
             visualMap: {
-                min: visualMin,
-                max: visualMax,
+                min: visualMin * 100,
+                max: visualMax * 100,
                 calculable: true,
                 orient: 'vertical',
                 right: '2%',
@@ -209,18 +209,22 @@
                 textStyle: {
                     color: th.axisLabelColor,
                     fontSize: 11
+                },
+                formatter: function(value) {
+                    return value.toFixed(0) + '%';
                 }
             },
             series: [{
                 name: '相关系数',
                 type: 'heatmap',
                 data: heatmapData,
+                aspectScale: 1,
                 label: {
                     show: n <= 16,
                     fontSize: 9,
                     color: '#333',
                     formatter: function(params) {
-                        return params.value[2].toFixed(2);
+                        return (params.value[2] * 100).toFixed(0) + '%';
                     }
                 },
                 emphasis: {
