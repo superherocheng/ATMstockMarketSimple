@@ -131,7 +131,8 @@
         for (var i = 0; i < n; i++) {
             for (var j = 0; j < n; j++) {
                 var val = matrix[i][j];
-                heatmapData.push([j, i, val]);
+                var valPercent = val * 100;
+                heatmapData.push([j, i, valPercent]);
                 if (i !== j) {
                     if (val < minVal) minVal = val;
                     if (val > maxVal) maxVal = val;
@@ -139,8 +140,8 @@
             }
         }
 
-        var visualMin = Math.min(minVal, -1);
-        var visualMax = Math.max(maxVal, 1);
+        var visualMin = Math.min(minVal, -1) * 100;
+        var visualMax = Math.max(maxVal, 1) * 100;
 
         return {
             backgroundColor: 'transparent',
@@ -169,9 +170,10 @@
             },
             grid: {
                 left: '15%',
-                right: '12%',
-                top: '10%',
-                bottom: '15%'
+                right: '15%',
+                top: '12%',
+                bottom: '12%',
+                containLabel: false
             },
             xAxis: {
                 type: 'category',
@@ -195,16 +197,16 @@
                 splitArea: { show: false }
             },
             visualMap: {
-                min: visualMin * 100,
-                max: visualMax * 100,
+                min: visualMin,
+                max: visualMax,
                 calculable: true,
                 orient: 'vertical',
                 right: '2%',
                 top: 'center',
                 inRange: {
-                    color: ['#6D4C41', '#8D6E63', '#BCAAA4', '#D7CCC8',
-                            '#FFF8E1',
-                            '#FFE0B2', '#FFCC80', '#FFA726', '#E65100']
+                    color: ['#404080', '#4080A0', '#60A080', '#A0C080',
+                            '#E0E0A0',
+                            '#E0C080', '#E0A060', '#C08040', '#C04040']
                 },
                 textStyle: {
                     color: th.axisLabelColor,
@@ -224,7 +226,7 @@
                     fontSize: 9,
                     color: '#333',
                     formatter: function(params) {
-                        return (params.value[2] * 100).toFixed(0) + '%';
+                        return params.value[2].toFixed(0) + '%';
                     }
                 },
                 emphasis: {
