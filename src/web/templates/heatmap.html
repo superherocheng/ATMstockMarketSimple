@@ -164,15 +164,15 @@
                 formatter: function(params) {
                     var row = labels[params.value[1]];
                     var col = labels[params.value[0]];
-                    var val = params.value[2] * 100;
+                    var val = params.value[2];
                     return '<b>' + row + ' ↔ ' + col + '</b><br/>相关系数: <b>' + val.toFixed(1) + '%</b>';
                 }
             },
             grid: {
-                left: '15%',
-                right: '15%',
-                top: '12%',
-                bottom: '12%',
+                left: 100,
+                right: 100,
+                top: 50,
+                bottom: 80,
                 containLabel: false
             },
             xAxis: {
@@ -220,7 +220,10 @@
                 name: '相关系数',
                 type: 'heatmap',
                 data: heatmapData,
-                aspectScale: 1,
+                itemStyle: {
+                    borderWidth: 1,
+                    borderColor: '#fff'
+                },
                 label: {
                     show: n <= 16,
                     fontSize: 9,
@@ -253,6 +256,32 @@
         var option = buildHeatmapOption(data, title);
         if (option) {
             chart.setOption(option, true);
+            
+            // 动态调整grid使格子为正方形
+            var width = el.clientWidth;
+            var height = el.clientHeight;
+            var n = data.labels.length;
+            
+            // 计算可用区域（减去visualMap等）
+            var availWidth = width - 120;  // 右侧visualMap约120px
+            var availHeight = height;
+            
+            // 计算grid边距使绘图区域为正方形
+            var gridSize = Math.min(availWidth - 100, availHeight - 130);
+            var left = 100;
+            var right = width - left - gridSize;
+            var top = (height - gridSize) / 2;
+            var bottom = height - top - gridSize;
+            
+            chart.setOption({
+                grid: {
+                    left: left,
+                    right: Math.max(right, 80),
+                    top: Math.max(top, 30),
+                    bottom: Math.max(bottom, 50),
+                    containLabel: false
+                }
+            });
         }
         return chart;
     }
