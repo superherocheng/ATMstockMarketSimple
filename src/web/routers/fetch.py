@@ -423,3 +423,21 @@ async def api_etf_share_update():
     except Exception as e:
         logger.error(f"更新ETF份额失败: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@router.post("/api/cache/invalidate")
+async def api_cache_invalidate(category: str = None):
+    """
+    清除服务端全部缓存（两级缓存：Redis + 内存）
+
+    可选参数 category：仅清除某一类缓存，如 'etf' / 'overview' / 'analysis'
+    不带参数则清除所有缓存。
+    """
+    from src.web.services.cache import _cache_invalidate
+    if category:
+        _cache_invalidate(category)
+        logger.info("缓存已清除 (category=%s)", category)
+    else:
+        _cache_invalidate("etf", "overview", "analysis")
+        logger.info("所有缓存已清除")
+    return {"status": "ok", "category": category or "all"}

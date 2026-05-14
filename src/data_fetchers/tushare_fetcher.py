@@ -933,6 +933,35 @@ def _write_fina_batch(conn, batch_dfs, required):
 
 
 # ══════════════════════════════════════════════════
+#  缓存清除（在数据更新后通知 Web 服务刷新）
+# ══════════════════════════════════════════════════
+def _invalidate_web_cache():
+    """清除 Web 服务的两级缓存（Redis + 内存），使新数据立即生效"""
+    # 方式1：直接清除 Redis（进程间共享）
+    try:
+        from src.web.services.cache import _cache_invalidate
+        _cache_invalidate("etf", "overview", "analysis")
+        print("[OK] Redis 缓存已清除")
+    except ImportError:
+        print("[SKIP] 无法导入缓存模块，跳过 Redis 清除")
+    except Exception as e:
+        print(f"[SKIP] Redis 缓存清除异常: {e}")
+
+    # 方式2：通过 HTTP 通知 Web 服务清除自身的内存缓存
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            "http://localhost:8500/api/cache/invalidate",
+            method="POST", data=b"{}",
+            headers={"Content-Type": "application/json"}
+        )
+        urllib.request.urlopen(req, timeout=3)
+        print("[OK] Web 服务缓存已刷新")
+    except Exception:
+        print("[INFO] Web 服务未运行或无法连接，下次启动后自动加载新数据")
+
+
+# ══════════════════════════════════════════════════
 #  主入口
 # ══════════════════════════════════════════════════
 def main():
@@ -970,6 +999,7 @@ def main():
                 print("[OK] Analysis computation complete")
             except Exception as e:
                 print(f"[SKIP] Analysis computation failed: {e}")
+            _invalidate_web_cache()
             return
         if args.stocks:
             fetch_stock_list()
@@ -993,6 +1023,7 @@ def main():
             print("[OK] Analysis computation complete")
         except Exception as e:
             print(f"[SKIP] Analysis computation failed: {e}")
+        _invalidate_web_cache()
         fetch_stock_list()
         fetch_stock_daily()
         fetch_daily_basic()
