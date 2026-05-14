@@ -53,7 +53,7 @@
                         数据管理
                     </h2>
                     <div class="data-mgmt-buttons">
-                        <button onclick="fetchEtfShare()" id="btn-etf-share" class="btn btn-secondary data-mgmt-btn">ETF份额</button>
+                        <span id="share-status" class="share-status-badge"><span class="spinner spinner-sm"></span></span>
                         <button onclick="oneClickUpdate()" id="btn-update" class="btn btn-primary data-mgmt-btn">一键更新</button>
                     </div>
                 </div>
@@ -223,12 +223,10 @@
     }
 
     function disableAllButtons() {
-        document.getElementById("btn-etf-share").disabled = true;
         document.getElementById("btn-update").disabled = true;
     }
 
     function enableAllButtons() {
-        document.getElementById("btn-etf-share").disabled = false;
         document.getElementById("btn-update").disabled = false;
     }
 
@@ -237,74 +235,27 @@
         btn.innerHTML = '<span class="spinner spinner-sm"></span> ' + text;
     }
 
-    function resetButtonEtfShare() { document.getElementById("btn-etf-share").innerHTML = 'ETF份额'; }
     function resetButtonAll() { document.getElementById("btn-update").innerHTML = '一键更新'; }
 
-    async function fetchEtfShare() {
-        disableAllButtons();
-        setButtonLoading("btn-etf-share", "检查中...");
+    async function updateShareStatus() {
         try {
             var resp = await fetch("/api/etf-share/status");
             var status = await resp.json();
-            
+            var el = document.getElementById("share-status");
+            if (!el) return;
             if (status.error) {
-                alert("检查失败: " + status.error);
-                enableAllButtons();
-                resetButtonEtfShare();
+                el.innerHTML = '<span class="status-dot status-dot-error"></span> 份额: 获取失败';
                 return;
             }
-            
-            if (status.is_up_to_date) {
-                var msg = "ETF份额数据已是最新！\n\n";
-                msg += "最新交易日: " + fmtDateDisplay(status.latest_trading_date) + "\n";
-                msg += "宽基ETF: " + status.index_etf.length + " 只\n";
-                msg += "行业ETF: " + status.sector_etf.length + " 只\n";
-                msg += "总计: " + status.summary.total + " 只";
-                alert(msg);
-                enableAllButtons();
-                resetButtonEtfShare();
-            } else {
-                var notFresh = status.summary.not_fresh_codes;
-                var confirmMsg = "发现 " + notFresh.length + " 只ETF份额数据需要更新：\n\n";
-                for (var i = 0; i < Math.min(notFresh.length, 5); i++) {
-                    var item = notFresh[i];
-                    confirmMsg += item.name + " (" + item.code + "): " + (item.max_date ? fmtDateDisplay(item.max_date) : "无数据") + "\n";
-                }
-                if (notFresh.length > 5) {
-                    confirmMsg += "... 还有 " + (notFresh.length - 5) + " 只\n";
-                }
-                confirmMsg += "\n最新交易日: " + fmtDateDisplay(status.latest_trading_date) + "\n\n";
-                confirmMsg += "是否尝试更新？";
-                
-                if (confirm(confirmMsg)) {
-                    setButtonLoading("btn-etf-share", "更新中...");
-                    var updateResp = await fetch("/api/etf-share/update", { method: "POST" });
-                    var updateResult = await updateResp.json();
-                    
-                    if (updateResult.error) {
-                        alert("更新失败: " + updateResult.error);
-                    } else if (updateResult.status === "already_fresh") {
-                        alert(updateResult.message);
-                    } else if (updateResult.status === "data_not_ready") {
-                        var warnMsg = updateResult.message + "\n\n";
-                        for (var j = 0; j < updateResult.not_ready.length; j++) {
-                            var nr = updateResult.not_ready[j];
-                            warnMsg += nr.name + " (" + nr.code + "): " + (nr.max_date ? fmtDateDisplay(nr.max_date) : "无数据") + "\n";
-                        }
-                        warnMsg += "\n请稍后再试，Tushare数据通常在交易日16:00后更新。";
-                        alert(warnMsg);
-                    } else if (updateResult.status === "updated") {
-                        alert("更新成功！\n\n" + updateResult.message + "\n最新数据: " + fmtDateDisplay(updateResult.latest_trading_date));
-                        loadDataRange();
-                    }
-                }
-                enableAllButtons();
-                resetButtonEtfShare();
-            }
+            var fresh = status.summary ? status.summary.fresh : 0;
+            var total = status.summary ? status.summary.total : 0;
+            var pct = total > 0 ? (fresh / total * 100) : 0;
+            var colorClass = pct >= 100 ? 'status-dot-ok' : (fresh > 0 ? 'status-dot-warn' : 'status-dot-error');
+            var label = pct >= 100 ? '完整' : (fresh + '/' + total);
+            el.innerHTML = '<span class="status-dot ' + colorClass + '"></span> 份额: ' + label;
         } catch(e) {
-            alert("操作失败: " + e.message);
-            enableAllButtons();
-            resetButtonEtfShare();
+            var el = document.getElementById("share-status");
+            if (el) el.innerHTML = '<span class="status-dot status-dot-error"></span> 份额: 错误';
         }
     }
     
@@ -338,7 +289,6 @@
                 document.getElementById('fetch-status-text').style.color = hasError ? 'var(--c-up)' : 'var(--c-down)';
                 if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
                 enableAllButtons();
-                resetButtonEtfShare();
                 resetButtonAll();
                 loadDataRange();
                 loadOverview();
@@ -362,6 +312,7 @@
     async function loadOverview() {
         loadDataRange();
         loadFetchStatus();
+        updateShareStatus();
         try {
             var resp = await fetch('/api/overview');
             if (!resp.ok) {
@@ -402,7 +353,6 @@
     window.__atmPageReady();
     
     // Expose handler functions for inline onclick attributes
-    window.fetchEtfShare = fetchEtfShare;
     window.oneClickUpdate = oneClickUpdate;
     } catch(e) { console.error('Page init error:', e);
         document.getElementById('data-status').innerHTML = '<div class="error-message"><div class="error-message-title">页面加载错误</div><div class="error-message-detail">' + e.message + '</div></div>';

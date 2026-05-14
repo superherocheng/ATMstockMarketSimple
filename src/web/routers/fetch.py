@@ -114,7 +114,8 @@ def _run_fetch(task_type):
             cmd = [sys.executable, "-u", tushare_script, "--etf"]
             _run_subprocess(tushare_script, cmd, work_dir, "ETF数据", 0, 90)
 
-            # ── 子进程跑完后，再跑一次ETF份额更新（独立容错，不比all-or-nothing）──
+            # ── 子进程跑完后，先重连数据库，再跑ETF份额更新（独立容错）──
+            _ensure_db()
             _add_log("正在更新ETF份额数据...")
             with _fetch_lock:
                 _fetch_status["current_step"] = "更新ETF份额..."
