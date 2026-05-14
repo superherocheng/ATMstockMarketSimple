@@ -17,9 +17,173 @@
         .heatmap-section { margin-bottom: 2rem; }
         .heatmap-section:last-child { margin-bottom: 0; }
         .heatmap-desc { font-size: 13px; color: var(--c-text-tertiary); margin-bottom: 12px; line-height: 1.6; }
-        .heatmap-chart { width: 100%; height: 520px; }
+
+        /* ── 热力图容器 ── */
+        .hm-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .hm-grid {
+            display: grid;
+            gap: 1px;
+            background: var(--c-border-light);
+            border: 1px solid var(--c-border-light);
+            border-radius: 8px;
+            overflow: hidden;
+            min-width: 480px;
+        }
+
+        .hm-grid > .hm-hdr {
+            background: var(--c-bg-tertiary);
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--c-text-secondary);
+            padding: 6px 2px;
+            text-align: center;
+            writing-mode: vertical-lr;
+            text-orientation: mixed;
+            letter-spacing: 0.03em;
+            white-space: nowrap;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hm-grid > .hm-lbl {
+            background: var(--c-bg-tertiary);
+            font-size: 11px;
+            color: var(--c-text-secondary);
+            padding: 4px 8px;
+            text-align: right;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 80px;
+        }
+
+        .hm-grid > .hm-cell {
+            padding: 6px 2px;
+            text-align: center;
+            font-size: 11px;
+            font-variant-numeric: tabular-nums;
+            font-family: var(--font-mono);
+            transition: opacity 0.15s ease;
+            cursor: default;
+        }
+
+        .hm-grid > .hm-cell:hover {
+            opacity: 0.8;
+        }
+
+        .hm-grid > .hm-diag {
+            font-weight: 700;
+            cursor: default;
+        }
+
+        /* ── 色阶图例 ── */
+        .hm-legend {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            padding: 0 2px;
+        }
+
+        .hm-legend-bar {
+            flex: 1;
+            height: 12px;
+            border-radius: 6px;
+            background: linear-gradient(90deg,
+                #404080 0%,
+                #4080A0 12.5%,
+                #60A080 25%,
+                #A0C080 37.5%,
+                #E0E0A0 50%,
+                #E0C080 62.5%,
+                #E0A060 75%,
+                #C08040 87.5%,
+                #C04040 100%);
+        }
+
+        .hm-legend-label {
+            font-size: 10px;
+            color: var(--c-text-tertiary);
+            font-family: var(--font-mono);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        .hm-tooltip {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            background: var(--c-card);
+            border: 1px solid var(--c-border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            box-shadow: var(--shadow-lg);
+            pointer-events: none;
+            line-height: 1.5;
+        }
+        .hm-tooltip.show { display: block; }
+        .hm-tooltip b { color: var(--c-accent); }
+
+        /* ── 分析报告 ── */
+        .hm-report {
+            width: 280px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .hm-report-list {
+            flex: 1;
+            overflow-y: auto;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .hm-report-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 8px;
+            border-bottom: 1px solid var(--c-border-light);
+            gap: 8px;
+        }
+        .hm-report-item:last-child { border-bottom: none; }
+        .hm-report-pair {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .hm-report-val {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
         @media (max-width: 768px) {
-            .heatmap-chart { height: 420px; }
+            .hm-grid > .hm-hdr {
+                height: 60px;
+                font-size: 9px;
+            }
+            .hm-grid > .hm-lbl {
+                font-size: 10px;
+                max-width: 60px;
+                padding: 4px 4px;
+            }
+            .hm-grid > .hm-cell {
+                font-size: 10px;
+                padding: 4px 1px;
+            }
+            .hm-report {
+                width: 100%;
+                max-height: 300px;
+                margin-top: 12px;
+            }
         }
     </style>
 </head>
@@ -53,8 +217,16 @@
                 <p class="heatmap-desc">
                     基于近20日滚动标准差序列，展示各行业ETF份额变化波动率之间的相关性。数值越接近1表示波动节奏越同步，越接近-1表示越反向。
                 </p>
-                <div id="chart-share-std" class="heatmap-chart">
-                    <div class="skeleton skeleton-chart"></div>
+                <div style="display:flex; gap:16px; align-items:stretch; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:0;">
+                        <div id="chart-share-std" class="hm-wrap">
+                            <div class="skeleton skeleton-chart" style="height:300px;"></div>
+                        </div>
+                    </div>
+                    <div id="report-share-std" class="glass rounded-xl p-3 hm-report">
+                        <div style="font-size:12px;font-weight:600;color:var(--c-text-secondary);padding-bottom:6px;border-bottom:1px solid var(--c-border-light);margin-bottom:4px;">相关性分析报告</div>
+                        <div class="hm-report-list" style="color:var(--c-text-tertiary);font-size:11px;">加载中...</div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -68,8 +240,16 @@
                 <p class="heatmap-desc">
                     基于近20日K线中枢 (O+C+H+L)/4 序列，展示中证500ETF与各行业ETF价格走势的相关程度。数值越接近1表示走势越趋同。
                 </p>
-                <div id="chart-kline-pivot" class="heatmap-chart">
-                    <div class="skeleton skeleton-chart"></div>
+                <div style="display:flex; gap:16px; align-items:stretch; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:0;">
+                        <div id="chart-kline-pivot" class="hm-wrap">
+                            <div class="skeleton skeleton-chart" style="height:300px;"></div>
+                        </div>
+                    </div>
+                    <div id="report-kline-pivot" class="glass rounded-xl p-3 hm-report">
+                        <div style="font-size:12px;font-weight:600;color:var(--c-text-secondary);padding-bottom:6px;border-bottom:1px solid var(--c-border-light);margin-bottom:4px;">相关性分析报告</div>
+                        <div class="hm-report-list" style="color:var(--c-text-tertiary);font-size:11px;">加载中...</div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -78,6 +258,9 @@
     <footer>
         <p>ATMstockMarket — 数据来源: Tushare / AKShare | 仅供学习研究，不构成投资建议</p>
     </footer>
+
+    <!-- Tooltip -->
+    <div id="hm-tooltip" class="hm-tooltip"></div>
 
     <div class="bottom-nav" role="navigation" aria-label="主导航">
       <a href="/" class="bottom-nav-item" aria-label="首页">
@@ -112,221 +295,196 @@
     document.addEventListener('DOMContentLoaded', function() {
     try {
 
-    var chartShareStd = null;
-    var chartKlinePivot = null;
+    // ── 9色调色板（与原ECharts配色一致）──
+    var PALETTE = ['#404080','#4080A0','#60A080','#A0C080','#E0E0A0','#E0C080','#E0A060','#C08040','#C04040'];
 
-    function buildHeatmapOption(data, title) {
-        var labels = data.labels || [];
-        var matrix = data.matrix || [];
-        var n = labels.length;
+    // ── 工具函数：色值插值 ──
+    function hexToRgb(hex) {
+        var r = parseInt(hex.slice(1,3), 16);
+        var g = parseInt(hex.slice(3,5), 16);
+        var b = parseInt(hex.slice(5,7), 16);
+        return [r,g,b];
+    }
 
-        if (n === 0) {
-            return null;
+    function lerpColor(a, b, t) {
+        var ca = hexToRgb(a), cb = hexToRgb(b);
+        var r = Math.round(ca[0] + (cb[0] - ca[0]) * t);
+        var g = Math.round(ca[1] + (cb[1] - ca[1]) * t);
+        var b = Math.round(ca[2] + (cb[2] - ca[2]) * t);
+        return 'rgb(' + r + ',' + g + ',' + b + ')';
+    }
+
+    function getCellColor(val) {
+        // val: -100 ~ 100
+        var pos = (val + 100) / 25; // 0 ~ 8
+        var idx = Math.max(0, Math.min(7, Math.floor(pos)));
+        var t = pos - idx;
+        if (idx >= 7) t = 0;
+        return lerpColor(PALETTE[idx], PALETTE[idx + 1], t);
+    }
+
+    function textColorFor(bg) {
+        var m = bg.match(/rgb\((\d+),(\d+),(\d+)\)/);
+        if (!m) return '#333';
+        var lum = (0.299 * +m[1] + 0.587 * +m[2] + 0.114 * +m[3]) / 255;
+        return lum > 0.55 ? '#1A1C19' : '#ffffff';
+    }
+
+    // ── 渲染函数 ──
+    function renderHeatmap(containerId, data) {
+        var el = document.getElementById(containerId);
+        el.innerHTML = '';
+
+        if (!data || data.error || !data.labels || data.labels.length === 0) {
+            el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--c-text-tertiary);">' + (data.error || '暂无数据') + '</div>';
+            return;
         }
 
-        var th = ATM.getChartTheme();
+        var labels = data.labels;
+        var matrix = data.matrix;
+        var n = labels.length;
 
-        var heatmapData = [];
-        var minVal = 1, maxVal = -1;
+        // Build grid: n+1 rows (header + n labels), n+1 cols (corner + n headers)
+        var cols = 'auto' + ' 1fr'.repeat(n);
+        var html = '<div class="hm-grid" style="grid-template-columns:' + cols + ';">';
+
+        // ── 左上角 ──
+        html += '<div class="hm-hdr" style="writing-mode:unset;font-size:11px;height:auto;padding:4px;">vs</div>';
+
+        // ── 列标签 ──
+        for (var j = 0; j < n; j++) {
+            html += '<div class="hm-hdr">' + escapeHtml(labels[j]) + '</div>';
+        }
+
+        // ── 数据行 ──
         for (var i = 0; i < n; i++) {
+            // 行标签
+            html += '<div class="hm-lbl" title="' + escapeHtml(labels[i]) + '">' + escapeHtml(labels[i]) + '</div>';
+
             for (var j = 0; j < n; j++) {
                 var val = matrix[i][j];
-                var valPercent = val * 100;
-                heatmapData.push([j, i, valPercent]);
-                if (i !== j) {
-                    if (val < minVal) minVal = val;
-                    if (val > maxVal) maxVal = val;
+                var pct = Math.round(val * 100);
+                var color = getCellColor(pct);
+                var textColor = textColorFor(color);
+                var isDiag = (i === j);
+                var cls = isDiag ? 'hm-cell hm-diag' : 'hm-cell';
+                var tooltip = escapeHtml(labels[i]) + ' ↔ ' + escapeHtml(labels[j]) + '：' + pct + '%';
+
+                html += '<div class="' + cls + '" style="background:' + color + ';color:' + textColor + ';" data-tip="' + tooltip + '">' + pct + '%</div>';
+            }
+        }
+
+        html += '</div>';
+
+        // ── 色阶图例（放在下方）──
+        html += '<div class="hm-legend">';
+        html += '<span class="hm-legend-label">-100%</span>';
+        html += '<div class="hm-legend-bar"></div>';
+        html += '<span class="hm-legend-label">+100%</span>';
+        html += '</div>';
+
+        el.innerHTML = html;
+
+        // ── tooltip 绑定 ──
+        var tipEl = document.getElementById('hm-tooltip');
+        el.addEventListener('mouseover', function(e) {
+            var cell = e.target.closest('.hm-cell');
+            if (!cell || !cell.dataset.tip) { tipEl.classList.remove('show'); return; }
+            tipEl.innerHTML = cell.dataset.tip;
+            tipEl.classList.add('show');
+        });
+        el.addEventListener('mousemove', function(e) {
+            tipEl.style.left = (e.clientX + 14) + 'px';
+            tipEl.style.top = (e.clientY - 10) + 'px';
+        });
+        el.addEventListener('mouseout', function(e) {
+            tipEl.classList.remove('show');
+        });
+    }
+
+    // ── 分析报告渲染 ──
+    function renderReport(containerId, data, opts) {
+        opts = opts || {};
+        var threshold = opts.threshold || 0.70;
+        var topLabel = opts.topLabel || '';
+        var el = document.getElementById(containerId);
+        if (!data || data.error || !data.labels || data.labels.length < 2) {
+            el.innerHTML = '<div class="hm-report-list" style="color:var(--c-text-tertiary);font-size:11px;">数据不足</div>';
+            return;
+        }
+
+        var labels = data.labels;
+        var matrix = data.matrix;
+        var n = labels.length;
+        var pairs = [];
+
+        for (var i = 0; i < n; i++) {
+            for (var j = i + 1; j < n; j++) {
+                var val = matrix[i][j];
+                var absVal = Math.abs(val);
+                if (absVal > threshold) {
+                    pairs.push({
+                        a: labels[i],
+                        b: labels[j],
+                        val: val,
+                        pct: Math.round(val * 100),
+                        hasTop: topLabel && (labels[i] === topLabel || labels[j] === topLabel)
+                    });
                 }
             }
         }
 
-        var visualMin = Math.min(minVal, -1) * 100;
-        var visualMax = Math.max(maxVal, 1) * 100;
+        pairs.sort(function(x, y) {
+            if (x.hasTop !== y.hasTop) return x.hasTop ? -1 : 1;
+            return Math.abs(y.val) - Math.abs(x.val);
+        });
 
-        return {
-            backgroundColor: 'transparent',
-            textStyle: th.textStyle,
-            title: {
-                text: title,
-                left: '3%',
-                top: '2%',
-                textStyle: {
-                    color: '#1A1C19',
-                    fontWeight: 600,
-                    fontSize: 14,
-                    fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
-                }
-            },
-            tooltip: {
-                backgroundColor: th.tooltip.backgroundColor,
-                borderColor: th.tooltip.borderColor,
-                textStyle: th.tooltip.textStyle,
-                formatter: function(params) {
-                    var row = labels[params.value[1]];
-                    var col = labels[params.value[0]];
-                    var val = params.value[2];
-                    return '<b>' + row + ' ↔ ' + col + '</b><br/>相关系数: <b>' + val.toFixed(1) + '%</b>';
-                }
-            },
-            grid: {
-                left: 100,
-                right: 100,
-                top: 50,
-                bottom: 80,
-                containLabel: false
-            },
-            xAxis: {
-                type: 'category',
-                data: labels,
-                axisLabel: {
-                    color: th.axisLabelColor,
-                    fontSize: 10,
-                    rotate: 45,
-                    interval: 0
-                },
-                splitArea: { show: false }
-            },
-            yAxis: {
-                type: 'category',
-                data: labels,
-                axisLabel: {
-                    color: th.axisLabelColor,
-                    fontSize: 10,
-                    interval: 0
-                },
-                splitArea: { show: false }
-            },
-            visualMap: {
-                min: visualMin,
-                max: visualMax,
-                calculable: true,
-                orient: 'vertical',
-                right: '2%',
-                top: 'center',
-                inRange: {
-                    color: ['#404080', '#4080A0', '#60A080', '#A0C080',
-                            '#E0E0A0',
-                            '#E0C080', '#E0A060', '#C08040', '#C04040']
-                },
-                textStyle: {
-                    color: th.axisLabelColor,
-                    fontSize: 11
-                },
-                formatter: function(value) {
-                    return value.toFixed(0) + '%';
-                }
-            },
-            series: [{
-                name: '相关系数',
-                type: 'heatmap',
-                data: heatmapData,
-                itemStyle: {
-                    borderWidth: 1,
-                    borderColor: '#fff'
-                },
-                label: {
-                    show: n <= 16,
-                    fontSize: 9,
-                    color: '#333',
-                    formatter: function(params) {
-                        return params.value[2].toFixed(0) + '%';
-                    }
-                },
-                emphasis: {
-                    itemStyle: {
-                        shadowBlur: 10,
-                        shadowColor: 'rgba(0, 0, 0, 0.3)'
-                    }
-                }
-            }]
-        };
+        var pctLabel = Math.round(threshold * 100);
+        var html = '<div class="hm-report-list">';
+        html += '<div style="color:var(--c-text);font-size:11px;margin-bottom:8px;">共发现 <b style="color:var(--c-accent);">' + pairs.length + '</b> 对强相关组合（|r| > ' + pctLabel + '%）</div>';
+
+        if (pairs.length === 0) {
+            html += '<div style="color:var(--c-text-tertiary);font-size:11px;padding:8px 0;">暂无相关性绝对值超过' + pctLabel + '%的组合</div>';
+        } else {
+            for (var k = 0; k < pairs.length; k++) {
+                var p = pairs[k];
+                var color = p.val > 0 ? 'var(--c-up)' : 'var(--c-down)';
+                html += '<div class="hm-report-item"><span class="hm-report-pair">' + escapeHtml(p.a) + ' ↔ ' + escapeHtml(p.b) + '</span><span class="hm-report-val" style="color:' + color + ';">' + (p.val > 0 ? '+' : '') + p.pct + '%</span></div>';
+            }
+        }
+        html += '</div>';
+        el.innerHTML = html;
     }
 
-    function renderChart(elId, data, title, chartInstance) {
-        var el = document.getElementById(elId);
-        if (chartInstance && !chartInstance.isDisposed()) chartInstance.dispose();
-        el.innerHTML = '';
-
-        if (data.error || !data.labels || data.labels.length === 0) {
-            el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--c-text-tertiary);">' + (data.error || '暂无数据') + '</div>';
-            return null;
-        }
-
-        var chart = echarts.init(el);
-        var option = buildHeatmapOption(data, title);
-        if (option) {
-            chart.setOption(option, true);
-            
-            // 动态调整grid使格子为正方形
-            var width = el.clientWidth;
-            var height = el.clientHeight;
-            var n = data.labels.length;
-            
-            // 计算可用区域（减去visualMap等）
-            var availWidth = width - 120;  // 右侧visualMap约120px
-            var availHeight = height;
-            
-            // 计算grid边距使绘图区域为正方形
-            var gridSize = Math.min(availWidth - 100, availHeight - 130);
-            var left = 100;
-            var right = width - left - gridSize;
-            var top = (height - gridSize) / 2;
-            var bottom = height - top - gridSize;
-            
-            chart.setOption({
-                grid: {
-                    left: left,
-                    right: Math.max(right, 80),
-                    top: Math.max(top, 30),
-                    bottom: Math.max(bottom, 50),
-                    containLabel: false
-                }
-            });
-        }
-        return chart;
+    function escapeHtml(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
+    // ── 数据加载 ──
     async function loadData() {
-        try { await ATMChart.load(); } catch(e) { console.warn('ECharts load failed:', e); }
-
         try {
             var resp1 = await fetch('/api/heatmap/share-std-correlation');
             var data1 = await resp1.json();
-            chartShareStd = renderChart('chart-share-std', data1, '份额变化波动相关性', chartShareStd);
+            renderHeatmap('chart-share-std', data1);
+            renderReport('report-share-std', data1);
         } catch(e) {
             console.error('加载份额相关性失败:', e);
-            document.getElementById('chart-share-std').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--c-text-tertiary);">加载失败</div>';
+            document.getElementById('chart-share-std').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--c-text-tertiary);">加载失败</div>';
+            document.getElementById('report-share-std').innerHTML = '<div class="hm-report-list" style="color:var(--c-text-tertiary);font-size:11px;">加载失败</div>';
         }
 
         try {
             var resp2 = await fetch('/api/heatmap/kline-pivot-correlation');
             var data2 = await resp2.json();
-            chartKlinePivot = renderChart('chart-kline-pivot', data2, 'K线中枢相关性', chartKlinePivot);
+            renderHeatmap('chart-kline-pivot', data2);
+            renderReport('report-kline-pivot', data2, { threshold: 0.80, topLabel: '中证500ETF' });
         } catch(e) {
             console.error('加载K线中枢相关性失败:', e);
-            document.getElementById('chart-kline-pivot').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--c-text-tertiary);">加载失败</div>';
+            document.getElementById('chart-kline-pivot').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--c-text-tertiary);">加载失败</div>';
+            document.getElementById('report-kline-pivot').innerHTML = '<div class="hm-report-list" style="color:var(--c-text-tertiary);font-size:11px;">加载失败</div>';
         }
     }
-
-    ATMChart.initPage();
-
-    ATMPerf.VisibilityManager.register(
-        function() {
-            if (chartShareStd) chartShareStd.resize();
-            if (chartKlinePivot) chartKlinePivot.resize();
-        },
-        function() {
-            setTimeout(function() {
-                if (chartShareStd) chartShareStd.resize();
-                if (chartKlinePivot) chartKlinePivot.resize();
-            }, 200);
-        }
-    );
-
-    window.addEventListener('beforeunload', function() {
-        if (chartShareStd && !chartShareStd.isDisposed()) chartShareStd.dispose();
-        if (chartKlinePivot && !chartKlinePivot.isDisposed()) chartKlinePivot.dispose();
-    });
 
     loadData();
     window.__atmPageReady();

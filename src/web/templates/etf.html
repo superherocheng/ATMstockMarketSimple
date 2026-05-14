@@ -491,6 +491,11 @@
         }
     }
 
+    function fmtDate(d) {
+        if (!d) return '-';
+        return d.substring(0,4) + '-' + d.substring(4,6) + '-' + d.substring(6,8);
+    }
+
     function renderShareStd(data) {
         var el = document.getElementById('share-std-card');
         
@@ -550,7 +555,7 @@
                     '</div>' +
                 '</div>' +
                 '<div class="p-3 rounded text-center" style="background:' + (latestChange >= 0 ? '#ecfdf5' : '#fef2f2') + ';">' +
-                    '<div class="text-xs" style="color:var(--c-text-tertiary);">最新份额变化</div>' +
+                    '<div class="text-xs" style="color:var(--c-text-tertiary);">最新份额变化 <span class="font-mono">(' + fmtDate(data.latest_date) + ')</span></div>' +
                     '<div class="flex items-center justify-center gap-2 mt-1">' +
                         '<span class="text-2xl font-bold num-mono font-mono" style="color:' + directionColor + '">' +
                             (latestChange >= 0 ? '+' : '') + latestChange.toFixed(4) + '%' +

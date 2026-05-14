@@ -110,13 +110,25 @@ def _run_fetch(task_type):
     work_dir = str(BASE_DIR.parent.parent)
 
     try:
-        if task_type == "all":
+        if task_type == "all" or task_type == "tushare":
             cmd = [sys.executable, "-u", tushare_script, "--etf"]
-            _run_subprocess(tushare_script, cmd, work_dir, "ETF数据", 0, 100)
+            _run_subprocess(tushare_script, cmd, work_dir, "ETF数据", 0, 90)
 
-        elif task_type == "tushare":
-            cmd = [sys.executable, "-u", tushare_script, "--etf"]
-            _run_subprocess(tushare_script, cmd, work_dir, "ETF数据", 0, 100)
+            # ── 子进程跑完后，再跑一次ETF份额更新（独立容错，不比all-or-nothing）──
+            _add_log("正在更新ETF份额数据...")
+            with _fetch_lock:
+                _fetch_status["current_step"] = "更新ETF份额..."
+            try:
+                share_result = api_etf_share_update()
+                if isinstance(share_result, dict):
+                    if share_result.get("status") == "updated":
+                        _add_log(f"[OK] ETF份额更新成功: {share_result.get('message', '')}")
+                    elif share_result.get("status") == "already_fresh":
+                        _add_log(f"[SKIP] ETF份额已是最新")
+                    elif share_result.get("status") == "data_not_ready":
+                        _add_log(f"[HOLD] 部分ETF份额数据尚未就绪")
+            except Exception as e:
+                _add_log(f"[ERROR] ETF份额更新异常: {e}")
 
         elif task_type == "etf":
             cmd = [sys.executable, "-u", tushare_script, "--etf"]

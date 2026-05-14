@@ -115,6 +115,7 @@ def get_latest_trading_date():
     lookback = (now_bj - timedelta(days=10)).strftime("%Y%m%d")
 
     candidates = []
+    cal_dates = None
 
     # ── 来源 1：Tushare 交易日历 ──
     cal_latest = None
@@ -151,7 +152,14 @@ def get_latest_trading_date():
     if latest == today_str and now_bj.hour < _DATA_AVAILABLE_HOUR_BJ:
         # 回退到之前最近的已知交易日
         candidates_minus_today = [c for c in candidates if c < today_str]
-        latest = max(candidates_minus_today) if candidates_minus_today else None
+        if candidates_minus_today:
+            latest = max(candidates_minus_today)
+        elif cal_dates:
+            # cal_dates 中有完整日历，取今天之前的最后一个交易日
+            prev_from_cal = [d for d in cal_dates if d < today_str]
+            latest = max(prev_from_cal) if prev_from_cal else None
+        else:
+            latest = None
 
     _latest_td_cache = latest
     _latest_td_cache_ts = now_ts
