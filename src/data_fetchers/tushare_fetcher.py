@@ -951,7 +951,7 @@ def _invalidate_web_cache():
     try:
         import urllib.request
         req = urllib.request.Request(
-            "http://localhost:8500/api/cache/invalidate",
+            "http://localhost:8000/api/cache/invalidate",
             method="POST", data=b"{}",
             headers={"Content-Type": "application/json"}
         )
