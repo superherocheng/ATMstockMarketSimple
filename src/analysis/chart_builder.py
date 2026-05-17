@@ -162,7 +162,7 @@ def build_quadrant_heatmap(preset_id: str, forward_days: int = None) -> dict:
         return {"error": "no_data"}
 
     quad_map = {r[0]: float(r[1]) * 100 for r in rows if r[1] is not None}
-    labels = {1: "Q1 强势", 2: "Q2 潜伏", 3: "Q3 逃顶", 4: "Q4 风险"}
+    labels = {1: "Q1 强势", 2: "Q2 潜伏", 3: "Q3 撤离", 4: "Q4 风险"}
 
     quadrants = [
         {"name": labels[2], "value": round(quad_map.get(2, 0), 2),
@@ -206,7 +206,7 @@ def build_group_returns(preset_id: str, forward_days: int = None) -> dict:
     dates = sorted(df["trade_date"].unique())
 
     colors = {1: "#4a7c4a", 2: "#8fbc8f", 3: "#cd853f", 4: "#cd5c5c"}
-    names = {1: "Q1强势", 2: "Q2潜伏", 3: "Q3逃顶", 4: "Q4风险"}
+    names = {1: "Q1强势", 2: "Q2潜伏", 3: "Q3撤离", 4: "Q4风险"}
     series = []
 
     for q in [1, 2, 3, 4]:

@@ -34,7 +34,11 @@
       </div>
     </nav>
 
+    <div id="freshness-bar" class="freshness-bar"></div>
+
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 stagger-children">
+
+        <a href="/" class="back-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>返回首页</a>
         <h2 class="flex items-center gap-3 text-base font-semibold">
             <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
             行业ETF横向对比 &amp; 板块轮动
@@ -178,14 +182,20 @@
 
     var SIGNAL_STYLE = {
         strong: { bg: 'var(--c-up-bg)', color: 'var(--c-up)', label: '强势' },
-        lurk:   { bg: 'var(--c-accent-bg)', color: 'var(--c-accent)', label: '埋伏' },
+        lurk:   { bg: 'var(--c-accent-bg)', color: 'var(--c-accent)', label: '潜伏' },
         exit:   { bg: 'var(--c-down-bg)', color: 'var(--c-down)', label: '撤离' },
         risk:   { bg: 'rgba(255,93,0,0.1)', color: '#ff5d00', label: '风险' },
     };
 
     function renderSectorCards() {
         var container = document.getElementById('sector-cards');
+        // Sort by signal priority: strong > lurk > risk > exit > none
+        var sigOrder = { strong: 0, lurk: 1, risk: 2, exit: 3 };
         var sorted = allSectors.slice().sort(function(a, b) {
+            var sa = (a.signal && a.signal.tag !== 'none') ? (sigOrder[a.signal.tag] !== undefined ? sigOrder[a.signal.tag] : 99) : 99;
+            var sb = (b.signal && b.signal.tag !== 'none') ? (sigOrder[b.signal.tag] !== undefined ? sigOrder[b.signal.tag] : 99) : 99;
+            if (sa !== sb) return sa - sb;
+            // Same signal group: sort by pct_chg descending
             var pa = a.kline && a.kline.length ? parseFloat(a.kline[a.kline.length-1].pct_chg || 0) : 0;
             var pb = b.kline && b.kline.length ? parseFloat(b.kline[b.kline.length-1].pct_chg || 0) : 0;
             return pb - pa;
@@ -196,10 +206,11 @@
             var pct = last ? parseFloat(last.pct_chg || 0) : 0;
             var isSelected = selectedCode === s.ts_code;
             var sig = (s.signal && s.signal.tag !== 'none') ? SIGNAL_STYLE[s.signal.tag] : null;
+            var sigClass = sig ? sig.tag : '';
             var sigHtml = sig
                 ? '<div style="margin-top:4px;font-size:10px;font-weight:600;padding:1px 6px;border-radius:9999px;display:inline-block;background:' + sig.bg + ';color:' + sig.color + ';">' + sig.label + '</div>'
                 : '';
-            return '<div class="sector-card glass rounded-lg p-2 text-center ' + (isSelected ? 'selected' : '') + '" onclick="selectSector(\'' + s.ts_code + '\')">' +
+            return '<div class="sector-card glass rounded-lg p-2 text-center ' + sigClass + ' ' + (isSelected ? 'selected' : '') + '" onclick="selectSector(\'' + s.ts_code + '\')">' +
                 '<div class="text-xs font-bold mb-1">' + s.name + '</div>' +
                 '<div class="text-base font-bold" style="color:' + ATM.pctColor(pct) + '">' + ATM.pctText(pct) + '</div>' +
                 '<div class="text-xs" style="color:var(--c-text-tertiary);">' + (last ? '<span class="pulse-dot"></span> ' + (last.close || '') : '--') + '</div>' +

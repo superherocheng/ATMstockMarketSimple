@@ -35,6 +35,8 @@
       </div>
     </nav>
 
+    <div id="freshness-bar" class="freshness-bar"></div>
+
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-0">
 
     <!-- Preset selector bar -->
@@ -294,6 +296,20 @@
         document.getElementById('kpi-icir').textContent = icir !== null ? icir.toFixed(2) : '--';
         document.getElementById('kpi-ic-win').textContent = icWin !== null ? (icWin * 100).toFixed(1) + '%' : '--';
         document.getElementById('kpi-strong').textContent = strongCount !== null ? strongCount : '--';
+
+        // KPI color coding
+        var icMeanEl = document.getElementById('kpi-ic-mean');
+        if (icMean !== null) {
+            icMeanEl.style.color = icMean > 0.03 ? 'var(--c-up)' : icMean < -0.03 ? 'var(--c-down)' : 'var(--c-text)';
+        }
+        var icirEl = document.getElementById('kpi-icir');
+        if (icir !== null) {
+            icirEl.style.color = icir > 0.3 ? 'var(--c-up)' : icir > 0.15 ? 'var(--c-warning)' : 'var(--c-down)';
+        }
+        var winEl = document.getElementById('kpi-ic-win');
+        if (icWin !== null) {
+            winEl.style.color = icWin > 0.55 ? 'var(--c-up)' : icWin > 0.45 ? 'var(--c-text)' : 'var(--c-down)';
+        }
 
         // Sub labels
         document.getElementById('kpi-ic-mean-sub').textContent = icMean !== null ? (icMean > 0 ? '正向显著' : '负向') : '';

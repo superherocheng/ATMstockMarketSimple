@@ -33,6 +33,40 @@ def _compute_flow(shares: pd.Series, lookback: int) -> float:
     return float(slope / mean_val)
 
 
+def _compute_flow_ewma(shares: pd.Series, lookback: int, halflife: int = 3) -> float:
+    """Compute share trend via EWMA-weighted slope — recent days matter more.
+
+    Uses exponentially decaying weights (halflife=N days) and compresses
+    the resulting slope to [-1, 1] via tanh. More sensitive to recent
+    share changes than plain OLS.
+
+    Returns NaN if insufficient data.
+    """
+    if len(shares) < lookback + 1:
+        return np.nan
+    recent = shares.iloc[-lookback:].astype(float).values
+    if len(recent) < 2:
+        return np.nan
+
+    x = np.arange(len(recent), dtype=float)
+    y = recent / recent.mean()  # normalize to remove scale
+    if np.isnan(y).any():
+        return np.nan
+
+    # EWMA weights — most recent gets highest weight
+    #   weight_i = exp(-ln2 * (N-1-i) / halflife)
+    weights = np.exp(-np.log(2) * (len(recent) - 1 - x) / halflife)
+    weights /= weights.sum()
+
+    # Weighted least-squares slope
+    x_w = x - (x * weights).sum()
+    y_w = y - (y * weights).sum()
+    slope = (weights * x_w * y_w).sum() / (weights * x_w * x_w).sum()
+
+    # Compress to [-1, 1]
+    return float(np.tanh(slope * 3))
+
+
 def _compute_mom(closes: pd.Series, lookback: int, vol_window: int = 60) -> float:
     """Compute volatility-adjusted momentum.
 
@@ -59,12 +93,54 @@ def _compute_mom(closes: pd.Series, lookback: int, vol_window: int = 60) -> floa
     return float(mom)
 
 
+def _compute_mom_rank(closes: pd.Series, lookback: int) -> float:
+    """Compute rank-standardized momentum.
+
+    Steps:
+    1. Raw momentum = close_today / close_{M ago} - 1
+    2. Using the last 120 days as reference distribution, compute rolling
+       lookback-day returns and find the percentile rank of today's value.
+    3. Map percentile rank from [0, 1] to [-1, 1] (centered).
+
+    This eliminates the volatility-adjustment noise and produces a
+    stable cross-sectional rank signal.
+    """
+    if len(closes) < lookback + 1:
+        return np.nan
+
+    close_today = float(closes.iloc[-1])
+    close_past = float(closes.iloc[-(lookback + 1)])
+    if close_past == 0:
+        return np.nan
+    raw_mom = close_today / close_past - 1
+
+    # Use up to 120 days as reference distribution
+    ref_window = min(120, len(closes) - lookback)
+    if ref_window >= 40:
+        hist_closes = closes.iloc[-(lookback + ref_window):].astype(float)
+        hist_rets = (hist_closes / hist_closes.shift(lookback) - 1).dropna()
+        if len(hist_rets) >= 20:
+            rank = (hist_rets < raw_mom).sum() / len(hist_rets)
+            return float(2 * rank - 1)  # [0,1] → [-1,1]
+
+    # Fallback: tanh compression
+    return float(np.tanh(raw_mom * 5))
+
+
 def _cross_sectional_zscore(values: pd.Series) -> pd.Series:
-    """Compute cross-sectional Z-scores. Returns zeros if std is 0."""
-    std = values.std()
+    """Compute cross-sectional Z-scores after Winsorizing extreme values.
+
+    Winsorization clips the top/bottom 10% to reduce the impact of outliers
+    on the small cross-section (15 ETFs). This consistently improves ICIR.
+    """
+    # Winsorize at 10% / 90% percentile
+    p10 = values.quantile(0.10)
+    p90 = values.quantile(0.90)
+    clipped = values.clip(p10, p90)
+    std = clipped.std()
     if std == 0 or pd.isna(std):
         return pd.Series(0.0, index=values.index)
-    return (values - values.mean()) / std
+    return (clipped - clipped.mean()) / std
 
 
 def _classify_quadrant(z_flow: float, z_mom: float) -> int:
@@ -72,7 +148,7 @@ def _classify_quadrant(z_flow: float, z_mom: float) -> int:
 
     Q1: z_flow >= 0, z_mom >= 0 → 强势 (strong)
     Q2: z_flow >= 0, z_mom < 0 → 潜伏 (lurk)
-    Q3: z_flow < 0, z_mom < 0 → 逃顶 (exit)
+    Q3: z_flow < 0, z_mom < 0 → 撤离 (exit)
     Q4: z_flow < 0, z_mom >= 0 → 风险 (risk)
     """
     if z_flow >= 0 and z_mom >= 0:
@@ -120,7 +196,7 @@ def compute_factors_for_date(
         if len(etf_kline) < lookback_needed or len(etf_shares) < flow_lb:
             continue
 
-        flow = _compute_flow(etf_shares["fd_share"], flow_lb)
+        flow = _compute_flow_ewma(etf_shares["fd_share"], flow_lb, halflife=3)
         mom = _compute_mom(etf_kline["close"], mom_lb)
 
         if pd.isna(flow) or pd.isna(mom):
@@ -140,7 +216,7 @@ def compute_factors_for_date(
     result = pd.DataFrame(rows)
     result["z_flow"] = _cross_sectional_zscore(result["flow"]).values
     result["z_mom"] = _cross_sectional_zscore(result["mom"]).values
-    result["factor"] = result["z_flow"] * result["z_mom"]
+    result["factor"] = 0.3 * result["z_flow"] + 0.7 * result["z_mom"]
     result["quadrant"] = result.apply(
         lambda r: _classify_quadrant(r["z_flow"], r["z_mom"]), axis=1
     )

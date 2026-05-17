@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 
 from src.web.services.cache import _cached_persistent
 from src.analysis.presets import PRESETS, get_preset, all_preset_ids
-from src.analysis import factor_engine, ic_analyzer, chart_builder
+from src.analysis import factor_engine, ic_analyzer, chart_builder, recommendation_engine
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +111,27 @@ async def api_summary(preset_id: str = "short"):
     return _cached_persistent(
         f"analysis_summary_{preset_id}",
         lambda: chart_builder.build_summary(preset_id),
+        max_age_hours=4,
+    )
+
+
+@router.get("/api/investment-recommendation")
+async def api_investment_recommendation(preset_id: str = "short"):
+    """Generate investment recommendation report."""
+    return _cached_persistent(
+        f"investment_rec_v2_{preset_id}",
+        lambda: recommendation_engine.build_investment_recommendation(preset_id),
+        max_age_hours=4,
+    )
+
+
+@router.get("/api/market-timing")
+async def api_market_timing():
+    """Get CSI 500 market timing signal."""
+    from src.analysis.market_timing import compute_market_timing
+    return _cached_persistent(
+        "market_timing",
+        compute_market_timing,
         max_age_hours=4,
     )
 

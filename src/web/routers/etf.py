@@ -133,6 +133,27 @@ def _compute_sector_etf_all():
                 all_shares[code] = []
             all_shares[code].append(row.to_dict())
 
+    # Fetch latest factor data from factor_daily (short preset)
+    factor_quadrants = {}
+    try:
+        from src.core.db_manager_postgresql import get_conn
+        from sqlalchemy import text
+        conn = get_conn()
+        row = conn.execute(text(
+            "SELECT MAX(trade_date) FROM factor_daily WHERE preset_id = 'short'"
+        )).fetchone()
+        if row and row[0]:
+            latest_fdate = row[0]
+            frows = conn.execute(text(
+                "SELECT etf_code, quadrant FROM factor_daily "
+                "WHERE preset_id = 'short' AND trade_date = :d",
+            ), {"d": latest_fdate}).fetchall()
+            for fr in frows:
+                factor_quadrants[fr[0]] = int(fr[1])
+        conn.close()
+    except Exception:
+        pass  # Factor data may not exist yet — fallback only
+
     result = []
     for code, name in SECTOR_ETF.items():
         df = all_kline.get(code, [])
@@ -146,26 +167,65 @@ def _compute_sector_etf_all():
             df_pd = pd.DataFrame()
             kline_serialized = []
 
+        quadrant = factor_quadrants.get(code)
+        signal = _compute_signal(
+            df_pd,
+            pd.DataFrame(df_share) if df_share else pd.DataFrame(),
+            quadrant=quadrant,
+        )
+
         result.append({
             "ts_code": code,
             "name": name,
             "kline": kline_serialized,
             "shares": safe_json(pd.DataFrame(df_share) if df_share else []),
-            "signal": _compute_signal(df_pd, pd.DataFrame(df_share) if df_share else pd.DataFrame()),
+            "signal": signal,
         })
     return result
 
 
-def _compute_signal(kline_df, share_df, window=10):
+# Unified quadrant → signal mapping (shared across sector page & analysis page)
+QUADRANT_SIGNAL_MAP = {
+    1: {"tag": "strong", "label": "强势"},
+    2: {"tag": "lurk",   "label": "潜伏"},
+    3: {"tag": "exit",   "label": "撤离"},
+    4: {"tag": "risk",   "label": "风险"},
+}
+
+
+def _compute_signal(kline_df, share_df, window=10, quadrant=None):
     """判断ETF近期走势信号。
 
-    逻辑：取近 window 个交易日的份额变化趋势和价格变化趋势。
+    优先使用因子模型的象限数据（quadrant），无因子数据时回退到旧逻辑。
+    
+    旧逻辑：取近 window 个交易日的份额变化趋势和价格变化趋势。
     - 份额持续流入 + 价格上涨 → 强势
-    - 份额持续流入 + 价格不涨/下跌 → 埋伏
+    - 份额持续流入 + 价格不涨/下跌 → 潜伏
     - 份额持续流出 + 价格下跌 → 撤离
     - 份额持续流出 + 价格不跌/上涨 → 风险
     - 数据不足 → 无信号
+    
+    Args:
+        kline_df: K线DataFrame
+        share_df: 份额DataFrame
+        window: 回溯窗口（旧逻辑使用）
+        quadrant: 因子模型象限值（1-4），优先使用
+    
+    Returns:
+        dict: {"label": str, "tag": str, "share_change": float, "price_change": float}
     """
+    # 优先使用因子模型象限数据
+    if quadrant is not None and quadrant in QUADRANT_SIGNAL_MAP:
+        q = QUADRANT_SIGNAL_MAP[quadrant]
+        return {
+            "label": q["label"],
+            "tag": q["tag"],
+            "share_change": 0,
+            "price_change": 0,
+            "source": "factor_model",
+        }
+
+    # 回退到旧逻辑
     if len(kline_df) < window or len(share_df) < window:
         return {"label": "--", "tag": "none"}
 
@@ -192,7 +252,7 @@ def _compute_signal(kline_df, share_df, window=10):
         label = "强势"
     elif inflow and not rising:
         tag = "lurk"
-        label = "埋伏"
+        label = "潜伏"
     elif not inflow and not rising:
         tag = "exit"
         label = "撤离"
@@ -205,6 +265,7 @@ def _compute_signal(kline_df, share_df, window=10):
         "tag": tag,
         "share_change": round(share_change, 2),
         "price_change": round(price_change, 2),
+        "source": "fallback",
     }
 
 
@@ -350,143 +411,8 @@ async def api_share_std(ts_code: str):
     )
 
 
-def _compute_investment_recommendation():
-    conn = get_conn()
-    try:
-        latest_date_row = conn.execute(text(
-            "SELECT MAX(trade_date) FROM factor_daily WHERE preset_id = 'medium'"
-        )).fetchone()
-        if not latest_date_row or not latest_date_row[0]:
-            return {"error": "no_data"}
-        latest_date = latest_date_row[0]
-
-        factor_rows = conn.execute(text(
-            "SELECT etf_code, flow, mom, factor, quadrant "
-            "FROM factor_daily "
-            "WHERE preset_id = 'medium' AND trade_date = :d "
-            "ORDER BY factor DESC"
-        ), {"d": latest_date}).fetchall()
-
-        q2_stats = conn.execute(text(
-            "SELECT "
-            "COUNT(*) as total_samples, "
-            "SUM(CASE WHEN avg_forward_ret > 0 THEN 1 ELSE 0 END) as positive_count, "
-            "AVG(avg_forward_ret) as avg_ret, "
-            "STDDEV(avg_forward_ret) as std_ret, "
-            "MIN(avg_forward_ret) as min_ret "
-            "FROM quadrant_perf "
-            "WHERE preset_id = 'medium' AND forward_days = 20 AND quadrant = 2"
-        )).fetchone()
-
-        q1_stats = conn.execute(text(
-            "SELECT "
-            "COUNT(*) as total_samples, "
-            "SUM(CASE WHEN avg_forward_ret > 0 THEN 1 ELSE 0 END) as positive_count, "
-            "AVG(avg_forward_ret) as avg_ret, "
-            "STDDEV(avg_forward_ret) as std_ret, "
-            "MIN(avg_forward_ret) as min_ret "
-            "FROM quadrant_perf "
-            "WHERE preset_id = 'medium' AND forward_days = 10 AND quadrant = 1"
-        )).fetchone()
-
-        etf_names = {**INDEX_ETF, **SECTOR_ETF}
-
-        q2_etfs = []
-        q1_etfs = []
-        for row in factor_rows:
-            etf_code = row[0]
-            flow = float(row[1]) if row[1] else 0
-            mom = float(row[2]) if row[2] else 0
-            factor = float(row[3]) if row[3] else 0
-            quadrant = row[4]
-            
-            etf_info = {
-                "code": etf_code,
-                "name": etf_names.get(etf_code, etf_code),
-                "flow_pct": round(flow * 100, 2),
-                "momentum": round(mom, 2),
-                "factor_score": round(factor, 2),
-                "quadrant": quadrant
-            }
-            
-            if quadrant == 2:
-                q2_etfs.append(etf_info)
-            elif quadrant == 1:
-                q1_etfs.append(etf_info)
-
-        recommendations = []
-        
-        if q2_etfs:
-            for etf in q2_etfs[:2]:
-                recommendations.append({
-                    **etf,
-                    "strategy": "Q2潜伏",
-                    "holding_days": "10-20天",
-                    "position_ratio": "40%" if len(recommendations) == 0 else "30%"
-                })
-        
-        if q1_etfs and len(recommendations) < 3:
-            for etf in q1_etfs[:1]:
-                recommendations.append({
-                    **etf,
-                    "strategy": "Q1强势",
-                    "holding_days": "10天",
-                    "position_ratio": "30%"
-                })
-
-        q2_win_rate = round((q2_stats[1] / q2_stats[0] * 100), 2) if q2_stats and q2_stats[0] > 0 else 0
-        q2_avg_return = round(q2_stats[2] * 100, 2) if q2_stats and q2_stats[2] else 0
-        q2_sharpe = round((q2_stats[2] / q2_stats[3]), 2) if q2_stats and q2_stats[3] and q2_stats[3] != 0 else 0
-        q2_max_loss = round(q2_stats[4] * 100, 2) if q2_stats and q2_stats[4] else 0
-
-        q1_win_rate = round((q1_stats[1] / q1_stats[0] * 100), 2) if q1_stats and q1_stats[0] > 0 else 0
-        q1_avg_return = round(q1_stats[2] * 100, 2) if q1_stats and q1_stats[2] else 0
-
-        return {
-            "date": str(latest_date),
-            "strategy": {
-                "name": "Q2潜伏 + 10天持仓",
-                "description": "高资金流入 + 低动量ETF，持仓10-20天",
-                "holding_period": "10-20个交易日"
-            },
-            "reasons": [
-                f"胜率最高：Q2策略胜率{q2_win_rate}%，远高于Q1的{q1_win_rate}%",
-                f"风险最低：最大回撤仅{q2_max_loss}%，收益更稳定",
-                f"夏普比率最优：{q2_sharpe}，风险调整后收益最佳",
-                f"平均收益：Q2平均收益{q2_avg_return}%，Q1平均收益{q1_avg_return}%"
-            ],
-            "recommendations": recommendations,
-            "risk_warning": [
-                "样本量有限，建议持续观察",
-                "历史表现不代表未来收益",
-                "建议分散投资，不要全仓单一ETF"
-            ],
-            "stats": {
-                "q2": {
-                    "win_rate": q2_win_rate,
-                    "avg_return": q2_avg_return,
-                    "sharpe_ratio": q2_sharpe,
-                    "max_loss": q2_max_loss,
-                    "samples": int(q2_stats[0]) if q2_stats else 0
-                },
-                "q1": {
-                    "win_rate": q1_win_rate,
-                    "avg_return": q1_avg_return,
-                    "samples": int(q1_stats[0]) if q1_stats else 0
-                }
-            }
-        }
-    finally:
-        conn.close()
-
-
-@router.get("/api/investment-recommendation")
-async def api_investment_recommendation():
-    return _cached_persistent(
-        "investment_recommendation",
-        _compute_investment_recommendation,
-        max_age_hours=4
-    )
+# Investment recommendation moved to analysis.py (recommendation_engine)
+# This route is now handled by /api/investment-recommendation in analysis.py
 
 
 

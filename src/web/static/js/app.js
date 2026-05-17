@@ -99,6 +99,46 @@
 
 })();
 
+/* ── Auto-highlight active nav link ── */
+(function() {
+    var path = location.pathname;
+    document.querySelectorAll('.nav-link, .bottom-nav-item').forEach(function(link) {
+        var href = link.getAttribute('href');
+        if (href && (href === path || (path.startsWith(href) && href !== '/'))) {
+            link.classList.add('active');
+        } else if (href === '/' && path === '/') {
+            link.classList.add('active');
+        }
+    });
+})();
+
+/* ── Data freshness bar (fetches market timing) ── */
+(function() {
+    var bar = document.getElementById('freshness-bar');
+    if (!bar) return;
+    fetch('/api/market-timing').then(function(r) { return r.json(); }).then(function(d) {
+        if (d.error) { bar.innerHTML = '📅 数据日期: ' + (d.date || '--'); return; }
+        var adj = (d.adjustment || 0) * 100;
+        var icon = adj > 5 ? '📈' : (adj < -5 ? '📉' : '➡️');
+        bar.innerHTML = '📅 数据截至 ' + (d.date || '--') +
+            ' &nbsp;|&nbsp; ' + icon + ' 大盘择时: ' + (d.regime_cn || '中性') +
+            ' <span style="opacity:0.6">(调' + (adj >= 0 ? '+' : '') + Math.round(adj) + '%)</span>';
+    }).catch(function() {
+        bar.innerHTML = '📅 数据加载中...';
+    });
+})();
+
+/* ── Skeleton shimmer keyframes (injected once) ── */
+(function() {
+    if (document.getElementById('atm-shimmer-style')) return;
+    var style = document.createElement('style');
+    style.id = 'atm-shimmer-style';
+    style.textContent =
+        '@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }' +
+        '.skeleton-shimmer { background: linear-gradient(90deg, var(--c-skeleton,#EDEBE6) 25%, var(--c-skeleton-shine,#F7F6F3) 50%, var(--c-skeleton,#EDEBE6) 75%); background-size: 200% 100%; animation: shimmer 1.5s ease-in-out infinite; border-radius: var(--radius-sm); }';
+    document.head.appendChild(style);
+})();
+
 /* ── Anonymous telemetry beacon ── */
 (function() {
     if (navigator.doNotTrack === '1') return;
