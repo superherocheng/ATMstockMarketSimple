@@ -346,13 +346,10 @@ def fetch_index_etf():
     conn = db.get_connection()
     default_start = _start_date()
 
-    # 先检查：所有指数ETF的日线+份额是否都最新
+    # 份额数据天然延迟，日线和份额分开检查
     all_fresh_daily = _all_codes_fresh(conn, "index_etf_daily", list(INDEX_ETF.keys()))
-    all_fresh_share = _all_codes_fresh(conn, "etf_share", list(INDEX_ETF.keys()))
 
-    if all_fresh_daily and all_fresh_share:
-        print("[SKIP] 指数ETF日线+份额均为最新，跳过")
-        return
+    # 不在这里 return，让份额和复权因子处理往下走
 
     # ── 阶段1: 日线数据 ──
     for ts_code, name in INDEX_ETF.items():
@@ -377,8 +374,8 @@ def fetch_index_etf():
                 print(f"    [ERR] {e}")
             time.sleep(THROTTLE_SEC)
 
-    # ── 阶段2: 份额数据（全部到齐才写入）──
-    _fetch_etf_shares_all_or_nothing(
+    # ── 阶段2: 份额数据（逐个写入，互不影响）──
+    _fetch_etf_shares_write_ready(
         conn, pro, default_start, INDEX_ETF, "指数ETF"
     )
 
@@ -389,15 +386,20 @@ def fetch_index_etf():
 
 
 def _get_previous_trading_date(current_date_str):
-    """获取前一个交易日（简单日期计算，减一天）"""
+    """获取上一个实际交易日（基于交易日历，正确处理周末/节假日）"""
     from datetime import datetime, timedelta
     dt = datetime.strptime(current_date_str, "%Y%m%d")
-    prev_dt = dt - timedelta(days=1)
-    return prev_dt.strftime("%Y%m%d")
+    # 获取过去10天内的交易日
+    start = (dt - timedelta(days=10)).strftime("%Y%m%d")
+    dates = get_open_trade_dates(start, current_date_str)
+    if len(dates) >= 2:
+        return dates[-2]  # 倒数第二个是上一个交易日
+    # fallback: 简单减1天
+    return (dt - timedelta(days=1)).strftime("%Y%m%d")
 
-def _fetch_etf_shares_all_or_nothing(conn, pro, default_start, etf_dict, label):
-    """获取ETF份额：先拉取所有ETF的最新份额数据，
-    只有当所有ETF的最新交易日数据都到齐后才统一写入 DB。
+def _fetch_etf_shares_write_ready(conn, pro, default_start, etf_dict, label):
+    """获取ETF份额：逐个拉取、逐个写入，互不影响。
+    某只ETF的份额数据未到齐不影响其他ETF的写入。
     允许份额数据比最新交易日落后1天（Tushare 份额数据天然延迟）。"""
     latest_td = get_latest_trading_date()
     if not latest_td:
@@ -408,12 +410,15 @@ def _fetch_etf_shares_all_or_nothing(conn, pro, default_start, etf_dict, label):
     acceptable_min_td = _get_previous_trading_date(latest_td)
 
     codes = list(etf_dict.keys())
-    pending = {}  # {ts_code: DataFrame}
+    written = 0
+    skipped = 0
 
     for ts_code in codes:
+        name = etf_dict.get(ts_code, ts_code)
         existing_s = _get_max_date(conn, "etf_share", ts_code)
         if existing_s and _is_fresh(existing_s):
-            continue  # 此 ETF 份额已最新
+            print(f"  {name} 份额已是最新 ({existing_s})，跳过")
+            continue
 
         start_s = existing_s or default_start
         try:
@@ -421,40 +426,28 @@ def _fetch_etf_shares_all_or_nothing(conn, pro, default_start, etf_dict, label):
             if df_s is not None and len(df_s) > 0:
                 df_s = _validate(df_s, ["ts_code", "trade_date", "fd_share"])
                 if len(df_s) > 0:
-                    pending[ts_code] = df_s
+                    max_date = df_s["trade_date"].max()
+                    if max_date >= acceptable_min_td:
+                        existing_s = _get_max_date(conn, "etf_share", ts_code)
+                        is_inc_s = existing_s is not None
+                        n = _upsert_write(df_s, "etf_share", conn) if is_inc_s \
+                            else _clean_write(df_s, "etf_share", conn, ts_code)
+                        print(f"    {name} 份额: {n} 条 (至{max_date})")
+                        written += 1
+                    else:
+                        print(f"    [HOLD] {name} 份额尚新({max_date} < {acceptable_min_td})")
+                        skipped += 1
         except Exception as e:
-            print(f"    [ERR] {etf_dict.get(ts_code, ts_code)} 份额: {e}")
+            print(f"    [ERR] {name} 份额: {e}")
+            skipped += 1
         time.sleep(THROTTLE_SEC)
 
-    if not pending:
+    if written > 0:
+        print(f"  [OK] {label}份额: 写入{written}只, 跳过{skipped}只 (基准日 {acceptable_min_td})")
+    elif skipped > 0:
+        print(f"  [SKIP] {label}份额: {skipped}只均暂未到齐 (基准日 {acceptable_min_td})")
+    else:
         print(f"[SKIP] {label}份额均已是最新，跳过")
-        return
-
-    # 检查待写入的每个ETF是否都有不早于 acceptable_min_td 的数据（允许落后1天）
-    not_ready = []
-    for ts_code, df_s in pending.items():
-        name = etf_dict.get(ts_code, ts_code)
-        max_date = df_s["trade_date"].max()
-        if max_date < acceptable_min_td:
-            not_ready.append(f"{name}({ts_code}: {max_date} < {acceptable_min_td})")
-
-    if not_ready:
-        print(f"  [HOLD] {label}份额未全部到齐，暂不写入:")
-        for info in not_ready:
-            print(f"    - {info}")
-        print(f"  等待所有ETF份额数据更新到至少 {acceptable_min_td} 后再统一写入")
-        return
-
-    # 全部到齐，统一写入
-    for ts_code, df_s in pending.items():
-        name = etf_dict.get(ts_code, ts_code)
-        existing_s = _get_max_date(conn, "etf_share", ts_code)
-        is_inc_s = existing_s is not None
-        n = _upsert_write(df_s, "etf_share", conn) if is_inc_s \
-            else _clean_write(df_s, "etf_share", conn, ts_code)
-        print(f"    {name} 份额: {n} 条")
-
-    print(f"  [OK] 全部 {len(pending)} 只{label}份额已写入 (最晚 {latest_td})")
 
 
 # ══════════════════════════════════════════════════
@@ -578,12 +571,10 @@ def fetch_sector_etf():
     default_start = _start_date()
     total = len(SECTOR_ETF)
 
+    # 份额数据天然延迟，日线和份额分开检查
     all_fresh_daily = _all_codes_fresh(conn, "sector_etf_daily", list(SECTOR_ETF.keys()))
-    all_fresh_share = _all_codes_fresh(conn, "etf_share", list(SECTOR_ETF.keys()))
 
-    if all_fresh_daily and all_fresh_share:
-        print("[SKIP] 行业ETF日线+份额均为最新，跳过")
-        return
+    # 不在这里 return，让份额和复权因子处理往下走
 
     # ── 阶段1: 日线数据（逐个获取，互不影响）──
     for i, (ts_code, name) in enumerate(SECTOR_ETF.items(), 1):
@@ -608,8 +599,8 @@ def fetch_sector_etf():
                 print(f"    [ERR] 日线: {e}")
             time.sleep(THROTTLE_SEC)
 
-    # ── 阶段2: 份额数据（全部到齐才写入）──
-    _fetch_etf_shares_all_or_nothing(
+    # ── 阶段2: 份额数据（逐个写入，互不影响）──
+    _fetch_etf_shares_write_ready(
         conn, pro, default_start, SECTOR_ETF, "行业ETF"
     )
 

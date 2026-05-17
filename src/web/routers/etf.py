@@ -389,14 +389,7 @@ def _compute_investment_recommendation():
             "WHERE preset_id = 'medium' AND forward_days = 10 AND quadrant = 1"
         )).fetchone()
 
-        etf_names = {
-            "510300.SH": "沪深300ETF", "510500.SH": "中证500ETF", "510050.SH": "上证50ETF",
-            "512100.SH": "中证1000ETF", "588000.SH": "科创50ETF", "512480.SH": "半导体ETF",
-            "515030.SH": "新能源车ETF", "512010.SH": "医药ETF", "512800.SH": "银行ETF",
-            "512880.SH": "证券ETF", "159928.SZ": "消费ETF", "515880.SH": "通信ETF",
-            "159206.SZ": "卫星ETF", "515220.SH": "煤炭ETF", "512400.SH": "有色ETF",
-            "562500.SH": "机器人ETF"
-        }
+        etf_names = {**INDEX_ETF, **SECTOR_ETF}
 
         q2_etfs = []
         q1_etfs = []
