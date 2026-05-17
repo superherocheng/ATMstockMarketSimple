@@ -32,6 +32,10 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 - 🌡️ **相关性热力图** - 行业ETF份额波动相关性、K线中枢相关性矩阵可视化
 - 🔄 **一键数据更新** - ETF份额自动检测更新，智能判断数据新鲜度
 - 🐳 **容器化部署** - 完整的Docker支持，一键部署到生产环境
+- 📅 **K线日期范围选择** - ETF详情页支持3月/6月/1年/全部时间范围切换
+- 🏷️ **预设参数提示** - 因子分析预设按钮带参数说明 tooltip
+- 📋 **投资建议页入口** - 分析页底部直达投资建议页面
+- 📡 **匿名使用统计** - 内置轻量埋点，帮助改进产品
 
 ## 🛠️ 技术栈
 
@@ -56,13 +60,16 @@ ATMstockMarketSimple/
 │   │   │   ├── etf.py                  # ETF详情、行业ETF
 │   │   │   ├── fetch.py                # 数据获取端点
 │   │   │   ├── analysis.py             # 因子分析端点
-│   │   │   └── heatmap.py              # 相关性热力图端点
+│   │   │   ├── heatmap.py              # 相关性热力图端点
+│   │   │   └── telemetry.py            # 匿名使用统计埋点
 │   │   ├── templates/                  # Jinja2 HTML模板
 │   │   │   ├── index.html              # 首页
 │   │   │   ├── etf.html                # 指数ETF K线/异常
 │   │   │   ├── sector.html             # 行业ETF轮动
 │   │   │   ├── analysis.html           # 因子分析页面
-│   │   │   └── heatmap.html            # 相关性热力图页面
+│   │   │   ├── heatmap.html            # 相关性热力图页面
+│   │   │   ├── investment_recommendation.html # 投资建议页面
+│   │   │   └── tech_notes.html         # 技术说明页面
 │   │   └── services/
 │   │       └── cache.py                # 内存LRU缓存
 │   ├── analysis/                       # 因子分析模块
@@ -114,10 +121,12 @@ docker restart atmstockmarket
 | 路由 | 页面 | 功能描述 |
 |------|------|----------|
 | `/` | index.html | 首页 — 指数ETF行情、行业热力图、数据管理 |
-| `/etf` | etf.html | 指数ETF详情 — K线走势、份额分析、异常检测 |
+| `/etf` | etf.html | 指数ETF详情 — K线走势、份额分析、异常检测、日期范围选择 |
 | `/sector` | sector.html | 行业ETF轮动 — 横向对比、份额趋势、排名表格 |
-| `/analysis` | analysis.html | 因子分析 — 因子分布、IC值序列、收益预测 |
+| `/analysis` | analysis.html | 因子分析 — 因子分布、IC值序列、收益预测、四象限模型 |
 | `/heatmap` | heatmap.html | 相关性热力图 — 份额波动相关性、K线中枢相关性 |
+| `/analysis/investment-recommendation` | investment_recommendation.html | 投资建议 — ETF持仓推荐、因子评分 |
+| `/analysis/tech-notes` | tech_notes.html | 技术说明 — 分析方法论文档 |
 
 ## 🎯 监控ETF列表
 
@@ -139,9 +148,9 @@ docker restart atmstockmarket
 | 512010.SH | 医药ETF | 512800.SH | 银行ETF |
 | 512880.SH | 证券ETF | 159928.SZ | 消费ETF |
 | 515880.SH | 通信ETF | 159206.SZ | 卫星ETF |
-| 512400.SH | 有色ETF | 562500.SH | 机器人ETF |
-| 159870.SZ | 化工ETF | 561360.SH | 石油ETF |
-| 518880.SH | 黄金ETF | - | - |
+| 515220.SH | 煤炭ETF | 512400.SH | 有色ETF |
+| 562500.SH | 机器人ETF | 512690.SH | 酒ETF |
+| 159934.SZ | 黄金ETF | - | - |
 
 ## 🔌 API 端点
 
@@ -229,6 +238,8 @@ Tushare份额数据通常在交易日16:00后更新，请稍后再试。
 ## 📄 许可证
 
 本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+
+**📋 更新日志**: 详见 [docs/changelog-ui-ux-2026-05-17.md](docs/changelog-ui-ux-2026-05-17.md)
 
 **免责声明**: 本项目仅供学习和研究使用，不构成任何投资建议。投资有风险，入市需谨慎。
 

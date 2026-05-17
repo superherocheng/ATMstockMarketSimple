@@ -10,45 +10,7 @@
     <link rel="stylesheet" href="/static/css/app.css">
     <script defer src="/static/js/vendor.js"></script>
     <script defer src="/static/js/app.js"></script>
-    <style>
-    .preset-bar { display:flex; align-items:center; gap:12px; padding:12px 20px; background:#eae6dc; border-bottom:1px solid #d4cfc4; border-radius:12px; margin-bottom:16px; }
-    .preset-btn { padding:6px 16px; border-radius:6px; border:1px solid #d4cfc4; background:#fff; color:#5a6f5a; font-size:12px; cursor:pointer; }
-    .preset-btn.active { background:#5a6f5a; color:#fff; border-color:#5a6f5a; }
-    .preset-freshness { margin-left:auto; font-size:11px; color:#999; }
-    .tech-btn { padding:6px 14px; border-radius:6px; border:1px solid #8b4513; background:transparent; color:#8b4513; font-size:12px; cursor:pointer; text-decoration:none; transition:all .2s; }
-    .tech-btn:hover { background:#8b4513; color:#fff; }
-    .rec-btn { padding:6px 14px; border-radius:6px; border:1px solid #2d5a2d; background:transparent; color:#2d5a2d; font-size:12px; cursor:pointer; text-decoration:none; transition:all .2s; }
-    .rec-btn:hover { background:#2d5a2d; color:#fff; }
-    .kpi-row { display:flex; gap:12px; margin-bottom:16px; }
-    .kpi-card { flex:1; background:#fff; border-radius:8px; padding:12px 16px; border:1px solid #e8e4db; }
-    .kpi-label { font-size:11px; color:#999; text-transform:uppercase; }
-    .kpi-value { font-size:22px; font-weight:700; color:#5a6f5a; }
-    .kpi-sub { font-size:11px; color:#6b8e6b; }
-    .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    .chart-cell { background:#fff; border-radius:8px; padding:16px; border:1px solid #e8e4db; overflow:hidden; }
-    .chart-cell h3 { font-size:13px; font-weight:600; color:#5a6f5a; margin:0 0 8px; }
-    .chart-container { width:100%; height:280px; }
-    .chart-full { margin-top:12px; }
-    .summary-card { margin-top:12px; background:#fff; border-radius:8px; padding:16px; border:1px solid #e8e4db; }
-    .summary-content { background:#f4f1e8; border-radius:6px; padding:12px 16px; font-size:12px; line-height:1.8; color:#555; }
-    .no-data { text-align:center; padding:40px; color:#999; font-size:13px; }
-    .quadrant-grid { display:grid; grid-template-columns:1fr 1fr; gap:2px; border-radius:6px; overflow:hidden; flex:1; }
-    .quadrant-cell { padding:10px; text-align:center; display:flex; flex-direction:column; justify-content:center; align-items:center; }
-    .quadrant-cell .q-name { font-size:12px; font-weight:600; color:#333; margin-bottom:4px; }
-    .quadrant-cell .q-value { font-size:18px; font-weight:700; }
-    .quadrant-cell .q-label { font-size:10px; color:#888; margin-top:2px; }
-    .heatmap-wrap { display:flex; flex-direction:column; height:100%; }
-    .heatmap-axis-x { display:flex; justify-content:space-between; padding:2px 0; font-size:9px; color:#999; }
-    .heatmap-body { display:flex; flex:1; align-items:stretch; min-height:0; }
-    .heatmap-axis-y { writing-mode:vertical-lr; text-align:center; font-size:9px; color:#999; padding:0 4px 0 0; display:flex; flex-direction:column; justify-content:space-between; }
 
-    @media (max-width: 768px) {
-      .chart-grid { grid-template-columns:1fr; }
-      .kpi-row { flex-wrap:wrap; }
-      .kpi-card { flex:1 1 45%; }
-      .preset-bar { flex-wrap:wrap; }
-    }
-    </style>
     <script>
         document.documentElement.dataset.theme = 'light';
     </script>
@@ -77,9 +39,9 @@
 
     <!-- Preset selector bar -->
     <div class="preset-bar">
-        <button class="preset-btn active" onclick="switchPreset('short')" data-preset="short">短期</button>
-        <button class="preset-btn" onclick="switchPreset('medium')" data-preset="medium">中期</button>
-        <button class="preset-btn" onclick="switchPreset('long')" data-preset="long">长期</button>
+        <button class="preset-btn active" onclick="switchPreset('short')" data-preset="short" title="N=10, M=20 — 适合短线因子验证">短期</button>
+        <button class="preset-btn" onclick="switchPreset('medium')" data-preset="medium" title="N=20, M=60 — 适合中线持仓参考">中期</button>
+        <button class="preset-btn" onclick="switchPreset('long')" data-preset="long" title="N=40, M=120 — 适合长周期趋势判断">长期</button>
         <a href="/analysis/investment-recommendation" class="rec-btn">投资建议</a>
         <a href="/analysis/tech-notes" class="tech-btn">技术说明</a>
         <span class="preset-freshness" id="freshness-label">--</span>
@@ -172,6 +134,14 @@
         <div class="summary-content" id="summary-text">加载中...</div>
     </div>
 
+    <!-- Investment recommendation entry -->
+    <div class="chart-full" style="margin-top:12px;">
+        <div class="chart-cell" style="text-align:center;padding:20px;">
+            <a href="/analysis/investment-recommendation" class="rec-btn" style="padding:8px 24px;font-size:14px;display:inline-block;">查看完整投资建议 →</a>
+            <p style="margin-top:8px;font-size:12px;color:var(--c-text-tertiary);">基于因子评分 + 资金流向的 ETF 持仓建议</p>
+        </div>
+    </div>
+
     </main>
 
     <footer>
@@ -198,11 +168,15 @@
         <span class="bottom-nav-label">行业ETF</span>
       </a>
       <a href="/heatmap" class="bottom-nav-item" aria-label="热力图">
-        <span class="bottom-nav-icon">🌡️</span>
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zm12 0a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
+        </span>
         <span class="bottom-nav-label">热力图</span>
       </a>
       <a href="/analysis" class="bottom-nav-item active" aria-label="可视化分析">
-        <span class="bottom-nav-icon">📊</span>
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
+        </span>
         <span class="bottom-nav-label">分析</span>
       </a>
     </div>

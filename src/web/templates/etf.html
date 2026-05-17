@@ -70,11 +70,19 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="glass rounded-xl p-4 sm:p-6">
-                <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
-                    <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                    K线走势
-                    <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">红色标记 = 异常涨跌幅</span>
-                </h3>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="flex items-center gap-3 text-base font-semibold">
+                        <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
+                        K线走势
+                        <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">红色标记 = 异常涨跌幅</span>
+                    </h3>
+                    <div class="flex gap-1.5">
+                        <button class="range-btn active" data-days="60" onclick="setDateRange(this, 60)">3月</button>
+                        <button class="range-btn" data-days="120" onclick="setDateRange(this, 120)">6月</button>
+                        <button class="range-btn" data-days="250" onclick="setDateRange(this, 250)">1年</button>
+                        <button class="range-btn" data-days="0" onclick="setDateRange(this, 0)">全部</button>
+                    </div>
+                </div>
                 <div id="kline-chart" class="chart-main" style="height: 380px;">
                     <div class="skeleton skeleton-chart"></div>
                 </div>
@@ -141,11 +149,15 @@
         <span class="bottom-nav-label">行业ETF</span>
       </a>
       <a href="/heatmap" class="bottom-nav-item" aria-label="热力图">
-        <span class="bottom-nav-icon">🌡️</span>
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zm12 0a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
+        </span>
         <span class="bottom-nav-label">热力图</span>
       </a>
       <a href="/analysis" class="bottom-nav-item" aria-label="可视化分析">
-        <span class="bottom-nav-icon">📊</span>
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
+        </span>
         <span class="bottom-nav-label">分析</span>
       </a>
     </div>
@@ -157,6 +169,14 @@
     var currentCode = '510300.SH';
     var klineChart = null;
     var shareDetailChart = null;
+    var _dateRangeDays = 60;
+
+    function setDateRange(btn, days) {
+        document.querySelectorAll('.range-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        _dateRangeDays = days;
+        if (window._etfCachedData) renderKline(window._etfCachedData);
+    }
 
     function switchETF(btn) {
         document.querySelectorAll('.tab-btn').forEach(function(b) {
@@ -173,6 +193,7 @@
             var data = await resp.json();
             updateInfo(data);
             try { await ATMChart.load(); } catch(e) { console.warn('ECharts load failed:', e); }
+            window._etfCachedData = data;
             renderKline(data);
             renderShareDetail(data);
             renderAnomalies(data);
@@ -218,6 +239,10 @@
         if (klineChart && !klineChart.isDisposed()) klineChart.dispose();
         el.innerHTML = '';
         var kline = data.kline || [];
+        /* apply date range filter */
+        if (_dateRangeDays > 0 && kline.length > _dateRangeDays) {
+            kline = kline.slice(-_dateRangeDays);
+        }
         if (kline.length === 0) {
             el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--c-text-tertiary);">暂无K线数据</div>';
             return;
