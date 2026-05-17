@@ -7,8 +7,13 @@ services:
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:password@db:5432/atm_stock_market}
       - TUSHARE_TOKEN=${TUSHARE_TOKEN:-}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - docker_network
@@ -24,8 +29,6 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
       - POSTGRES_DB=${POSTGRES_DB:-atm_stock_market}
-    # ports:
-    #   - "5432:5432"  # Commented: host port 5432 conflict with local PG
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
@@ -35,6 +38,18 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    networks:
+      - docker_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: atmstockmarket-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - docker_network
 
