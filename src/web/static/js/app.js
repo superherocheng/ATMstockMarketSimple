@@ -831,19 +831,7 @@ ATMPerf.lazyLoadComponents = function(selector, callback) {
 };
 
 ATMPerf.preloadCriticalResources = function() {
-    var criticalResources = [
-        '/static/css/tokens-wiki.css',
-        '/static/css/style-wiki.css',
-        '/static/css/components-wiki.css'
-    ];
-    
-    criticalResources.forEach(function(url) {
-        var link = document.createElement('link');
-        link.rel = 'preload';
-        link.as = url.endsWith('.css') ? 'style' : 'script';
-        link.href = url;
-        document.head.appendChild(link);
-    });
+    // Preload CSS removed — files no longer shipped
 };
 
 ATMPerf.deferNonCriticalJS = function() {

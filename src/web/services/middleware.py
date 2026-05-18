@@ -29,13 +29,17 @@ class RateLimiter:
             return True
 
 
-_rate_limiter = RateLimiter(requests_per_minute=60)
+_rate_limiter = RateLimiter(requests_per_minute=200)
 
 
 async def rate_limit_middleware(request: Request, call_next):
     """速率限制中间件"""
     if request.url.path.startswith("/api/"):
-        client_id = request.client.host if request.client else "unknown"
+        client_id = request.headers.get("X-Forwarded-For", "")
+        if client_id:
+            client_id = client_id.split(",")[0].strip()
+        if not client_id:
+            client_id = request.client.host if request.client else "unknown"
         if not _rate_limiter.is_allowed(client_id):
             return JSONResponse(
                 {"error": "请求过于频繁，请稍后再试", "retry_after": 60},

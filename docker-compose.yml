@@ -17,6 +17,7 @@ services:
         condition: service_healthy
     networks:
       - atm_network
+      - docker_network
     restart: unless-stopped
     volumes:
       - ./logs:/app/logs
@@ -60,3 +61,5 @@ volumes:
 networks:
   atm_network:
     driver: bridge
+  docker_network:
+    external: true
