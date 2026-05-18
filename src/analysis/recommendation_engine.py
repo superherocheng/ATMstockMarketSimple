@@ -54,12 +54,27 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
         latest_date = date_row[0]
 
         # ── 2. Get all ETFs' latest factor values ──
-        factor_rows = conn.execute(text("""
-            SELECT etf_code, z_flow, z_mom, factor, quadrant, flow, mom
-            FROM factor_daily
-            WHERE preset_id = :pid AND trade_date = :d
-            ORDER BY factor DESC
-        """), {"pid": preset_id, "d": latest_date}).fetchall()
+        # Check if rsrs columns exist (may not if migration hasn't run)
+        has_rsrs = conn.execute(text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='factor_daily' AND column_name='rsrs'"
+        )).fetchone() is not None
+
+        if has_rsrs:
+            factor_rows = conn.execute(text("""
+                SELECT etf_code, z_flow, z_mom, factor, quadrant, flow, mom,
+                       rsrs, z_rsrs
+                FROM factor_daily
+                WHERE preset_id = :pid AND trade_date = :d
+                ORDER BY factor DESC
+            """), {"pid": preset_id, "d": latest_date}).fetchall()
+        else:
+            factor_rows = conn.execute(text("""
+                SELECT etf_code, z_flow, z_mom, factor, quadrant, flow, mom
+                FROM factor_daily
+                WHERE preset_id = :pid AND trade_date = :d
+                ORDER BY factor DESC
+            """), {"pid": preset_id, "d": latest_date}).fetchall()
 
         # ── 3. Get IC summary statistics ──
         ic_rows = conn.execute(text("""
@@ -264,7 +279,7 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
         if c["quadrant"] == 1:
             strategy_label = "Q1强势持有"
             strategy_desc = "资金流入 + 价格上涨，趋势共振，持有或加仓"
-            holding = preset["forward_periods"][1]  # medium holding period
+            holding = preset["forward_periods"][len(preset["forward_periods"]) // 2]
         else:
             strategy_label = "Q2潜伏布局"
             strategy_desc = "资金逆势流入，价格回调，分批建仓"

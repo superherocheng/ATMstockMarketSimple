@@ -1,4 +1,4 @@
-"""Transform DB query results into ECharts-ready JSON for the 7 chart types.
+"""Transform DB query results into ECharts-ready JSON for chart types.
 
 Each function takes raw data and returns a dict that can be directly
 used as the ECharts `option` object.
@@ -22,6 +22,11 @@ def _get_conn():
 def _safe_dict(d):
     from src.core.db_manager_postgresql import safe_dict
     return safe_dict(d)
+
+
+def _get_forward_days(preset_id):
+    """Get the single forward period for a preset."""
+    return get_preset(preset_id)["forward_periods"][0]
 
 
 def build_factor_distribution(preset_id: str) -> dict:
@@ -61,19 +66,20 @@ def build_factor_distribution(preset_id: str) -> dict:
     })
 
 
-def build_ic_series(preset_id: str, forward_days: int = 5) -> dict:
+def build_ic_series(preset_id: str) -> dict:
     """Chart 2: IC time series with mean line and +/-2 std band."""
+    h = _get_forward_days(preset_id)
     conn = _get_conn()
     try:
         rows = conn.execute(text(
             "SELECT trade_date, ic_value FROM ic_daily "
             "WHERE preset_id = :pid AND forward_days = :h ORDER BY trade_date"
-        ), {"pid": preset_id, "h": forward_days}).fetchall()
+        ), {"pid": preset_id, "h": h}).fetchall()
 
         summary_row = conn.execute(text(
             "SELECT ic_mean, ic_std FROM ic_summary "
             "WHERE preset_id = :pid AND forward_days = :h"
-        ), {"pid": preset_id, "h": forward_days}).fetchone()
+        ), {"pid": preset_id, "h": h}).fetchone()
     finally:
         conn.close()
 
@@ -105,47 +111,16 @@ def build_ic_series(preset_id: str, forward_days: int = 5) -> dict:
     })
 
 
-def build_ic_decay(preset_id: str) -> dict:
-    """Chart 3: IC mean vs forward period (decay curve)."""
-    conn = _get_conn()
-    try:
-        rows = conn.execute(text(
-            "SELECT forward_days, ic_mean FROM ic_summary "
-            "WHERE preset_id = :pid ORDER BY forward_days"
-        ), {"pid": preset_id}).fetchall()
-    finally:
-        conn.close()
-
-    if not rows:
-        return {"error": "no_data"}
-
-    periods = [f"{r[0]}D" for r in rows]
-    means = [round(float(r[1]), 4) if r[1] is not None else 0 for r in rows]
-
-    return _safe_dict({
-        "chart": {
-            "xAxis": {"type": "category", "data": periods, "name": "持有期"},
-            "yAxis": {"type": "value", "name": "IC均值"},
-            "series": [{"type": "line", "data": means, "smooth": True,
-                        "lineStyle": {"width": 2.5, "color": "#5a6f5a"},
-                        "itemStyle": {"color": "#5a6f5a"}, "symbolSize": 8}],
-            "tooltip": {"trigger": "axis"},
-        }
-    })
-
-
-def build_quadrant_heatmap(preset_id: str, forward_days: int = None) -> dict:
-    """Chart 4: Quadrant return heatmap."""
-    preset = get_preset(preset_id)
-    if forward_days is None:
-        forward_days = preset["forward_periods"][0]
+def build_quadrant_heatmap(preset_id: str) -> dict:
+    """Chart 3: Quadrant return heatmap."""
+    h = _get_forward_days(preset_id)
 
     conn = _get_conn()
     try:
         row = conn.execute(text(
             "SELECT MAX(trade_date) FROM quadrant_perf "
             "WHERE preset_id = :pid AND forward_days = :h"
-        ), {"pid": preset_id, "h": forward_days}).fetchone()
+        ), {"pid": preset_id, "h": h}).fetchone()
 
         if not row or not row[0]:
             return {"error": "no_data"}
@@ -154,7 +129,7 @@ def build_quadrant_heatmap(preset_id: str, forward_days: int = None) -> dict:
         rows = conn.execute(text(
             "SELECT quadrant, avg_forward_ret FROM quadrant_perf "
             "WHERE preset_id = :pid AND forward_days = :h AND trade_date = :d"
-        ), {"pid": preset_id, "h": forward_days, "d": latest_date}).fetchall()
+        ), {"pid": preset_id, "h": h, "d": latest_date}).fetchall()
     finally:
         conn.close()
 
@@ -184,18 +159,16 @@ def build_quadrant_heatmap(preset_id: str, forward_days: int = None) -> dict:
     })
 
 
-def build_group_returns(preset_id: str, forward_days: int = None) -> dict:
-    """Chart 5: Cumulative return curves per quadrant over time."""
-    preset = get_preset(preset_id)
-    if forward_days is None:
-        forward_days = preset["forward_periods"][0]
+def build_group_returns(preset_id: str) -> dict:
+    """Chart 4: Cumulative return curves per quadrant over time."""
+    h = _get_forward_days(preset_id)
 
     conn = _get_conn()
     try:
         rows = conn.execute(text(
             "SELECT trade_date, quadrant, avg_forward_ret FROM quadrant_perf "
             "WHERE preset_id = :pid AND forward_days = :h ORDER BY trade_date"
-        ), {"pid": preset_id, "h": forward_days}).fetchall()
+        ), {"pid": preset_id, "h": h}).fetchall()
     finally:
         conn.close()
 
@@ -235,21 +208,22 @@ def build_group_returns(preset_id: str, forward_days: int = None) -> dict:
     })
 
 
-def build_rolling_icir(preset_id: str, forward_days: int = 5, window: int = 60) -> dict:
-    """Chart 6: Rolling ICIR time series."""
+def build_rolling_icir(preset_id: str, window: int = 60) -> dict:
+    """Chart 5: Rolling ICIR time series."""
+    h = _get_forward_days(preset_id)
+
     conn = _get_conn()
     try:
         rows = conn.execute(text(
             "SELECT trade_date, ic_value FROM ic_daily "
             "WHERE preset_id = :pid AND forward_days = :h ORDER BY trade_date"
-        ), {"pid": preset_id, "h": forward_days}).fetchall()
+        ), {"pid": preset_id, "h": h}).fetchall()
     finally:
         conn.close()
 
     if not rows:
         return {"error": "no_data"}
 
-    # Auto-reduce window if not enough data points
     if len(rows) < window:
         window = max(20, len(rows) // 2)
     if len(rows) < 20:
@@ -281,7 +255,7 @@ def build_rolling_icir(preset_id: str, forward_days: int = 5, window: int = 60) 
 
 
 def build_weight_recommendation(preset_id: str) -> dict:
-    """Chart 7: Allocation weight recommendation based on latest factor values."""
+    """Chart 6: Allocation weight recommendation based on latest factor values."""
     conn = _get_conn()
     try:
         row = conn.execute(text(
@@ -341,13 +315,14 @@ def build_weight_recommendation(preset_id: str) -> dict:
 
 
 def build_summary(preset_id: str) -> dict:
-    """Text summary with factor validity, quadrant verification, and recommendations."""
+    """Text summary with factor validity and recommendations."""
+    h = _get_forward_days(preset_id)
     conn = _get_conn()
     try:
-        summary_rows = conn.execute(text(
-            "SELECT forward_days, ic_mean, icir, ic_win_rate, sample_count "
-            "FROM ic_summary WHERE preset_id = :pid ORDER BY forward_days"
-        ), {"pid": preset_id}).fetchall()
+        summary_row = conn.execute(text(
+            "SELECT ic_mean, icir, ic_win_rate, sample_count "
+            "FROM ic_summary WHERE preset_id = :pid AND forward_days = :h"
+        ), {"pid": preset_id, "h": h}).fetchone()
 
         latest_row = conn.execute(text(
             "SELECT MAX(trade_date) FROM factor_daily WHERE preset_id = :pid"
@@ -369,33 +344,19 @@ def build_summary(preset_id: str) -> dict:
     finally:
         conn.close()
 
+    ic_mean = float(summary_row[0]) if summary_row and summary_row[0] else None
+    icir = float(summary_row[1]) if summary_row and summary_row[1] else None
+    ic_win_rate = float(summary_row[2]) if summary_row and summary_row[2] else None
+    sample_count = int(summary_row[3]) if summary_row and summary_row[3] else 0
+
     factor_validity = ""
-    decay_period = "未知"
-    if summary_rows:
-        first_h = summary_rows[0]
-        ic_mean = first_h[1]
-        icir = first_h[2]
-        if ic_mean is not None:
-            direction = "正" if ic_mean > 0 else "负"
-            strength = "显著" if abs(ic_mean) > 0.03 else "较弱"
-            factor_validity = f"IC均值{ic_mean:.3f}({direction}向{strength})"
-        if icir is not None:
-            stability = "稳定" if abs(icir) > 0.5 else "不稳定"
-            factor_validity += f", ICIR {icir:.2f}({stability})"
-
-        for sr in summary_rows:
-            if sr[1] is not None and abs(sr[1]) < 0.02:
-                decay_period = f"{sr[0]}日"
-                break
-        else:
-            if summary_rows:
-                decay_period = f">{summary_rows[-1][0]}日"
-
-    # Top-level KPI values from the first forward period
-    first_summary = summary_rows[0] if summary_rows else None
-    top_ic_mean = float(first_summary[1]) if first_summary and first_summary[1] is not None else None
-    top_icir = float(first_summary[2]) if first_summary and first_summary[2] is not None else None
-    top_ic_win = float(first_summary[3]) if first_summary and first_summary[3] is not None else None
+    if ic_mean is not None:
+        direction = "正" if ic_mean > 0 else "负"
+        strength = "显著" if abs(ic_mean) > 0.03 else "较弱"
+        factor_validity = f"IC均值{ic_mean:.3f}({direction}向{strength})"
+    if icir is not None:
+        stability = "稳定" if abs(icir) > 0.5 else "不稳定"
+        factor_validity += f", ICIR {icir:.2f}({stability})"
 
     q1_etfs = [f for f in latest_factors if f["quadrant"] == 1]
     q2_etfs = [f for f in latest_factors if f["quadrant"] == 2]
@@ -404,16 +365,14 @@ def build_summary(preset_id: str) -> dict:
 
     return _safe_dict({
         "date": str(latest_date) if latest_date else None,
-        "ic_mean": top_ic_mean,
-        "icir": top_icir,
-        "ic_win_rate": top_ic_win,
+        "ic_mean": ic_mean,
+        "icir": icir,
+        "ic_win_rate": ic_win_rate,
+        "sample_count": sample_count,
         "factor_validity": factor_validity,
-        "decay_period": decay_period,
         "strong_buy": strong_buy,
         "contrarian": contrarian,
         "q1_count": len(q1_etfs),
         "q2_count": len(q2_etfs),
-        "summary_rows": [{"forward_days": r[0], "ic_mean": r[1], "icir": r[2],
-                          "ic_win_rate": r[3], "sample_count": r[4]}
-                         for r in summary_rows],
+        "latest_factors": latest_factors,
     })

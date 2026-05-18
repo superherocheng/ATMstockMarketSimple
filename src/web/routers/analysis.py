@@ -1,4 +1,4 @@
-"""FastAPI router for the 可视化分析 module."""
+"""FastAPI router for the analysis module."""
 import logging
 from pathlib import Path
 
@@ -33,7 +33,6 @@ async def page_investment_recommendation(request: Request):
     return templates.TemplateResponse("investment_recommendation.html", {"request": request})
 
 
-
 @router.get("/api/analysis/presets")
 async def api_presets():
     return {"presets": list(PRESETS.values()), "default": "short"}
@@ -49,50 +48,37 @@ async def api_factor_distribution(preset_id: str = "short"):
 
 
 @router.get("/api/analysis/ic-series")
-async def api_ic_series(preset_id: str = "short", forward_days: int = 5):
+async def api_ic_series(preset_id: str = "short"):
     return _cached_persistent(
-        f"analysis_ic_series_{preset_id}_{forward_days}",
-        lambda: chart_builder.build_ic_series(preset_id, forward_days),
-        max_age_hours=4,
-    )
-
-
-@router.get("/api/analysis/ic-decay")
-async def api_ic_decay(preset_id: str = "short"):
-    return _cached_persistent(
-        f"analysis_ic_decay_{preset_id}",
-        lambda: chart_builder.build_ic_decay(preset_id),
+        f"analysis_ic_series_{preset_id}",
+        lambda: chart_builder.build_ic_series(preset_id),
         max_age_hours=4,
     )
 
 
 @router.get("/api/analysis/quadrant-heatmap")
-async def api_quadrant_heatmap(preset_id: str = "short", forward_days: int = None):
-    preset = get_preset(preset_id)
-    h = forward_days if forward_days else preset["forward_periods"][0]
+async def api_quadrant_heatmap(preset_id: str = "short"):
     return _cached_persistent(
-        f"analysis_qheatmap_{preset_id}_{h}",
-        lambda: chart_builder.build_quadrant_heatmap(preset_id, h),
+        f"analysis_qheatmap_{preset_id}",
+        lambda: chart_builder.build_quadrant_heatmap(preset_id),
         max_age_hours=4,
     )
 
 
 @router.get("/api/analysis/group-returns")
-async def api_group_returns(preset_id: str = "short", forward_days: int = None):
-    preset = get_preset(preset_id)
-    h = forward_days if forward_days else preset["forward_periods"][0]
+async def api_group_returns(preset_id: str = "short"):
     return _cached_persistent(
-        f"analysis_group_ret_{preset_id}_{h}",
-        lambda: chart_builder.build_group_returns(preset_id, h),
+        f"analysis_group_ret_{preset_id}",
+        lambda: chart_builder.build_group_returns(preset_id),
         max_age_hours=4,
     )
 
 
 @router.get("/api/analysis/rolling-icir")
-async def api_rolling_icir(preset_id: str = "short", forward_days: int = 5, window: int = 60):
+async def api_rolling_icir(preset_id: str = "short", window: int = 60):
     return _cached_persistent(
-        f"analysis_rolling_icir_{preset_id}_{forward_days}_{window}",
-        lambda: chart_builder.build_rolling_icir(preset_id, forward_days, window),
+        f"analysis_rolling_icir_{preset_id}_{window}",
+        lambda: chart_builder.build_rolling_icir(preset_id, window),
         max_age_hours=4,
     )
 
@@ -117,7 +103,6 @@ async def api_summary(preset_id: str = "short"):
 
 @router.get("/api/investment-recommendation")
 async def api_investment_recommendation(preset_id: str = "short"):
-    """Generate investment recommendation report."""
     return _cached_persistent(
         f"investment_rec_v2_{preset_id}",
         lambda: recommendation_engine.build_investment_recommendation(preset_id),
@@ -127,7 +112,6 @@ async def api_investment_recommendation(preset_id: str = "short"):
 
 @router.get("/api/market-timing")
 async def api_market_timing():
-    """Get CSI 500 market timing signal."""
     from src.analysis.market_timing import compute_market_timing
     return _cached_persistent(
         "market_timing",

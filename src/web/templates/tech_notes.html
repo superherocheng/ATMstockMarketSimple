@@ -60,18 +60,21 @@
         <!-- Factor Construction -->
         <div class="tech-section">
             <h3><span class="icon" style="background:#e8f5e8;">&#9881;</span> 因子构建方法</h3>
-            <p>本系统采用<strong>双因子四象限模型</strong>，对行业ETF进行截面分析。核心思路是将资金流向（Flow）和价格动量（Momentum）两个维度标准化后，划分到四个象限中进行分类评估。</p>
+            <p>本系统采用<strong>三因子四象限模型</strong>，对行业ETF进行截面分析。将RSRS阻力支撑强度、资金流向（Flow）和价格动量（Momentum）三个维度标准化后，加权组合为复合因子。</p>
             <ul>
-                <li><strong>资金流因子 (Flow)</strong>：对ETF份额变化序列做OLS线性回归斜率。斜率为正表示资金持续流入，为负表示持续流出。</li>
-                <li><strong>动量因子 (Momentum)</strong>：计算过去M日价格收益率，并除以同期波动率进行波动率调整，得到风险调整后的动量。</li>
+                <li><strong>RSRS因子 (Resistance Support Relative Strength)</strong>：对ETF每日高点和低点做OLS回归（β &times; R²），衡量支撑/阻力结构稳定度。正值表示趋势结构稳定，负值表示结构不稳定。</li>
+                <li><strong>资金流因子 (Flow)</strong>：对ETF份额数据做EWMA加权回归斜率（半衰期3天），然后用tanh压缩到[-1,1]。正值为资金流入，负值为流出。</li>
+                <li><strong>动量因子 (Momentum)</strong>：计算过去M日价格收益率，除以同期波动率（60日）进行风险调整。</li>
             </ul>
             <div class="tech-formula">
-                Flow = OLS_Slope(份额变化, N日回溯)<br>
-                Mom = Return(M日) / Volatility(M日)
+                RSRS = &beta; &times; R&sup2; (High ~ Low, OLS回归, N日窗口)<br>
+                Flow = tanh(EWMA_Slope(份额, N日) &times; 3)<br>
+                Mom = Return(M日) / Std(日收益率, 60日)<br>
+                <br>
+                复合因子 = w&rgr;&sgr;&rgr;&sgr; &times; Z(RSRS) + w&fnof;low &times; Z(Flow) + w&#x3399;om &times; Z(Mom)
             </div>
-            <p>每个ETF的因子值经过<strong>截面Z-Score标准化</strong>：</p>
-            <div class="tech-formula">Z = (X - mean) / std</div>
-            <p>最终交互因子 = Z_Flow &times; Z_Mom，综合反映资金面与技术面的共振程度。</p>
+            <p>截面Z-Score标准化经过<strong>Winsorize 10%</strong>（截断极端值）处理，适应小样本（22只ETF）场景。</p>
+            <p style="margin-top:10px;"><strong>三因子权重</strong>：各预设权重不同（<span class="tech-tag tag-green">RSRS 0.3~0.5</span>，Flow 0.2~0.3，Mom 0.3~0.5），详见预设参数说明。因子验证结论：RSRS与动量<strong>极低共线性（Pearson &lt; 0.23）</strong>，提供完全独立的信息增量。在牛市中RSRS+动量组合ICIR可达0.43，远超单因子。</p>
         </div>
 
         <!-- Quadrant Model -->
@@ -79,23 +82,24 @@
             <h3><span class="icon" style="background:#fef3c7;">&#9632;</span> 四象限分类模型</h3>
             <p>根据Z_Flow和Z_Mom的正负号，将ETF分为四个象限：</p>
             <ul>
-                <li><span class="tech-tag tag-green">Q1 强势</span> Z_Flow &gt; 0, Z_Mom &gt; 0 &mdash; 资金流入+价格上涨，趋势最强。适合持仓或加仓。</li>
-                <li><span class="tech-tag tag-amber">Q2 潜伏</span> Z_Flow &gt; 0, Z_Mom &lt; 0 &mdash; 资金流入但价格下跌。可能是左侧布局机会。</li>
+                <li><span class="tech-tag tag-green">Q1 强势</span> Z_Flow &ge; 0, Z_Mom &ge; 0 &mdash; 资金流入+价格上涨，趋势共振。适合持仓或加仓。</li>
+                <li><span class="tech-tag tag-amber">Q2 潜伏</span> Z_Flow &ge; 0, Z_Mom &lt; 0 &mdash; 资金流入但价格下跌。左侧布局机会。</li>
                 <li><span class="tech-tag tag-amber">Q3 撤离</span> Z_Flow &lt; 0, Z_Mom &lt; 0 &mdash; 资金流出+价格下跌。风险最高，建议回避。</li>
-                <li><span class="tech-tag tag-red">Q4 风险</span> Z_Flow &lt; 0, Z_Mom &gt; 0 &mdash; 资金流出但价格仍在涨。警惕诱多陷阱。</li>
+                <li><span class="tech-tag tag-red">Q4 风险</span> Z_Flow &lt; 0, Z_Mom &ge; 0 &mdash; 资金流出但价格仍涨。警惕诱多陷阱。</li>
             </ul>
-            <p><strong>投资含义</strong>：优先关注Q1强势板块，Q2可作为逆向布局候选，Q3/Q4需谨慎。</p>
+            <p><strong>投资含义</strong>：投资建议引擎仅从Q1（60%预算）和Q2（40%预算）中筛选候选标的，Q3/Q4始终排除。</p>
         </div>
 
         <!-- IC Analysis -->
         <div class="tech-section">
             <h3><span class="icon" style="background:#e0f0ff;">&#9679;</span> IC (Information Coefficient) 分析</h3>
-            <p>IC衡量因子对未来收益的预测能力。本系统使用<strong>Spearman秩相关系数</strong>（Rank IC）：</p>
-            <div class="tech-formula">IC = Spearman_Rank_Correlation(因子值_t, 未来H日收益率)</div>
-            <p>每日计算截面IC，形成IC时间序列。关键统计量：</p>
+            <p>IC衡量因子对未来收益的预测能力。使用<strong>Spearman秩相关系数</strong>（Rank IC）：</p>
+            <div class="tech-formula">IC = Spearman_Rank_Correlation(T日因子值, T+1到T+1+H日收益率)</div>
+            <p><strong>前视偏差控制</strong>：因子在T日收盘后才可计算（需要T日收盘价和T日份额数据），因此IC分析中用T日因子预测T+1日起的收益，确保无前视偏差。</p>
+            <p>关键统计量：</p>
             <ul>
                 <li><strong>IC均值</strong>：所有日IC的平均值。<span class="tech-tag tag-green">|IC均值| &gt; 0.03 为显著</span>，表示因子有预测力。</li>
-                <li><strong>ICIR</strong>：IC均值 / IC标准差。<span class="tech-tag tag-green">|ICIR| &gt; 0.5 为稳定</span>，&gt; 2为非常稳定。ICIR越高，因子预测能力越可靠。</li>
+                <li><strong>ICIR</strong>：IC均值 / IC标准差。<span class="tech-tag tag-green">|ICIR| &gt; 0.5 为稳定</span>，&gt; 2为非常稳定。</li>
                 <li><strong>IC胜率</strong>：IC &gt; 0的交易日占比。<span class="tech-tag tag-green">&gt; 50% 表示因子方向正确</span>，&gt; 60%为优秀。</li>
             </ul>
         </div>
@@ -105,71 +109,38 @@
             <h3><span class="icon" style="background:#fce4e4;">&#9879;</span> 图表解读指南</h3>
 
             <p><strong>1. 因子分布直方图</strong></p>
-            <p>展示最新一期所有ETF的交互因子（Z_Flow &times; Z_Mom）分布。横轴为因子值区间，纵轴为ETF数量。</p>
-            <ul>
-                <li>正偏分布 &rarr; 整体偏强，多数板块资金+动量共振向上</li>
-                <li>负偏分布 &rarr; 整体偏弱，多数板块资金外流+动量向下</li>
-                <li>集中分布 &rarr; 板块分化小，缺乏结构性机会</li>
-            </ul>
+            <p>最新一期所有ETF的复合因子分布。正偏表示多数板块偏强，负偏表示偏弱。</p>
 
             <p style="margin-top:16px;"><strong>2. 四象限收益热力图</strong></p>
-            <p>展示四个象限在最新日期的平均远期收益（%）。颜色深浅代表收益高低，绿色为正收益，棕色为负收益。</p>
-            <ul>
-                <li>理想状态：Q1收益 &gt; Q2 &gt; Q3 &gt; Q4，说明因子有效区分了优劣板块</li>
-                <li>Q1显著正收益 &rarr; 强势板块确实跑赢</li>
-            </ul>
+            <p>四个象限在最新日期的平均远期收益（%）。理想状态：Q1 &gt; Q2 &gt; Q3 &gt; Q4。</p>
 
             <p style="margin-top:16px;"><strong>3. IC序列曲线</strong></p>
-            <p>每日IC值的时序变化。棕色虚线为IC均值，浅色虚线为&plusmn;2&sigma;波动带。</p>
-            <ul>
-                <li>IC持续为正 &rarr; 因子预测力稳定</li>
-                <li>IC波动剧烈 &rarr; 因子不稳定，需谨慎依赖</li>
-                <li>IC趋势性下降 &rarr; 因子可能正在失效</li>
-            </ul>
+            <p>每日IC值的时序变化，含IC均值线和&plusmn;2&sigma;波动带。IC持续为正表示因子预测力稳定。</p>
 
-            <p style="margin-top:16px;"><strong>4. IC衰减图</strong></p>
-            <p>不同持有期（1日、5日、10日、20日...）下的IC均值变化。</p>
-            <ul>
-                <li>IC随持有期衰减越慢 &rarr; 因子在中长期越有效</li>
-                <li>快速衰减至0 &rarr; 因子仅短期有效，适合短线策略</li>
-                <li>衰减周期 = IC降至0.02以下的持有天数</li>
-            </ul>
+            <p style="margin-top:16px;"><strong>4. 最新因子排名</strong></p>
+            <p>所有ETF按复合因子降序排列，含象限标签。可直观看到当前最强势和最弱势的板块。</p>
 
             <p style="margin-top:16px;"><strong>5. 分组累计收益曲线</strong></p>
-            <p>四个象限的累计收益率随时间变化。Q1为强势组，Q3为弱势组。</p>
-            <ul>
-                <li>Q1曲线持续向上 &rarr; 选出的强势板块确实持续跑赢</li>
-                <li>Q1与Q3差距扩大 &rarr; 多空对冲空间增大</li>
-                <li>四条线缠绕 &rarr; 因子区分度弱</li>
-            </ul>
+            <p>四个象限的累计收益率随时间变化。Q1与Q3差距越大，因子区分度越好。</p>
 
             <p style="margin-top:16px;"><strong>6. 因子滚动ICIR</strong></p>
-            <p>60日滚动窗口计算的ICIR。反映因子预测力的动态稳定性。</p>
-            <ul>
-                <li>滚动ICIR &gt; 0.5 的区间 &rarr; 因子在该时段表现稳定</li>
-                <li>滚动ICIR跌破0 &rarr; 因子失效区间，需降低因子权重</li>
-                <li>趋势性变化 &rarr; 市场风格可能正在切换</li>
-            </ul>
+            <p>60日滚动窗口计算的ICIR。滚动ICIR &gt; 0.5表示因子在该时段表现稳定。</p>
 
             <p style="margin-top:16px;"><strong>7. 行业配置权重建议图</strong></p>
-            <p>基于最新因子值，对Q1+Q2象限（强势+潜伏）的ETF按因子绝对值归一化为权重。</p>
-            <ul>
-                <li>权重越高 &rarr; 因子越极端，建议超配</li>
-                <li>仅包含Q1和Q2象限的ETF（潜在买入标的）</li>
-                <li>Q3/Q4象限的ETF不参与配置</li>
-            </ul>
+            <p>对Q1+Q2象限ETF按因子绝对值归一化为建议权重。权重越高表示因子越极端，建议超配。</p>
         </div>
 
         <!-- Preset Parameters -->
         <div class="tech-section">
             <h3><span class="icon" style="background:#e8e0f4;">&#9881;</span> 预设参数说明</h3>
-            <p>系统提供三组预设参数：</p>
+            <p>每个预设定义了三因子参数和权重：</p>
             <ul>
-                <li><strong>短期</strong>：N=10日, M=20日。适合验证短线因子信号，远期检验覆盖1/5/10/20日。</li>
-                <li><strong>中期</strong>：N=20日, M=60日。适合中线持仓参考，远期检验覆盖1/5/10/20/40/60日。</li>
-                <li><strong>长期</strong>：N=40日, M=120日。适合长周期趋势判断，远期检验覆盖5/10/20/40/60日。</li>
+                <li><strong>短期</strong>：RSRS=20, Flow=10, Mom=20, H=10。权重 RSRS 0.4 / Flow 0.2 / Mom 0.4。短线因子信号验证。</li>
+                <li><strong>中期</strong>：RSRS=20, Flow=20, Mom=60, H=20。权重 RSRS 0.3 / Flow 0.3 / Mom 0.4。中线持仓参考。</li>
+                <li><strong>长期</strong>：RSRS=30, Flow=40, Mom=120, H=40。权重 RSRS 0.25 / Flow 0.25 / Mom 0.5。长周期趋势判断。</li>
+                <li><strong>RSRS进取</strong>：RSRS=15, Flow=10, Mom=10, H=10。权重 RSRS 0.5 / Flow 0.2 / Mom 0.3。牛市偏RSRS权重。</li>
             </ul>
-            <p>其中 N 为资金流回溯天数，M 为动量回溯天数。</p>
+            <p>RSRS=回归窗口天数, Flow=份额回溯天数, Mom=动量回溯天数, H=最优预测周期。RSRS最优参数经独立验证（全周期最佳 RSRS_N=20, H=10, ICIR=0.128）。</p>
         </div>
 
         <!-- Disclaimers -->
@@ -178,7 +149,8 @@
             <ul>
                 <li>本分析仅供学习研究，<strong>不构成任何投资建议</strong>。</li>
                 <li>因子有效性会随市场风格变化而波动，历史IC不代表未来表现。</li>
-                <li>行业ETF数量有限（11只），截面IC统计的样本量较小，结论需谨慎对待。</li>
+                <li>IC分析已采用T+1延迟消除前视偏差，但实际交易还需考虑滑点和冲击成本。</li>
+                <li>行业ETF数量有限（22只），截面IC统计的样本量较小，结论需谨慎对待。</li>
                 <li>资金流数据基于ETF份额变化，可能存在申赎套利导致的噪声。</li>
                 <li>建议结合基本面分析和市场环境综合判断。</li>
             </ul>

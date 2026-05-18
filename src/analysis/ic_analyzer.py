@@ -1,7 +1,11 @@
 """IC (Information Coefficient) analyzer for factor validation.
 
-Computes Spearman Rank IC, ICIR, IC win rate, IC decay,
-and rolling ICIR from factor values and forward returns.
+Computes Spearman Rank IC, ICIR, IC win rate, and rolling ICIR
+from factor values and forward returns.
+
+IMPORTANT: Uses T-1 day's factor to predict T to T+H returns (no look-ahead).
+Factor on date T requires T's close price and share data (available after close),
+so the earliest actionable signal is at T+1 open.
 """
 import logging
 
@@ -123,21 +127,27 @@ def compute_all_ic(preset_id: str = None) -> int:
             quadrant_rows = []
 
             for t in factor_dates:
+                # No look-ahead: factor on date T is only known after T's close.
+                # Forward return starts from T+1 (next trading day).
+                if t not in date_idx:
+                    continue
+                idx = date_idx[t]
+                if idx + 1 + h >= len(all_dates):
+                    continue
+
+                # Entry date = T+1, exit date = T+1+H
+                entry_date = all_dates[idx + 1]
+                exit_date = all_dates[idx + 1 + h]
+
                 day_factors = factor_df[factor_df["trade_date"] == t]
 
                 fwd_rets = {}
                 for _, row in day_factors.iterrows():
                     code = row["etf_code"]
-                    close_t = price_lookup.get((code, t))
-                    if t not in date_idx:
-                        continue
-                    idx = date_idx[t]
-                    if idx + h >= len(all_dates):
-                        continue
-                    fwd_date = all_dates[idx + h]
-                    close_fwd = price_lookup.get((code, fwd_date))
-                    if close_t and close_fwd and close_t > 0:
-                        fwd_rets[code] = (close_fwd / close_t - 1, row["factor"], row["quadrant"])
+                    close_entry = price_lookup.get((code, entry_date))
+                    close_exit = price_lookup.get((code, exit_date))
+                    if close_entry and close_exit and close_entry > 0:
+                        fwd_rets[code] = (close_exit / close_entry - 1, row["factor"], row["quadrant"])
 
                 if len(fwd_rets) < MIN_ETF_COUNT:
                     continue

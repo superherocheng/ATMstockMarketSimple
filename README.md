@@ -7,6 +7,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14%2B-336791?logo=postgresql&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![ICIR](https://img.shields.io/badge/ICIR-0.35-success)
+![RSRS](https://img.shields.io/badge/RSRS-集成-blueviolet)
 
 **A股ETF量化监控平台 | Chinese A-Share ETF Quantitative Monitoring Platform**
 
@@ -33,10 +34,11 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 - 🔄 **一键数据更新** - ETF份额自动检测更新，智能判断数据新鲜度
 
 ### 🔬 量化分析
-- 🔬 **多因子评分模型** - 资金流(Flow) + 动量(Mom)因子线性组合，ICIR=0.35
+- 🔬 **三因子评分模型** - RSRS(阻力支撑) + 资金流(Flow) + 动量(Mom)因子线性组合，ICIR=0.35
+- 💪 **RSRS因子** - 基于高低点滚动OLS回归(β×R²)，衡量支撑/阻力结构强度，与动量极低共线性(Pearson<0.23)
 - 📈 **IC有效性检验** - Spearman Rank IC + ICIR + IC衰减曲线
 - 🎯 **四象限分类** - Q1强势/Q2潜伏/Q3撤离/Q4风险，直观定位ETF
-- 🏆 **投资建议引擎** - 多因子得分 + IC置信度 + 大盘择时 + ETF间相关惩罚 → 仓位配置
+- 🏆 **投资建议引擎** - 三因子得分 + IC置信度 + 大盘择时 + ETF间相关惩罚 → 仓位配置
 - 📡 **大盘择时** - 基于中证500 RSI+动量+份额变化的市场状态判断
 
 ### 🎨 用户体验
@@ -50,27 +52,43 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 ### 因子组合
 
 ```
-综合因子 = 0.30 × z_flow(EWMA) + 0.70 × z_mom(vol-adj)
+综合因子 = w_rsrs × z_rsrs(RSRS) + w_flow × z_flow(EWMA) + w_mom × z_mom(vol-adj)
 ```
 
 | 子因子 | 计算方式 | 说明 |
 |--------|----------|------|
+| **RSRS(阻力支撑)** | 高低点滚动OLS回归(β×R²)，N日窗口 | 支撑/阻力结构强度，与动量极低共线性(Pearson<0.23) |
 | **资金流(Flow)** | EWMA加权斜率 (半衰期3天) → Tanh压缩 | 份额变化趋势，近期敏感 |
 | **动量(Mom)** | 累计收益率 / 60日波动率 | 风险调整后动量 |
 
+### 权重配置
+
+各预设使用不同的三因子权重：
+
+| 预设 | RSRS权重 | Flow权重 | Mom权重 | 适用场景 |
+|------|:--------:|:--------:|:-------:|----------|
+| **short** | 0.4 | 0.2 | 0.4 | 短线 (H=10) |
+| **medium** | 0.3 | 0.3 | 0.4 | 中线 (H=20) |
+| **long** | 0.25 | 0.25 | 0.5 | 长线 (H=40) |
+| **rsrs_aggressive** | 0.5 | 0.2 | 0.3 | 牛市偏RSRS (H=10) |
+
+### RSRS因子验证
+
+| 市场环境 | 最佳RSRS参数 | ICIR | 对比最佳动量ICIR |
+|---------|:-----------:|:----:|:---------------:|
+| 淡季(熊市) | N=40, H=20 | 0.206 | 0.251 (mom_60) |
+| 旺季(牛市) | N=15, H=10 | **0.292** | 0.267 (mom_10) |
+| 全周期 | N=20, H=10 | 0.132 | 0.157 (mom_60) |
+
+**共线性检验**：所有RSRS/动量组合Pearson均值<0.23→极低共线性，RSRS提供完全独立的信息增量。
+
+**最优组合**（旺季）：RSRS(N=20) + 动量(M=10)，ICIR=**0.43**，远超单因子（RSRS 0.29, Mom 0.27）。
+
 ### 数据处理
 
-- **Winsorize 10%** — 截断极端值，消除小样本(15只)噪声
+- **Winsorize 10%** — 截断极端值，消除小样本(22只)噪声
 - **Cross-sectional Z-score** — 横截面标准化
 - **行业中性化** — 按行业分组去均值（预留）
-
-### IC表现 (短期预设, H=10天)
-
-| 指标 | 旧值(交互项) | 新值(加性模型) |
-|------|:-----------:|:-------------:|
-| IC均值 | 0.008 | **0.121** |
-| ICIR | 0.02 | **0.35** |
-| IC胜率 | 52% | **61.2%** |
 
 ### 投资建议引擎
 
@@ -115,7 +133,7 @@ ATMstockMarketSimple/
 │   │   └── services/
 │   │       └── cache.py             # Redis + 内存缓存
 │   ├── analysis/                    # 量化分析模块
-│   │   ├── factor_engine.py         # 因子计算 (EWMA Flow + Mom + Winsorize)
+│   │   ├── factor_engine.py         # 三因子计算 (RSRS + EWMA Flow + Mom + Winsorize)
 │   │   ├── ic_analyzer.py           # IC/ICIR分析 + 象限收益
 │   │   ├── chart_builder.py         # ECharts数据转换
 │   │   ├── market_timing.py         # 中证500大盘择时

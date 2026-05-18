@@ -89,7 +89,7 @@
         </div>
     </div>
 
-    <!-- Row 2: IC series curve + IC decay chart -->
+    <!-- Row 2: IC series curve + Factor ranking table -->
     <div class="chart-grid" style="margin-top:12px;">
         <div class="chart-cell">
             <h3>IC序列曲线</h3>
@@ -98,8 +98,8 @@
             </div>
         </div>
         <div class="chart-cell">
-            <h3>IC衰减图</h3>
-            <div id="chart-ic-decay" class="chart-container">
+            <h3>最新因子排名</h3>
+            <div id="factor-ranking" class="chart-container" style="overflow-y:auto;">
                 <div class="no-data">加载中...</div>
             </div>
         </div>
@@ -218,28 +218,29 @@
             var results = await Promise.all([
                 fetch('/api/analysis/summary?preset_id=' + presetId).then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
                 fetch('/api/analysis/factor-distribution?preset_id=' + presetId).then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
-                fetch('/api/analysis/ic-series?preset_id=' + presetId + '&forward_days=5').then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
-                fetch('/api/analysis/ic-decay?preset_id=' + presetId).then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
+                fetch('/api/analysis/ic-series?preset_id=' + presetId).then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
                 fetch('/api/analysis/quadrant-heatmap?preset_id=' + presetId).then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
                 fetch('/api/analysis/group-returns?preset_id=' + presetId).then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
-                fetch('/api/analysis/rolling-icir?preset_id=' + presetId + '&forward_days=5&window=60').then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
+                fetch('/api/analysis/rolling-icir?preset_id=' + presetId + '&window=60').then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
                 fetch('/api/analysis/weight-recommendation?preset_id=' + presetId).then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; })
             ]);
 
             var summary = results[0];
             var factorDist = results[1];
             var icSeries = results[2];
-            var icDecay = results[3];
-            var quadrant = results[4];
-            var groupReturns = results[5];
-            var rollingIcir = results[6];
-            var weightRec = results[7];
+            var quadrant = results[3];
+            var groupReturns = results[4];
+            var rollingIcir = results[5];
+            var weightRec = results[6];
 
             // Render KPIs from summary
             renderKPIs(summary);
 
             // Render text summary
             renderSummary(summary);
+
+            // Render factor ranking table
+            renderFactorRanking(summary);
 
             // Render freshness label
             if (summary && summary.date) {
@@ -249,7 +250,6 @@
             // Render ECharts charts
             renderEChart('factorDist', 'chart-factor-dist', factorDist);
             renderEChart('icSeries', 'chart-ic-series', icSeries);
-            renderEChart('icDecay', 'chart-ic-decay', icDecay);
             renderEChart('groupReturns', 'chart-group-returns', groupReturns);
             renderEChart('rollingIcir', 'chart-rolling-icir', rollingIcir);
             renderEChart('weightRec', 'chart-weight-rec', weightRec);
@@ -330,8 +330,8 @@
         if (summary.factor_validity) {
             lines.push('因子有效性: ' + summary.factor_validity);
         }
-        if (summary.decay_period) {
-            lines.push('衰减周期: ' + summary.decay_period);
+        if (summary.sample_count) {
+            lines.push('IC样本数: ' + summary.sample_count);
         }
         if (summary.strong_buy) {
             lines.push('强势板块: ' + summary.strong_buy);
@@ -340,21 +340,7 @@
             lines.push('逆向关注: ' + summary.contrarian);
         }
         if (summary.q1_count !== undefined) {
-            lines.push('Q1强势ETF数: ' + summary.q1_count);
-        }
-        if (summary.q2_count !== undefined) {
-            lines.push('Q2潜伏ETF数: ' + summary.q2_count);
-        }
-
-        if (summary.summary_rows && summary.summary_rows.length > 0) {
-            lines.push('');
-            summary.summary_rows.forEach(function(row) {
-                if (typeof row === 'string') {
-                    lines.push(row);
-                } else if (row.text) {
-                    lines.push(row.text);
-                }
-            });
+            lines.push('Q1强势ETF数: ' + summary.q1_count + ' | Q2潜伏ETF数: ' + summary.q2_count);
         }
 
         if (lines.length === 0) {
@@ -362,6 +348,40 @@
         }
 
         el.innerHTML = lines.join('<br>');
+    }
+
+    function renderFactorRanking(summary) {
+        var el = document.getElementById('factor-ranking');
+        if (!summary || !summary.latest_factors || summary.latest_factors.length === 0) {
+            el.innerHTML = noDataHtml();
+            return;
+        }
+
+        var quadLabels = {1: 'Q1强势', 2: 'Q2潜伏', 3: 'Q3撤离', 4: 'Q4风险'};
+        var quadColors = {1: '#4a7c4a', 2: '#8fbc8f', 3: '#cd853f', 4: '#cd5c5c'};
+
+        var html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+        html += '<thead><tr style="border-bottom:2px solid var(--c-border);">';
+        html += '<th style="text-align:left;padding:6px 4px;">排名</th>';
+        html += '<th style="text-align:left;padding:6px 4px;">ETF</th>';
+        html += '<th style="text-align:right;padding:6px 4px;">因子</th>';
+        html += '<th style="text-align:center;padding:6px 4px;">象限</th>';
+        html += '</tr></thead><tbody>';
+
+        summary.latest_factors.forEach(function(f, i) {
+            var qColor = quadColors[f.quadrant] || '#999';
+            var qLabel = quadLabels[f.quadrant] || 'Q' + f.quadrant;
+            var factorColor = f.factor > 0 ? 'var(--c-up)' : f.factor < 0 ? 'var(--c-down)' : 'var(--c-text)';
+            html += '<tr style="border-bottom:1px solid var(--c-border);">';
+            html += '<td style="padding:5px 4px;">' + (i + 1) + '</td>';
+            html += '<td style="padding:5px 4px;">' + (f.name || f.code) + '</td>';
+            html += '<td style="padding:5px 4px;text-align:right;color:' + factorColor + ';">' + f.factor.toFixed(3) + '</td>';
+            html += '<td style="padding:5px 4px;text-align:center;"><span style="display:inline-block;padding:1px 6px;border-radius:3px;font-size:11px;color:#fff;background:' + qColor + ';">' + qLabel + '</span></td>';
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+        el.innerHTML = html;
     }
 
     function renderHeatmap(data) {
