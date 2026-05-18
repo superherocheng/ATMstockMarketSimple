@@ -86,7 +86,7 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 
 ### 数据处理
 
-- **Winsorize 10%** — 截断极端值，消除小样本(22只)噪声
+- **Winsorize 10%** — 截断极端值，消除小样本(17只)噪声
 - **Cross-sectional Z-score** — 横截面标准化
 - **行业中性化** — 按行业分组去均值（预留）
 
@@ -241,7 +241,7 @@ uvicorn src.web.app:app --reload --port 8000
 | 512100.SH | 中证1000ETF | 小盘股代表 |
 | 588000.SH | 科创50ETF | 科技创新龙头 |
 
-### 行业ETF（15只）
+### 行业ETF（17只）
 
 | ETF代码 | 名称 | ETF代码 | 名称 |
 |---------|------|---------|------|
@@ -250,9 +250,10 @@ uvicorn src.web.app:app --reload --port 8000
 | 512880.SH | 证券ETF | 159928.SZ | 消费ETF |
 | 515880.SH | 通信ETF | 159206.SZ | 卫星ETF |
 | 515220.SH | 煤炭ETF | 512400.SH | 有色ETF |
-| 562500.SH | 机器人ETF | 512690.SH | 酒ETF |
-| 159934.SZ | 黄金ETF | 159611.SZ | 电力ETF |
-| 512980.SH | 传媒ETF | - | - |
+| 562500.SH | 机器人ETF | 512690.SH | 白酒ETF |
+| 159611.SZ | 电力ETF | 512980.SH | 传媒ETF |
+| 515210.SH | 钢铁ETF | 159870.SZ | 化工ETF |
+| 561360.SH | 石油ETF | - | - |
 
 ## 🔌 API 端点
 
