@@ -33,7 +33,7 @@ _DATA_AVAILABLE_HOUR_BJ = 16
 def now_beijing():
     """当前北京时间 (UTC+8)。使用 datetime.utcnow() 获取 UTC 时间再加 8 小时，
     完全不依赖服务器本地时区设置，确保在不同地区的 VPS 都能正确工作。"""
-    return datetime.utcnow() + timedelta(hours=8)
+    return datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=8)
 
 
 def _now_beijing():
@@ -82,9 +82,9 @@ def get_open_trade_dates(start_date=None, end_date=None):
     Returns:
         list[str] — 排序后的交易日字符串
     """
-    today = datetime.utcnow().strftime("%Y%m%d")
+    today = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y%m%d")
     if start_date is None:
-        start_date = (datetime.utcnow() - timedelta(days=365)).strftime("%Y%m%d")
+        start_date = (datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=365)).strftime("%Y%m%d")
     if end_date is None:
         end_date = today
 
@@ -106,7 +106,7 @@ def get_latest_trading_date():
     """
     global _latest_td_cache, _latest_td_cache_ts
 
-    now_ts = datetime.utcnow().timestamp()
+    now_ts = datetime.now(timezone.utc).replace(tzinfo=None).timestamp()
     if _latest_td_cache and (now_ts - _latest_td_cache_ts) < 1800:
         return _latest_td_cache
 
@@ -220,7 +220,7 @@ def get_dates_to_fetch(table, ts_code=None, start_date=None):
     elif db_max:
         fetch_from = db_max
     else:
-        fetch_from = (datetime.utcnow() - timedelta(days=365)).strftime("%Y%m%d")
+        fetch_from = (datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=365)).strftime("%Y%m%d")
 
     dates = get_open_trade_dates(fetch_from, latest)
 

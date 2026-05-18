@@ -93,6 +93,30 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
                 best_fwd = r[0]
         optimal_h = best_fwd
 
+        # ── 4a. Compute recent (rolling) ICIR for decay detection ──
+        recent_ic_rows = conn.execute(text("""
+            SELECT ic_value FROM ic_daily
+            WHERE preset_id = :pid AND forward_days = :h
+            ORDER BY trade_date DESC LIMIT 60
+        """), {"pid": preset_id, "h": optimal_h}).fetchall()
+        if len(recent_ic_rows) >= 20:
+            _recent_ics = np.array([float(r[0]) for r in recent_ic_rows if r[0] is not None])
+            if len(_recent_ics) >= 20:
+                _recent_mean = float(_recent_ics.mean())
+                _recent_std  = float(_recent_ics.std(ddof=1))
+                recent_icir  = _recent_mean / _recent_std if _recent_std > 0 else None
+                # Compute decay vs full-sample ICIR
+                if best_icir > 0 and recent_icir is not None:
+                    icir_decay_pct = max(0, (1 - recent_icir / best_icir) * 100)
+                else:
+                    icir_decay_pct = None
+            else:
+                recent_icir = None
+                icir_decay_pct = None
+        else:
+            recent_icir = None
+            icir_decay_pct = None
+
         # Get quadrant performance at optimal H
         qp_rows = conn.execute(text("""
             SELECT quadrant, AVG(avg_forward_ret) as avg_ret,
@@ -125,7 +149,7 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
     etf_data = {}
     for r in factor_rows:
         code = r[0]
-        etf_data[code] = {
+        entry = {
             "code": code,
             "name": sector_names.get(code, code),
             "z_flow": float(r[1]) if r[1] else 0,
@@ -135,6 +159,11 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
             "flow_raw": float(r[5]) if r[5] else 0,
             "mom_raw": float(r[6]) if r[6] else 0,
         }
+        if has_rsrs and len(r) >= 9:
+            entry["z_rsrs"] = float(r[8]) if r[8] else 0
+        else:
+            entry["z_rsrs"] = 0
+        etf_data[code] = entry
 
     # IC stats
     ic_summary = {}
@@ -178,12 +207,20 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
         timing = {"score": 0, "adjustment": 0, "regime_cn": "未知", "narrative": ""}
 
     # ── Select and rank candidates ──
-    # Only Q1 (strong) and Q2 (lurk) are recommended
-    # Exclude ETFs no longer in current SECTOR_ETF config
-    candidates = [
-        e for e in etf_data.values()
-        if e["quadrant"] in (1, 2) and e["code"] in sector_names
-    ]
+    # Standard: Q1 (strong) and Q2 (lurk) are always recommended.
+    # RSRS override: Q3 (exit) ETFs with strong RSRS (z_rsrs > 0.3)
+    #   and positive composite factor also enter the pool,
+    #   because RSRS indicates structural support even when
+    #   short-term flow/momentum are negative.
+    # Q4 (risk) remains excluded — it's the highest-risk quadrant.
+    candidates = []
+    for e in etf_data.values():
+        if e["code"] not in sector_names:
+            continue
+        if e["quadrant"] in (1, 2):
+            candidates.append(e)
+        elif e["quadrant"] == 3 and e.get("z_rsrs", 0) > 0.3 and e["factor"] > 0:
+            candidates.append(e)
     candidates.sort(key=lambda x: -x["factor"])
 
     if not candidates:
@@ -195,53 +232,63 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
                 "description": "当前无符合条件的ETF推荐",
                 "holding_period": "",
             },
-            "reasons": ["所有ETF均处于Q3/Q4象限，建议持币观望"],
-            "risk_warning": ["市场无明显强势板块，暂停操作"],
+            "reasons": ["所有ETF均处于Q3/Q4象限且RSRS偏弱，建议持币观望"],
+            "risk_warning": ["市场无明显强势板块且无强支撑信号，暂停操作"],
         }
 
-    # Correlation-based penalty
-    def _correlation_penalty(code: str, selected: list) -> float:
-        """Penalty multiplier based on max correlation with already-selected ETFs."""
-        if not selected or code not in etf_corr.index:
-            return 1.0
-        max_corr = 0.0
-        for sel in selected:
-            if sel in etf_corr.columns and code in etf_corr.index:
-                c = abs(etf_corr.loc[code, sel])
-                if not np.isnan(c):
-                    max_corr = max(max_corr, c)
-        if max_corr > 0.7:
-            return 0.3  # very high correlation → severe penalty
-        elif max_corr > 0.6:
-            return 0.5  # high correlation → significant penalty
-        elif max_corr > 0.5:
-            return 0.7  # moderate correlation → mild penalty
-        return 1.0
-
-    # Score each candidate
-    scored = []
-    selected_codes = []
+    # ── Phase 1: Initial scoring (no correlation penalty) ──
+    initial_scored = []
     for c in candidates:
-        # Base score: only positive factor scores get allocation
-        # Negative factor scores mean the ETF is below cross-sectional average
         base_score = max(0, c["factor"])
-
-        # Quadrant multiplier: Q1=1.0, Q2=0.7
         quad_mult = 1.0 if c["quadrant"] == 1 else 0.7
+        initial_scored.append((c, base_score * quad_mult))
 
-        # Correlation penalty
-        corr_penalty = _correlation_penalty(c["code"], selected_codes)
+    # Sort by initial score descending
+    initial_scored.sort(key=lambda x: -x[1])
 
-        final_score = base_score * quad_mult * corr_penalty
-        scored.append((c, final_score))
-        selected_codes.append(c["code"])
-
-    # Sort by final score
-    scored.sort(key=lambda x: -x[1])
-
-    # Take top N (max 5)
+    # Take a wider pool (top 10 or all if fewer)
     MAX_RECOMMEND = 5
-    top = scored[:MAX_RECOMMEND]
+    pool_size = min(len(initial_scored), MAX_RECOMMEND * 2)
+    pool = initial_scored[:pool_size]
+
+    # ── Phase 2: Within-pool pairwise correlation penalty ──
+    # For each pair in the pool, if correlation > threshold,
+    # the lower-ranked (lower initial score) ETF gets penalized.
+    penalty_map = {c["code"]: 1.0 for c, _ in pool}
+
+    for i in range(len(pool)):
+        for j in range(i + 1, len(pool)):
+            code_i = pool[i][0]["code"]
+            code_j = pool[j][0]["code"]
+
+            if code_i not in etf_corr.index or code_j not in etf_corr.columns:
+                continue
+            corr_val = abs(etf_corr.loc[code_i, code_j])
+            if np.isnan(corr_val):
+                continue
+
+            if corr_val > 0.7:
+                p = 0.3
+            elif corr_val > 0.6:
+                p = 0.5
+            elif corr_val > 0.5:
+                p = 0.7
+            else:
+                continue
+
+            # Penalize the lower-ranked ETF (j > i, so lower initial score)
+            penalty_map[code_j] = min(penalty_map[code_j], p)
+
+    # Apply penalties and re-sort
+    penalized_scored = []
+    for c, score in pool:
+        final_score = score * penalty_map[c["code"]]
+        if final_score > 0:
+            penalized_scored.append((c, final_score))
+
+    # Sort by penalized score and take top N
+    penalized_scored.sort(key=lambda x: -x[1])
+    top = penalized_scored[:MAX_RECOMMEND]
     total_score = max(sum(s for _, s in top), 1e-6)
 
     # ── Position sizing ──
@@ -272,11 +319,16 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
         if c["quadrant"] == 1:
             strategy_label = "Q1强势持有"
             strategy_desc = "资金流入 + 价格上涨，趋势共振，持有或加仓"
-            holding = preset["forward_periods"][len(preset["forward_periods"]) // 2]
-        else:
+            holding = preset["forward_periods"][0]
+        elif c["quadrant"] == 2:
             strategy_label = "Q2潜伏布局"
             strategy_desc = "资金逆势流入，价格回调，分批建仓"
-            holding = preset["forward_periods"][0]  # shortest holding
+            holding = preset["forward_periods"][0]
+        else:
+            # Q3 with RSRS override: structural support despite weak flow/momentum
+            strategy_label = "Q3支撑博弈"
+            strategy_desc = "RSRS支撑结构较强，资金与动量偏弱，试探性配置"
+            holding = preset["forward_periods"][0]
 
         # Flow direction display (raw flow, scaled to readable %)
         flow_pct = round(c["flow_raw"] * 100, 1) if abs(c["flow_raw"]) > 0.001 else 0.0
@@ -318,6 +370,19 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
                 f"✓ 因子ICIR={icir_val:.2f}，预测力强，可适当加大仓位"
             )
 
+    # ── Rolling ICIR decay warning ──
+    if recent_icir is not None:
+        if icir_decay_pct is not None and icir_decay_pct > 40:
+            risk_warnings.append(
+                f"📉 近60日滚动ICIR={recent_icir:.2f}，较全样ICIR({best_icir:.2f})衰减"
+                f"{icir_decay_pct:.0f}%，因子预测力持续下降，建议谨慎操作"
+            )
+        elif icir_decay_pct is not None and icir_decay_pct > 20:
+            risk_warnings.append(
+                f"📉 近60日滚动ICIR={recent_icir:.2f}，较全样ICIR({best_icir:.2f})衰减"
+                f"{icir_decay_pct:.0f}%，因子信号质量有所下滑"
+            )
+
     if timing_adj < -0.1:
         risk_warnings.append(
             f"📉 大盘择时信号偏空（{timing.get('regime_cn','?')}），"
@@ -329,16 +394,24 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
             f"总仓位已上调{timing_adj*100:.0f}%"
         )
 
-    q1_in_top = sum(1 for c, _ in top if c["quadrant"] == 1)
-    q2_in_top = sum(1 for c, _ in top if c["quadrant"] == 2)
-    if q1_in_top > 0 and q2_in_top > 0:
-        corr_high = any(
-            _correlation_penalty(c["code"], []) < 0.7
-            for c, _ in top
-        )
-        if corr_high:
+    # Check pairwise correlations within the final top selection
+    if len(top) >= 2:
+        max_pair_corr = 0.0
+        high_corr_pairs = []
+        top_codes = [c["code"] for c, _ in top]
+        for i in range(len(top_codes)):
+            for j in range(i + 1, len(top_codes)):
+                ci, cj = top_codes[i], top_codes[j]
+                if ci in etf_corr.index and cj in etf_corr.columns:
+                    cv = abs(etf_corr.loc[ci, cj])
+                    if not np.isnan(cv):
+                        max_pair_corr = max(max_pair_corr, cv)
+                        if cv > 0.5:
+                            high_corr_pairs.append((ci, cj, cv))
+        if max_pair_corr > 0.5:
             risk_warnings.append(
-                "🔗 部分推荐ETF间相关性较高，已通过相关性惩罚控制集中度"
+                f"🔗 推荐ETF间相关性最高达{max_pair_corr:.2f}，"
+                f"已通过相关性惩罚控制集中度"
             )
 
     # ── Reasons ──
@@ -352,7 +425,7 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
             f"最优H={best_h}天: IC均值={ic['ic_mean']:.4f}, ICIR={ic['icir']:.2f}, "
             f"近{ic['sample_count']}个交易日胜率{ic['ic_win_rate']:.1%}"
         )
-    reasons.append("只推荐Q1（强势）+ Q2（潜伏）象限ETF，剔除Q3/Q4高风险品种")
+    reasons.append("主要推荐Q1（强势）+ Q2（潜伏）象限ETF；Q3（撤离）中RSRS>0.3的品种按信号强度纳入候选")
     reasons.append(
         f"风险预算：单ETF≤{max_single*100:.0f}%，按因子分比例配仓"
     )
@@ -373,7 +446,7 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
 
     # Strategy description
     strategy_name = f"ETF多因子轮动策略 ({preset['label']})"
-    holding_period = f"{preset['forward_periods'][len(preset['forward_periods'])//2]}个交易日中期持有"
+    holding_period = f"{preset['forward_periods'][0]}个交易日中期持有"
     strategy_desc = (
         f"{preset['description']}。"
         f"大盘信号：{timing.get('regime_cn','中性')}（择时调整{timing_adj*100:+.0f}%）。"

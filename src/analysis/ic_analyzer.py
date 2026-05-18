@@ -61,8 +61,47 @@ def _compute_ic_summary(ic_series: pd.Series) -> dict:
     }
 
 
-def _compute_preset_ic(pid: str) -> int:
+def _fetch_ic_price_data():
+    """Fetch and normalise price data for IC computation (shared across presets).
+
+    Returns a (price_df, all_dates, date_idx) tuple, or (None, [], {}) on failure.
+    """
+    from src.core.db_manager_postgresql import get_conn
+
+    conn = get_conn()
+    try:
+        price_rows = conn.execute(text(
+            "SELECT ts_code, trade_date, close FROM sector_etf_daily "
+            "ORDER BY ts_code, trade_date"
+        )).fetchall()
+    finally:
+        conn.close()
+
+    if not price_rows:
+        return None, [], {}
+
+    price_df = pd.DataFrame(price_rows, columns=["ts_code", "trade_date", "close"])
+    price_df["trade_date"] = price_df["trade_date"].apply(
+        lambda d: str(d).replace("-", "") if hasattr(d, "strftime") else str(d))
+    price_df["close"] = price_df["close"].astype(float)
+
+    all_dates = sorted(price_df["trade_date"].unique())
+    date_idx = {d: i for i, d in enumerate(all_dates)}
+
+    return price_df, all_dates, date_idx
+
+
+def _compute_preset_ic(pid: str, *,
+                       price_df: pd.DataFrame = None,
+                       all_dates: list = None,
+                       date_idx: dict = None) -> int:
     """Compute IC analysis for a single preset.
+
+    When called from ``compute_all_ic`` (multi‑preset path), the caller
+    passes the pre‑fetched price data so parallel threads share the same
+    ``sector_etf_daily`` scan.
+
+    When called directly (single‑preset path), fetches its own data.
 
     Returns total rows upserted.
     """
@@ -71,32 +110,31 @@ def _compute_preset_ic(pid: str) -> int:
     preset = get_preset(pid)
     forward_periods = preset["forward_periods"]
 
+    # ── Fetch price data if caller didn't provide it ──
+    if price_df is None:
+        price_df, all_dates, date_idx = _fetch_ic_price_data()
+        if price_df is None:
+            logger.warning(f"No price data for IC computation (preset={pid})")
+            return 0
+
     conn = get_conn()
     try:
         factor_rows = conn.execute(text(
             "SELECT etf_code, trade_date, factor, z_flow, z_mom, quadrant "
             "FROM factor_daily WHERE preset_id = :pid ORDER BY trade_date"
         ), {"pid": pid}).fetchall()
-
-        price_rows = conn.execute(text(
-            "SELECT ts_code, trade_date, close FROM sector_etf_daily "
-            "ORDER BY ts_code, trade_date"
-        )).fetchall()
     finally:
         conn.close()
 
-    if not factor_rows or not price_rows:
-        logger.warning(f"No data for IC computation (preset={pid})")
+    if not factor_rows:
+        logger.warning(f"No factor data for IC computation (preset={pid})")
         return 0
 
     factor_df = pd.DataFrame(factor_rows,
                              columns=["etf_code", "trade_date", "factor", "z_flow", "z_mom", "quadrant"])
-    price_df = pd.DataFrame(price_rows, columns=["ts_code", "trade_date", "close"])
 
-    # Normalize dates to strings
+    # Normalize factor dates to strings
     factor_df["trade_date"] = factor_df["trade_date"].apply(
-        lambda d: str(d).replace("-", "") if hasattr(d, "strftime") else str(d))
-    price_df["trade_date"] = price_df["trade_date"].apply(
         lambda d: str(d).replace("-", "") if hasattr(d, "strftime") else str(d))
 
     # Build price lookup: (code, date) → close
@@ -208,7 +246,10 @@ def _compute_preset_ic(pid: str) -> int:
 def compute_all_ic(preset_id: str = None) -> int:
     """Compute IC analysis for all presets, running them in parallel.
 
-    If preset_id is given, computes only that preset.
+    If *preset_id* is given, computes only that preset (standalone DB
+    fetch).  Otherwise fetches the underlying price data *once* and runs
+    all presets in parallel — each thread receives the shared price
+    DataFrames so the full‑table scan is not repeated.
 
     Returns total rows upserted.
     """
@@ -217,9 +258,20 @@ def compute_all_ic(preset_id: str = None) -> int:
     if len(preset_ids) == 1:
         return _compute_preset_ic(preset_ids[0])
 
+    # ── Fetch price data once for all presets ──
+    price_df, all_dates, date_idx = _fetch_ic_price_data()
+    if price_df is None:
+        logger.warning("No price data for IC computation")
+        return 0
+
+    # ── Parallel execution with shared price data ──
     total = 0
     with ThreadPoolExecutor(max_workers=min(len(preset_ids), 4)) as pool:
-        futures = {pool.submit(_compute_preset_ic, pid): pid for pid in preset_ids}
+        futures = {
+            pool.submit(_compute_preset_ic, pid,
+                        price_df=price_df, all_dates=all_dates, date_idx=date_idx): pid
+            for pid in preset_ids
+        }
         for fut in as_completed(futures):
             pid = futures[fut]
             try:

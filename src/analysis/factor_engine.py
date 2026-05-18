@@ -88,6 +88,9 @@ def _compute_flow_series(shares, lookback: int, halflife: int = 3) -> np.ndarray
 # ════════════════════════════════════════════════════════════
 #  Mom: 波动率调整动量 — vectorized per-ETF series
 # ════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════
+#  Mom: 波动率调整动量 — vectorized per-ETF series
+# ════════════════════════════════════════════════════════════
 def _compute_mom_series(closes, lookback: int, vol_window: int = 60) -> np.ndarray:
     """Compute volatility-adjusted momentum for every valid index.
 
@@ -155,10 +158,68 @@ def _classify_quadrant(z_flow: float, z_mom: float) -> int:
 
 
 # ════════════════════════════════════════════════════════════
+#  Shared data helper
+# ════════════════════════════════════════════════════════════
+def _fetch_factor_base_data():
+    """Fetch kline + share data from DB and normalise dates.
+
+    Also detects whether ``factor_daily`` has the ``rsrs`` / ``z_rsrs`` columns.
+
+    Returns (kline_df, share_df, has_rsrs).
+    Returns (None, None, False) if no data available.
+    """
+    from sqlalchemy import text
+    from src.core.db_manager_postgresql import get_conn
+
+    conn = get_conn()
+    try:
+        kline_rows = conn.execute(text(
+            "SELECT ts_code, trade_date, high, low, close, pct_chg FROM sector_etf_daily "
+            "ORDER BY ts_code, trade_date"
+        )).fetchall()
+        share_rows = conn.execute(text(
+            "SELECT ts_code, trade_date, fd_share FROM etf_share "
+            "ORDER BY ts_code, trade_date"
+        )).fetchall()
+        has_rsrs = conn.execute(text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='factor_daily' AND column_name='rsrs'"
+        )).fetchone() is not None
+    finally:
+        conn.close()
+
+    if not kline_rows or not share_rows:
+        return None, None, False
+
+    kline_df = pd.DataFrame(kline_rows,
+                            columns=["ts_code", "trade_date", "high", "low", "close", "pct_chg"])
+    share_df = pd.DataFrame(share_rows, columns=["ts_code", "trade_date", "fd_share"])
+
+    # Normalise dates to string (once, shared by all presets)
+    for col in ["trade_date"]:
+        kline_df[col] = kline_df[col].apply(
+            lambda d: str(d).replace("-", "") if hasattr(d, "strftime") else str(d))
+        share_df[col] = share_df[col].apply(
+            lambda d: str(d).replace("-", "") if hasattr(d, "strftime") else str(d))
+
+    return kline_df, share_df, has_rsrs
+
+
+# ════════════════════════════════════════════════════════════
 #  Batch compute all dates — vectorized
 # ════════════════════════════════════════════════════════════
-def _compute_preset_factors(pid: str) -> int:
+def _compute_preset_factors(pid: str, *,
+                            kline_df: pd.DataFrame = None,
+                            share_df: pd.DataFrame = None,
+                            has_rsrs: bool = False) -> int:
     """Compute factors for one preset using vectorized per-ETF series.
+
+    When called from ``compute_all_factors`` (multi‑preset path), the
+    caller passes pre‑fetched *kline_df*, *share_df* and *has_rsrs* so
+    the four parallel threads don't repeat the same full‑table scans.
+
+    When called directly (single‑preset path), the function fetches its
+    own data via ``_fetch_factor_base_data``.
 
     Returns number of rows upserted.
     """
@@ -172,33 +233,12 @@ def _compute_preset_factors(pid: str) -> int:
     weights = preset.get("factor_weights", {"rsrs": 0.4, "flow": 0.2, "mom": 0.4})
     lookback_needed = max(rsrs_lb, flow_lb, mom_lb) + 1
 
-    conn = get_conn()
-    try:
-        kline_rows = conn.execute(text(
-            "SELECT ts_code, trade_date, high, low, close, pct_chg FROM sector_etf_daily "
-            "ORDER BY ts_code, trade_date"
-        )).fetchall()
-
-        share_rows = conn.execute(text(
-            "SELECT ts_code, trade_date, fd_share FROM etf_share "
-            "ORDER BY ts_code, trade_date"
-        )).fetchall()
-    finally:
-        conn.close()
-
-    if not kline_rows or not share_rows:
-        logger.warning(f"No data for factor computation (preset={pid})")
-        return 0
-
-    kline_df = pd.DataFrame(kline_rows,
-                            columns=["ts_code", "trade_date", "high", "low", "close", "pct_chg"])
-    share_df = pd.DataFrame(share_rows, columns=["ts_code", "trade_date", "fd_share"])
-
-    # Normalise dates to string
-    kline_df["trade_date"] = kline_df["trade_date"].apply(
-        lambda d: str(d).replace("-", "") if hasattr(d, "strftime") else str(d))
-    share_df["trade_date"] = share_df["trade_date"].apply(
-        lambda d: str(d).replace("-", "") if hasattr(d, "strftime") else str(d))
+    # ── Fetch data if caller didn't provide it (standalone path) ──
+    if kline_df is None:
+        kline_df, share_df, has_rsrs = _fetch_factor_base_data()
+        if kline_df is None:
+            logger.warning(f"No data for factor computation (preset={pid})")
+            return 0
 
     all_dates = sorted(kline_df["trade_date"].unique())
 
@@ -245,7 +285,7 @@ def _compute_preset_factors(pid: str) -> int:
     if not computable_dates:
         return 0
 
-    # ── Step 3: check what's already computed ──
+    # ── Step 3: check what's already computed per preset ──
     conn = get_conn()
     try:
         existing = conn.execute(text(
@@ -259,16 +299,6 @@ def _compute_preset_factors(pid: str) -> int:
     if not new_dates:
         logger.info(f"All factor data already computed for preset={pid}")
         return 0
-
-    # Check if rsrs columns exist in factor_daily
-    conn = get_conn()
-    try:
-        has_rsrs = conn.execute(text(
-            "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name='factor_daily' AND column_name='rsrs'"
-        )).fetchone() is not None
-    finally:
-        conn.close()
 
     # ── Step 4: compute cross-sectional stats per date ──
     # Filter raw_all to dates we care about (speeds up lookups)
@@ -334,8 +364,10 @@ def _compute_preset_factors(pid: str) -> int:
 def compute_all_factors(preset_id: str = None) -> int:
     """Compute factors for all trading dates.
 
-    If preset_id is given, computes only that preset.
-    Otherwise computes all presets in parallel for speed.
+    If *preset_id* is given, computes only that preset (standalone DB
+    fetch).  Otherwise fetches the underlying data *once* and runs all
+    presets in parallel — each thread receives the shared DataFrames so
+    the full‑table scans are not repeated.
 
     Returns the total number of rows upserted.
     """
@@ -344,10 +376,21 @@ def compute_all_factors(preset_id: str = None) -> int:
     if len(preset_ids) == 1:
         return _compute_preset_factors(preset_ids[0])
 
-    # Parallel execution across presets
+    # ── Fetch data once for all presets ──
+    kline_df, share_df, has_rsrs = _fetch_factor_base_data()
+    if kline_df is None or share_df is None:
+        logger.warning("No data for factor computation")
+        return 0
+
+    # ── Parallel execution with shared data ──
     total = 0
     with ThreadPoolExecutor(max_workers=min(len(preset_ids), 4)) as pool:
-        futures = {pool.submit(_compute_preset_factors, pid): pid for pid in preset_ids}
+        futures = {
+            pool.submit(_compute_preset_factors, pid,
+                        kline_df=kline_df, share_df=share_df,
+                        has_rsrs=has_rsrs): pid
+            for pid in preset_ids
+        }
         for fut in as_completed(futures):
             pid = futures[fut]
             try:

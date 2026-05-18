@@ -6,7 +6,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104%2B-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14%2B-336791?logo=postgresql&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
-![ICIR](https://img.shields.io/badge/ICIR-0.35-success)
+![ICIR](https://img.shields.io/badge/ICIR-0.50-brightgreen)
 ![RSRS](https://img.shields.io/badge/RSRS-集成-blueviolet)
 
 **A股ETF量化监控平台 | Chinese A-Share ETF Quantitative Monitoring Platform**
@@ -35,13 +35,13 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 - 🏠 **首页因子概览** - 首页新增IC汇总卡片，展示各预设的IC均值/ICIR/胜率及三因子权重
 
 ### 🔬 量化分析
-- 🔬 **三因子评分模型** - RSRS(阻力支撑) + 资金流(Flow) + 动量(Mom)因子线性组合，ICIR=0.35
+- 🔬 **三因子评分模型** - RSRS(阻力支撑) + 资金流(Flow) + 动量(Mom)因子线性组合，ICIR=0.50
 - 💪 **RSRS因子** - 基于高低点滚动OLS回归(β×R²)，衡量支撑/阻力结构强度，与动量极低共线性(Pearson<0.23)
 - ⚡ **向量化因子引擎** - 滑动窗口预计算RSRS/Flow/Mom，全量回测从~25s降至~5s，提速5-8x
-- 🔄 **并行预设计算** - 4组预设因子+IC并行计算，充分利用多核CPU
-- 📈 **IC有效性检验** - Spearman Rank IC + ICIR + IC衰减曲线
-- 🎯 **四象限分类** - Q1强势/Q2潜伏/Q3撤离/Q4风险，直观定位ETF
-- 🏆 **投资建议引擎** - 三因子得分 + IC置信度 + 大盘择时 + ETF间相关惩罚 → 仓位配置
+- 🔄 **并行预设计算+数据共享** - 4组预设并行计算，DB全表扫描仅执行一次，避免重复IO
+- 📈 **IC有效性检验** - Spearman Rank IC + ICIR + IC衰减曲线 + **滚动ICIR衰退检测**
+- 🎯 **四象限分类+RSRS覆盖** - Q1强势/Q2潜伏/Q3撤离/Q4风险；Q3中RSRS>0.3的品种按信号强度纳入候选
+- 🏆 **投资建议引擎** - 三因子得分 + RSRS象限覆盖 + IC置信度 + 两阶段相关性惩罚 + 大盘择时 + 滚动ICIR衰减检测 → 仓位配置
 - 📡 **大盘择时** - 基于中证500 RSI+动量+份额变化的市场状态判断
 - 🛡️ **数据覆盖回退** - 最新交易日数据不全时自动回退到最近完整日期
 
@@ -97,13 +97,14 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 ### 投资建议引擎
 
 ```
-因子得分 + 象限 × 相关惩罚 + 大盘择时 → 风险预算分配 → 仓位
+因子得分 + RSRS覆盖 + 两阶段相关惩罚 + ICIR衰减检测 + 大盘择时 → 风险预算分配 → 仓位
 ```
 
-- 只推荐Q1(强势)+Q2(潜伏)象限ETF，剔除Q3/Q4高风险
-- ETF间相关系数 > 0.6时自动降低权重
+- 主要推荐Q1(强势)+Q2(潜伏)象限ETF；Q3中RSRS>0.3且综合因子>0的品种按信号强度纳入候选
+- ETF间相关性采用两阶段惩罚：先取前10名候选，在池内成对惩罚高相关者，重排序后取前5
 - 大盘择时信号(RSI+动量+份额流)调整总仓位 ±30%
-- 单ETF仓位上限25%，Q1:Q2总权重比例 6:4
+- 单ETF仓位上限25%
+- **滚动ICIR衰退检测** — 近60日滚动ICIR较全样ICIR衰减>40%时提示因子预测力下降
 
 ## 🛠️ 技术栈
 

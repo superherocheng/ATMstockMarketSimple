@@ -4,7 +4,7 @@ import logging
 import subprocess
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter
@@ -386,7 +386,7 @@ async def api_etf_share_update():
             }
         
         pro = get_pro()
-        default_start = (datetime.utcnow() - timedelta(days=365)).strftime("%Y%m%d")
+        default_start = (datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=365)).strftime("%Y%m%d")
         
         fetched_data = {}
         not_ready = []
