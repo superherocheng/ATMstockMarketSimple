@@ -16,7 +16,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - docker_network
+      - atm_network
     restart: unless-stopped
     volumes:
       - ./logs:/app/logs
@@ -39,7 +39,7 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - docker_network
+      - atm_network
 
   redis:
     image: redis:7-alpine
@@ -51,12 +51,12 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - docker_network
+      - atm_network
 
 volumes:
   pgdata:
     driver: local
 
 networks:
-  docker_network:
-    external: true
+  atm_network:
+    driver: bridge
