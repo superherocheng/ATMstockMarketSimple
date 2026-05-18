@@ -30,7 +30,7 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 - 📊 **行业ETF轮动** - 可视化15个行业ETF资金流向，发现板块轮动机会
 - 📈 **份额变化分析** - 自动计算份额变化标准差，提供趋势判断
 - 📉 **K线图表展示** - 基于ECharts 5的专业K线图，支持多维度数据分析
-- 🌡️ **相关性热力图** - 行业ETF份额波动相关性、K线中枢相关性矩阵可视化
+
 - 🔄 **一键数据更新** - ETF份额自动检测更新，智能判断数据新鲜度
 
 ### 🔬 量化分析
@@ -124,9 +124,9 @@ ATMstockMarketSimple/
 │   │   │   ├── etf.py               # ETF详情、行业ETF（含信号标签对齐）
 │   │   │   ├── overview.py          # 首页/仪表盘
 │   │   │   ├── fetch.py             # 数据获取端点
-│   │   │   ├── heatmap.py           # 相关性热力图端点
+
 │   │   │   └── telemetry.py         # 匿名使用统计埋点
-│   │   ├── templates/               # Jinja2 HTML模板（7个页面）
+│   │   ├── templates/               # Jinja2 HTML模板（6个页面）
 │   │   ├── static/
 │   │   │   ├── css/app.css          # 完整CSS设计系统 (Warm Sage)
 │   │   │   └── js/app.js            # 通用JS + 骨架屏 + 导航等
@@ -221,13 +221,12 @@ uvicorn src.web.app:app --reload --port 8000
 
 | 路由 | 页面 | 功能描述 |
 |------|------|----------|
-| `/` | index.html | 首页 — 快速入门引导、行业热力图、数据管理 |
+| `/` | index.html | 首页 — 快速入门引导、行业板块数据、数据管理 |
 | `/etf` | etf.html | 指数ETF详情 — K线走势、份额分析、异常检测 |
 | `/sector` | sector.html | 行业ETF轮动 — 15行业对比、信号排序、份额趋势 |
 | `/analysis` | analysis.html | 因子分析 — 因子分布、IC序列、四象限模型、收益预测 |
 | `/analysis/investment-recommendation` | investment_recommendation.html | 📋 **投资建议** — ETF排名、仓位配置、风险提示 |
 | `/analysis/tech-notes` | tech_notes.html | 技术说明 — 因子模型文档 |
-| `/heatmap` | heatmap.html | 相关性热力图 — 份额波动相关、K线中枢相关 |
 
 ## 🎯 监控ETF列表
 
@@ -262,13 +261,10 @@ uvicorn src.web.app:app --reload --port 8000
 | 方法 | 路由 | 描述 |
 |------|------|------|
 | GET | `/api/overview` | 首页概览（指数ETF + 行业摘要） |
-| GET | `/api/heatmap` | 行业板块热力图 |
 | GET | `/api/data-range` | 各数据表状态与日期范围 |
 | GET | `/api/index-etf/{code}` | 单只指数ETF完整数据 |
 | GET | `/api/sector-etf` | 全部行业ETF数据（含因子信号标签） |
 | GET | `/api/share-std/{code}` | ETF份额变化标准差分析 |
-| GET | `/api/heatmap/share-std-correlation` | 行业ETF份额变化波动相关性矩阵 |
-| GET | `/api/heatmap/kline-pivot-correlation` | 中证500+行业ETF K线中枢相关性矩阵 |
 
 ### 量化分析
 

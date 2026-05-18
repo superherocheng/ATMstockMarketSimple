@@ -88,7 +88,7 @@ def _redis_delete(pattern):
 # ── 内存 LRU 缓存 ──────────────────────────────────────────
 
 CACHE_CATEGORIES = {
-    "overview": ["overview", "heatmap", "heatmap_*"],
+    "overview": ["overview"],
     "etf": ["index_etf_*", "sector_etf_*", "sector_cards", "share_std_*"],
     "analysis": ["analysis_*", "investment_recommendation"],
 }
