@@ -15,6 +15,7 @@ from src.core.db_manager_postgresql import get_conn, get_db_manager
 from src.web.services.cache import _cache_invalidate
 from src.core.trading_calendar import now_beijing, get_latest_trading_date, get_open_trade_dates
 from src.core.db_manager_postgresql import close_db_manager, _ensure_db
+from src.analysis import factor_engine, ic_analyzer
 from config.config import DATA_DIR, INDEX_ETF, SECTOR_ETF, get_pro
 
 logger = logging.getLogger(__name__)
@@ -103,6 +104,7 @@ def _run_fetch(task_type):
         _fetch_status["finished_at"] = None
         _fetch_status["progress"] = 0
         _fetch_status["current_step"] = "初始化..."
+        _fetch_status["backtest_done"] = False
 
     close_db_manager()
 
@@ -137,16 +139,57 @@ def _run_fetch(task_type):
 
         _add_log("[DONE] 数据获取完成！")
 
+        # ── 回测阶段：因子计算+IC分析 ──
+        try:
+            _ensure_db()
+        except Exception:
+            pass
+
+        backtest_start = time.time()
+        _add_log("")
+        _add_log("=" * 40)
+        _add_log("开始运行回测：因子计算 + IC 分析")
+        _add_log("=" * 40)
+
+        with _fetch_lock:
+            _fetch_status["current_step"] = "因子计算中..."
+            _fetch_status["progress"] = 80
+
+        try:
+            factor_rows = factor_engine.compute_all_factors()
+            _add_log(f"[OK] 因子计算完成: {factor_rows} 行")
+        except Exception as e:
+            _add_log(f"[ERROR] 因子计算失败: {e}")
+            logger.error(f"因子计算失败: {e}", exc_info=True)
+
+        with _fetch_lock:
+            _fetch_status["current_step"] = "IC分析中..."
+            _fetch_status["progress"] = 90
+
+        try:
+            ic_rows = ic_analyzer.compute_all_ic()
+            _add_log(f"[OK] IC分析完成: {ic_rows} 行")
+        except Exception as e:
+            _add_log(f"[ERROR] IC分析失败: {e}")
+            logger.error(f"IC分析失败: {e}", exc_info=True)
+
+        total_elapsed = time.time() - backtest_start
+        _add_log(f"[DONE] 回测完成！总耗时约 {total_elapsed:.0f}s")
+
         _cache_invalidate("etf", "overview", "analysis")
         with _fetch_lock:
+            _fetch_status["backtest_done"] = True
             _fetch_status["progress"] = 100
+            _fetch_status["current_step"] = "全部完成"
     except Exception as e:
         _add_log(f"[ERROR] {e}")
+        logger.error(f"数据获取异常: {e}", exc_info=True)
     finally:
         with _fetch_lock:
             _fetch_status["running"] = False
             _fetch_status["finished_at"] = now_beijing().strftime("%Y-%m-%d %H:%M:%S")
-            _fetch_status["current_step"] = "完成"
+            if not _fetch_status.get("backtest_done"):
+                _fetch_status["current_step"] = "完成（回测跳过）"
         try:
             _ensure_db()
             _add_log("[OK] 数据库连接已恢复")

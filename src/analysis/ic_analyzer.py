@@ -6,8 +6,11 @@ from factor values and forward returns.
 IMPORTANT: Uses T-1 day's factor to predict T to T+H returns (no look-ahead).
 Factor on date T requires T's close price and share data (available after close),
 so the earliest actionable signal is at T+1 open.
+
+Optimized: parallel preset computation.
 """
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import numpy as np
 import pandas as pd
@@ -58,162 +61,171 @@ def _compute_ic_summary(ic_series: pd.Series) -> dict:
     }
 
 
-def compute_all_ic(preset_id: str = None) -> int:
-    """Compute IC analysis for all presets and store to DB.
-
-    For each preset:
-    1. Compute daily IC for each forward period H
-    2. Compute aggregate IC summary
-    3. Compute quadrant performance (avg forward return per quadrant)
-    4. Upsert results to ic_daily, ic_summary, quadrant_perf tables
+def _compute_preset_ic(pid: str) -> int:
+    """Compute IC analysis for a single preset.
 
     Returns total rows upserted.
     """
     from src.core.db_manager_postgresql import get_conn, get_db_manager
 
-    preset_ids = [preset_id] if preset_id else all_preset_ids()
+    preset = get_preset(pid)
+    forward_periods = preset["forward_periods"]
+
+    conn = get_conn()
+    try:
+        factor_rows = conn.execute(text(
+            "SELECT etf_code, trade_date, factor, z_flow, z_mom, quadrant "
+            "FROM factor_daily WHERE preset_id = :pid ORDER BY trade_date"
+        ), {"pid": pid}).fetchall()
+
+        price_rows = conn.execute(text(
+            "SELECT ts_code, trade_date, close FROM sector_etf_daily "
+            "ORDER BY ts_code, trade_date"
+        )).fetchall()
+    finally:
+        conn.close()
+
+    if not factor_rows or not price_rows:
+        logger.warning(f"No data for IC computation (preset={pid})")
+        return 0
+
+    factor_df = pd.DataFrame(factor_rows,
+                             columns=["etf_code", "trade_date", "factor", "z_flow", "z_mom", "quadrant"])
+    price_df = pd.DataFrame(price_rows, columns=["ts_code", "trade_date", "close"])
+
+    # Normalize dates to strings
+    factor_df["trade_date"] = factor_df["trade_date"].apply(
+        lambda d: str(d).replace("-", "") if hasattr(d, "strftime") else str(d))
+    price_df["trade_date"] = price_df["trade_date"].apply(
+        lambda d: str(d).replace("-", "") if hasattr(d, "strftime") else str(d))
+
+    # Build price lookup: (code, date) → close
+    price_df["close"] = price_df["close"].astype(float)
+    price_lookup = {}
+    for _, row in price_df.iterrows():
+        price_lookup[(row["ts_code"], row["trade_date"])] = row["close"]
+
+    all_dates = sorted(price_df["trade_date"].unique())
+    date_idx = {d: i for i, d in enumerate(all_dates)}
+    factor_dates = sorted(factor_df["trade_date"].unique())
+
     total_upserted = 0
 
-    for pid in preset_ids:
-        preset = get_preset(pid)
-        forward_periods = preset["forward_periods"]
+    for h in forward_periods:
+        ic_rows = []
+        quadrant_rows = []
 
-        conn = get_conn()
-        try:
-            # Get factor data for this preset
-            factor_rows = conn.execute(text(
-                "SELECT etf_code, trade_date, factor, z_flow, z_mom, quadrant "
-                "FROM factor_daily WHERE preset_id = :pid ORDER BY trade_date"
-            ), {"pid": pid}).fetchall()
+        for t in factor_dates:
+            if t not in date_idx:
+                continue
+            idx = date_idx[t]
+            if idx + 1 + h >= len(all_dates):
+                continue
 
-            # Get sector ETF price data for forward returns
-            price_rows = conn.execute(text(
-                "SELECT ts_code, trade_date, close FROM sector_etf_daily "
-                "ORDER BY ts_code, trade_date"
-            )).fetchall()
-        finally:
-            conn.close()
+            entry_date = all_dates[idx + 1]
+            exit_date = all_dates[idx + 1 + h]
 
-        if not factor_rows or not price_rows:
-            logger.warning(f"No data for IC computation (preset={pid})")
-            continue
+            day_factors = factor_df[factor_df["trade_date"] == t]
 
-        factor_df = pd.DataFrame(factor_rows,
-                                 columns=["etf_code", "trade_date", "factor", "z_flow", "z_mom", "quadrant"])
-        price_df = pd.DataFrame(price_rows, columns=["ts_code", "trade_date", "close"])
+            fwd_rets = {}
+            for _, row in day_factors.iterrows():
+                code = row["etf_code"]
+                close_entry = price_lookup.get((code, entry_date))
+                close_exit = price_lookup.get((code, exit_date))
+                if close_entry and close_exit and close_entry > 0:
+                    fwd_rets[code] = (close_exit / close_entry - 1, row["factor"], row["quadrant"])
 
-        # Normalize dates to strings (factor_daily returns datetime.date,
-        # sector_etf_daily returns int YYYYMMDD from Tushare)
-        factor_df["trade_date"] = factor_df["trade_date"].apply(
-            lambda d: str(d).replace("-", "") if hasattr(d, "strftime") else str(d))
-        price_df["trade_date"] = price_df["trade_date"].apply(
-            lambda d: str(d).replace("-", "") if hasattr(d, "strftime") else str(d))
+            if len(fwd_rets) < MIN_ETF_COUNT:
+                continue
 
-        # Build price lookup: (code, date) → close
-        price_df["close"] = price_df["close"].astype(float)
-        price_lookup = {}
-        for _, row in price_df.iterrows():
-            price_lookup[(row["ts_code"], row["trade_date"])] = row["close"]
+            codes = list(fwd_rets.keys())
+            ret_vals = pd.Series([fwd_rets[c][0] for c in codes])
+            fac_vals = pd.Series([fwd_rets[c][1] for c in codes])
 
-        # Get sorted unique dates for forward return computation
-        all_dates = sorted(price_df["trade_date"].unique())
-        date_idx = {d: i for i, d in enumerate(all_dates)}
+            ic = _compute_ic_for_date(fac_vals, ret_vals)
 
-        # Get trading dates present in factor data
-        factor_dates = sorted(factor_df["trade_date"].unique())
+            if not np.isnan(ic):
+                ic_rows.append({
+                    "trade_date": t,
+                    "preset_id": pid,
+                    "forward_days": h,
+                    "ic_value": float(ic),
+                    "forward_ret_mean": float(ret_vals.mean()),
+                })
 
-        for h in forward_periods:
-            ic_rows = []
-            quadrant_rows = []
-
-            for t in factor_dates:
-                # No look-ahead: factor on date T is only known after T's close.
-                # Forward return starts from T+1 (next trading day).
-                if t not in date_idx:
-                    continue
-                idx = date_idx[t]
-                if idx + 1 + h >= len(all_dates):
-                    continue
-
-                # Entry date = T+1, exit date = T+1+H
-                entry_date = all_dates[idx + 1]
-                exit_date = all_dates[idx + 1 + h]
-
-                day_factors = factor_df[factor_df["trade_date"] == t]
-
-                fwd_rets = {}
-                for _, row in day_factors.iterrows():
-                    code = row["etf_code"]
-                    close_entry = price_lookup.get((code, entry_date))
-                    close_exit = price_lookup.get((code, exit_date))
-                    if close_entry and close_exit and close_entry > 0:
-                        fwd_rets[code] = (close_exit / close_entry - 1, row["factor"], row["quadrant"])
-
-                if len(fwd_rets) < MIN_ETF_COUNT:
-                    continue
-
-                codes = list(fwd_rets.keys())
-                ret_vals = pd.Series([fwd_rets[c][0] for c in codes])
-                fac_vals = pd.Series([fwd_rets[c][1] for c in codes])
-
-                ic = _compute_ic_for_date(fac_vals, ret_vals)
-
-                if not np.isnan(ic):
-                    ic_rows.append({
+            for q in [1, 2, 3, 4]:
+                q_codes = [c for c in codes if fwd_rets[c][2] == q]
+                if q_codes:
+                    q_rets = [fwd_rets[c][0] for c in q_codes]
+                    quadrant_rows.append({
                         "trade_date": t,
                         "preset_id": pid,
                         "forward_days": h,
-                        "ic_value": float(ic),
-                        "forward_ret_mean": float(ret_vals.mean()),
+                        "quadrant": q,
+                        "avg_forward_ret": float(np.mean(q_rets)),
+                        "etf_count": len(q_codes),
                     })
 
-                for q in [1, 2, 3, 4]:
-                    q_codes = [c for c in codes if fwd_rets[c][2] == q]
-                    if q_codes:
-                        q_rets = [fwd_rets[c][0] for c in q_codes]
-                        quadrant_rows.append({
-                            "trade_date": t,
-                            "preset_id": pid,
-                            "forward_days": h,
-                            "quadrant": q,
-                            "avg_forward_ret": float(np.mean(q_rets)),
-                            "etf_count": len(q_codes),
-                        })
+        # Upsert ic_daily
+        if ic_rows:
+            db = get_db_manager()
+            db.upsert_dataframe(pd.DataFrame(ic_rows), "ic_daily",
+                                ["trade_date", "preset_id", "forward_days"])
+            total_upserted += len(ic_rows)
 
-            # Upsert ic_daily
-            if ic_rows:
-                db = get_db_manager()
-                db.upsert_dataframe(pd.DataFrame(ic_rows), "ic_daily",
-                                    ["trade_date", "preset_id", "forward_days"])
-                total_upserted += len(ic_rows)
+        # Upsert quadrant_perf
+        if quadrant_rows:
+            db = get_db_manager()
+            db.upsert_dataframe(pd.DataFrame(quadrant_rows), "quadrant_perf",
+                                ["trade_date", "preset_id", "forward_days", "quadrant"])
+            total_upserted += len(quadrant_rows)
 
-            # Upsert quadrant_perf
-            if quadrant_rows:
-                db = get_db_manager()
-                db.upsert_dataframe(pd.DataFrame(quadrant_rows), "quadrant_perf",
-                                    ["trade_date", "preset_id", "forward_days", "quadrant"])
-                total_upserted += len(quadrant_rows)
+        # Compute and upsert ic_summary
+        if ic_rows:
+            ic_series = pd.Series([r["ic_value"] for r in ic_rows])
+            summary = _compute_ic_summary(ic_series)
+            summary["preset_id"] = pid
+            summary["forward_days"] = h
 
-            # Compute and upsert ic_summary
-            if ic_rows:
-                ic_series = pd.Series([r["ic_value"] for r in ic_rows])
-                summary = _compute_ic_summary(ic_series)
-                summary["preset_id"] = pid
-                summary["forward_days"] = h
+            conn = get_conn()
+            try:
+                conn.execute(text(
+                    "DELETE FROM ic_summary WHERE preset_id = :pid AND forward_days = :h"
+                ), {"pid": pid, "h": h})
+                conn.commit()
+            finally:
+                conn.close()
 
-                conn = get_conn()
-                try:
-                    conn.execute(text(
-                        "DELETE FROM ic_summary WHERE preset_id = :pid AND forward_days = :h"
-                    ), {"pid": pid, "h": h})
-                    conn.commit()
-                finally:
-                    conn.close()
+            db = get_db_manager()
+            db.insert_dataframe(pd.DataFrame([summary]), "ic_summary", if_exists="append")
+            total_upserted += 1
 
-                db = get_db_manager()
-                db.insert_dataframe(pd.DataFrame([summary]), "ic_summary", if_exists="append")
-                total_upserted += 1
-
-            logger.info(f"IC analysis done for preset={pid}, H={h}: {len(ic_rows)} IC values")
+        logger.info(f"IC analysis done for preset={pid}, H={h}: {len(ic_rows)} IC values")
 
     return total_upserted
+
+
+def compute_all_ic(preset_id: str = None) -> int:
+    """Compute IC analysis for all presets, running them in parallel.
+
+    If preset_id is given, computes only that preset.
+
+    Returns total rows upserted.
+    """
+    preset_ids = [preset_id] if preset_id else all_preset_ids()
+
+    if len(preset_ids) == 1:
+        return _compute_preset_ic(preset_ids[0])
+
+    total = 0
+    with ThreadPoolExecutor(max_workers=min(len(preset_ids), 4)) as pool:
+        futures = {pool.submit(_compute_preset_ic, pid): pid for pid in preset_ids}
+        for fut in as_completed(futures):
+            pid = futures[fut]
+            try:
+                n = fut.result()
+                total += n
+                logger.info(f"IC preset {pid} done: {n} rows")
+            except Exception as e:
+                logger.error(f"IC preset {pid} failed: {e}", exc_info=True)
+    return total

@@ -73,6 +73,20 @@
             </div>
         </section>
 
+        <!-- IC Summary Card -->
+        <section class="mb-6" id="ic-summary-section">
+            <div class="glass rounded-xl p-4 sm:p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
+                    <h2 class="text-base font-semibold">因子有效性概览</h2>
+                    <span class="text-xs" style="color:var(--c-text-tertiary);">各预设参数下的IC分析汇总</span>
+                </div>
+                <div id="ic-summary-table" class="overflow-x-auto">
+                    <div class="skeleton skeleton-text" style="width:100%;height:80px;"></div>
+                </div>
+            </div>
+        </section>
+
         <section id="update-section" class="mb-6">
             <div class="glass rounded-xl p-4 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
@@ -82,7 +96,7 @@
                     </h2>
                     <div class="data-mgmt-buttons">
                         <span id="share-status" class="share-status-badge"><span class="spinner spinner-sm"></span></span>
-                        <button onclick="oneClickUpdate()" id="btn-update" class="btn btn-primary data-mgmt-btn">一键更新</button>
+                        <button onclick="oneClickUpdate()" id="btn-update" class="btn btn-primary data-mgmt-btn" title="获取最新ETF数据 → 运行因子回测 → 更新分析结果">一键更新+回测</button>
                     </div>
                 </div>
                 <div id="data-status" class="mb-2"><div class="skeleton skeleton-card"></div></div>
@@ -99,6 +113,13 @@
                         <summary class="text-sm cursor-pointer" style="color:var(--c-text-tertiary);">实时日志</summary>
                         <div id="fetch-log" class="rounded-lg p-4 mt-3 max-h-56 overflow-y-auto text-xs" style="background:var(--c-bg-secondary);font-family:var(--font-mono);border:1px solid var(--c-border);"></div>
                     </details>
+                    <!-- Backtest completed: analysis link -->
+                    <div id="backtest-done-bar" class="hidden pt-3 mt-2 border-t" style="border-color:var(--c-border);">
+                        <a href="/analysis" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:6px;padding:8px 20px;font-size:14px;">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
+                            查看最新分析结果
+                        </a>
+                    </div>
                 </div>
             </div>
         </section>
@@ -209,7 +230,7 @@
             if (Object.values(info).every(function(d) { return !d.exists || d.count === 0; })) {
                 btn.innerHTML = '首次获取ETF数据';
             } else if (anyNeedUpdate) {
-                btn.innerHTML = '一键更新ETF数据';
+                btn.innerHTML = '一键更新+回测';
             } else {
                 btn.innerHTML = '数据已是最新';
             }
@@ -228,9 +249,9 @@
                 return;
             }
             document.getElementById('fetch-progress').classList.remove('hidden');
-            document.getElementById('fetch-log').innerHTML = '<div style="color:#D97706;">正在启动全量数据获取...</div>';
+            document.getElementById('fetch-log').innerHTML = '<div style="color:#D97706;">正在启动全量数据获取 + 回测...</div>';
             updateProgressBar(0, 'running');
-            document.getElementById('fetch-status-text').textContent = '获取中...';
+            document.getElementById('fetch-status-text').textContent = '数据获取中...';
             setButtonLoading('btn-update', '获取中...');
             if (pollTimer) clearInterval(pollTimer);
             pollTimer = setInterval(pollStatus, 1500);
@@ -261,7 +282,7 @@
         btn.innerHTML = '<span class="spinner spinner-sm"></span> ' + text;
     }
 
-    function resetButtonAll() { document.getElementById("btn-update").innerHTML = '一键更新'; }
+    function resetButtonAll() { document.getElementById("btn-update").innerHTML = '一键更新+回测'; }
 
     async function updateShareStatus() {
         try {
@@ -300,6 +321,10 @@
 
     var pollTimer = null;
 
+    function isBacktestStep(step) {
+        return step && (step.indexOf('因子') >= 0 || step.indexOf('IC') >= 0 || step.indexOf('回测') >= 0);
+    }
+
     async function pollStatus() {
         try {
             var resp = await fetch('/api/fetch/status');
@@ -308,6 +333,7 @@
             logEl.innerHTML = st.log.map(function(line) {
                 if (line.startsWith('[ERROR]') || line.startsWith('[ERR')) return '<div style="color:var(--c-up);">' + line + '</div>';
                 if (line.startsWith('[OK]') || line.startsWith('[DONE]')) return '<div style="color:var(--c-down);font-weight:600;">' + line + '</div>';
+                if (line.startsWith('=')) return '<div style="color:#5a6f5a;font-weight:700;">' + line + '</div>';
                 if (line.startsWith('$')) return '<div style="color:#D97706;">' + line + '</div>';
                 return '<div style="color:var(--c-text-secondary);">' + line + '</div>';
             }).join('');
@@ -315,12 +341,22 @@
             document.getElementById('fetch-current-step').textContent = st.current_step || '';
             if (st.running) {
                 updateProgressBar(st.progress || 0, 'running');
-                document.getElementById('fetch-status-text').textContent = '获取中...';
+                if (isBacktestStep(st.current_step)) {
+                    document.getElementById('fetch-status-text').textContent = '回测中...';
+                } else {
+                    document.getElementById('fetch-status-text').textContent = '获取数据中...';
+                }
             } else if (st.finished_at) {
                 var hasError = st.log.some(function(l) { return l.startsWith('[ERROR]'); });
-                updateProgressBar(hasError ? st.progress : 100, hasError ? 'error' : 'done');
-                document.getElementById('fetch-status-text').textContent = hasError ? '部分出错' : '已完成';
-                document.getElementById('fetch-status-text').style.color = hasError ? 'var(--c-up)' : 'var(--c-down)';
+                if (st.backtest_done) {
+                    updateProgressBar(100, 'done');
+                    document.getElementById('fetch-status-text').textContent = '数据更新 + 回测完成 ✓';
+                    document.getElementById('backtest-done-bar').classList.remove('hidden');
+                } else {
+                    updateProgressBar(hasError ? st.progress : 100, hasError ? 'error' : 'done');
+                    document.getElementById('fetch-status-text').textContent = hasError ? '部分出错' : '已完成';
+                }
+                document.getElementById('fetch-status-text').style.color = 'var(--c-down)';
                 if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
                 enableAllButtons();
                 resetButtonAll();
@@ -339,14 +375,92 @@
                 disableAllButtons();
                 if (!pollTimer) { pollTimer = setInterval(pollStatus, 1500); }
                 pollStatus();
+            } else if (st.finished_at && st.backtest_done) {
+                // Show completed backtest bar if page refreshed after completion
+                document.getElementById('backtest-done-bar').classList.remove('hidden');
             }
         } catch(e) {}
+    }
+
+    async function loadIcSummary() {
+        try {
+            var resp = await fetch('/api/analysis/ic-summary-all');
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            var data = await resp.json();
+            renderIcSummary(data);
+        } catch(e) { console.warn('IC概览加载失败:', e.message); }
+    }
+
+    function renderIcSummary(data) {
+        var el = document.getElementById('ic-summary-table');
+        if (!data || !data.presets || data.presets.length === 0) {
+            el.innerHTML = '<div class="empty-state"><div class="empty-state-title">暂无数据</div><div class="empty-state-detail">运行「一键更新+回测」后生成</div></div>';
+            return;
+        }
+        var html = '<table class="w-full text-sm zebra-table" style="min-width:580px;">';
+        html += '<thead><tr>' +
+            '<th class="px-3 py-2 text-left whitespace-nowrap">预设</th>' +
+            '<th class="px-3 py-2 text-center whitespace-nowrap">三因子权重</th>' +
+            '<th class="px-3 py-2 text-center whitespace-nowrap">IC均值</th>' +
+            '<th class="px-3 py-2 text-center whitespace-nowrap">ICIR</th>' +
+            '<th class="px-3 py-2 text-center whitespace-nowrap hidden sm:table-cell">IC胜率</th>' +
+            '<th class="px-3 py-2 text-center whitespace-nowrap hidden sm:table-cell">样本</th>' +
+            '</tr></thead><tbody>';
+
+        // Render time-horizon group header
+        html += '<tr style="background:var(--c-bg-secondary);"><td colspan="6" class="px-3 py-2 text-xs font-semibold" style="color:var(--c-text-tertiary);letter-spacing:0.5px;">▸ 时间周期预设</td></tr>';
+
+        data.presets.forEach(function(p) {
+            var icMean = p.ic_mean !== null ? p.ic_mean.toFixed(4) : '--';
+            var icir = p.icir !== null ? p.icir.toFixed(4) : '--';
+            var winRate = p.ic_win_rate !== null ? p.ic_win_rate.toFixed(2) + '%' : '--';
+            var samples = p.sample_count || '--';
+
+            // Weights display
+            var w = p.weights || {};
+            var wHtml = 'R:' + (w.rsrs || 0).toFixed(1) + ' F:' + (w.flow || 0).toFixed(1) + ' M:' + (w.mom || 0).toFixed(1);
+
+            // Color coding
+            var meanColor = p.ic_mean !== null ? (Math.abs(p.ic_mean) > 0.03 ? 'var(--c-down)' : 'var(--c-text)') : '';
+            var icirColor = p.icir !== null ? (Math.abs(p.icir) > 0.5 ? 'var(--c-down)' : Math.abs(p.icir) > 0.2 ? '#D97706' : 'var(--c-text)') : '';
+            var winColor = p.ic_win_rate !== null ? (p.ic_win_rate > 60 ? 'var(--c-down)' : p.ic_win_rate > 50 ? '#D97706' : 'var(--c-text)') : '';
+
+            // Determine row style: rsrs_aggressive gets a subtle visual cue
+            var rowStyle = '';
+            var labelSuffix = '';
+
+            if (p.preset_id === 'rsrs_aggressive') {
+                labelSuffix = ' <span class="tech-tag tag-amber" style="font-size:10px;padding:1px 5px;">实验</span>';
+            } else {
+                labelSuffix = ' <span class="tech-tag tag-green" style="font-size:10px;padding:1px 5px;">标准</span>';
+            }
+
+            html += '<tr' + rowStyle + '>' +
+                '<td class="px-3 py-2 align-middle"><span class="font-semibold">' + p.label + '</span>' + labelSuffix + '<br><span class="text-xs" style="color:var(--c-text-tertiary);">H=' + p.forward_days + '日</span></td>' +
+                '<td class="px-3 py-2 text-center align-middle font-mono text-xs" style="color:var(--c-text-secondary);">' + wHtml + '</td>' +
+                '<td class="px-3 py-2 text-center align-middle font-mono" style="color:' + meanColor + ';">' + icMean + '</td>' +
+                '<td class="px-3 py-2 text-center align-middle font-mono" style="color:' + icirColor + ';">' + icir + '</td>' +
+                '<td class="px-3 py-2 text-center align-middle font-mono hidden sm:table-cell" style="color:' + winColor + ';">' + winRate + '</td>' +
+                '<td class="px-3 py-2 text-center align-middle font-mono hidden sm:table-cell" style="color:var(--c-text-tertiary);">' + samples + '</td>' +
+                '</tr>';
+        });
+
+        // Render experimental group header after standard presets (rsrs_aggressive already rendered above)
+        // Actually, for simplicity, add a footnote explaining weights
+        html += '</tbody></table>';
+        html += '<div class="mt-3 text-xs flex flex-wrap gap-3" style="color:var(--c-text-tertiary);">' +
+            '<span><b>R</b>=RSRS <b>F</b>=资金流 <b>M</b>=动量</span>' +
+            '<span><span class="tech-tag tag-green" style="font-size:10px;">标准</span> 三周期标准参数</span>' +
+            '<span><span class="tech-tag tag-amber" style="font-size:10px;">实验</span> RSRS主导权重(0.5)验证</span>' +
+            '</div>';
+        el.innerHTML = html;
     }
 
     async function loadOverview() {
         loadDataRange();
         loadFetchStatus();
         updateShareStatus();
+        loadIcSummary();
         try {
             var resp = await fetch('/api/overview');
             if (!resp.ok) {

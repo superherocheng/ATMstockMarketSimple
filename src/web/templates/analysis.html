@@ -121,16 +121,6 @@
         </div>
     </div>
 
-    <!-- Full width: Industry weight recommendation -->
-    <div class="chart-full">
-        <div class="chart-cell">
-            <h3>行业配置权重建议图</h3>
-            <div id="chart-weight-rec" class="chart-container" style="height:300px;">
-                <div class="no-data">加载中...</div>
-            </div>
-        </div>
-    </div>
-
     <!-- Text summary card -->
     <div class="summary-card">
         <div class="summary-content" id="summary-text">加载中...</div>
@@ -215,8 +205,7 @@
                 fetch('/api/analysis/ic-series?preset_id=' + presetId).then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
                 fetch('/api/analysis/quadrant-heatmap?preset_id=' + presetId).then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
                 fetch('/api/analysis/group-returns?preset_id=' + presetId).then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
-                fetch('/api/analysis/rolling-icir?preset_id=' + presetId + '&window=60').then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; }),
-                fetch('/api/analysis/weight-recommendation?preset_id=' + presetId).then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; })
+                fetch('/api/analysis/rolling-icir?preset_id=' + presetId + '&window=60').then(function(r) { return r.json(); }).catch(function() { return { error: 'fetch_failed' }; })
             ]);
 
             var summary = results[0];
@@ -225,7 +214,6 @@
             var quadrant = results[3];
             var groupReturns = results[4];
             var rollingIcir = results[5];
-            var weightRec = results[6];
 
             // Render KPIs from summary
             renderKPIs(summary);
@@ -246,7 +234,6 @@
             renderEChart('icSeries', 'chart-ic-series', icSeries);
             renderEChart('groupReturns', 'chart-group-returns', groupReturns);
             renderEChart('rollingIcir', 'chart-rolling-icir', rollingIcir);
-            renderEChart('weightRec', 'chart-weight-rec', weightRec);
 
             // Render CSS quadrant heatmap
             renderHeatmap(quadrant);
@@ -360,17 +347,20 @@
         html += '<th style="text-align:left;padding:6px 4px;">ETF</th>';
         html += '<th style="text-align:right;padding:6px 4px;">因子</th>';
         html += '<th style="text-align:center;padding:6px 4px;">象限</th>';
+        html += '<th style="text-align:right;padding:6px 4px;">建议仓位</th>';
         html += '</tr></thead><tbody>';
 
         summary.latest_factors.forEach(function(f, i) {
             var qColor = quadColors[f.quadrant] || '#999';
             var qLabel = quadLabels[f.quadrant] || 'Q' + f.quadrant;
             var factorColor = f.factor > 0 ? 'var(--c-up)' : f.factor < 0 ? 'var(--c-down)' : 'var(--c-text)';
+            var weightDisplay = f.weight !== undefined && f.weight > 0 ? f.weight.toFixed(1) + '%' : '--';
             html += '<tr style="border-bottom:1px solid var(--c-border);">';
             html += '<td style="padding:5px 4px;">' + (i + 1) + '</td>';
             html += '<td style="padding:5px 4px;">' + (f.name || f.code) + '</td>';
             html += '<td style="padding:5px 4px;text-align:right;color:' + factorColor + ';">' + f.factor.toFixed(3) + '</td>';
             html += '<td style="padding:5px 4px;text-align:center;"><span style="display:inline-block;padding:1px 6px;border-radius:3px;font-size:11px;color:#fff;background:' + qColor + ';">' + qLabel + '</span></td>';
+            html += '<td style="padding:5px 4px;text-align:right;">' + weightDisplay + '</td>';
             html += '</tr>';
         });
 

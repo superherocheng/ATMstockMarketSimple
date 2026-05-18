@@ -29,17 +29,68 @@ def _get_forward_days(preset_id):
     return get_preset(preset_id)["forward_periods"][0]
 
 
-def build_factor_distribution(preset_id: str) -> dict:
-    """Chart 1: Factor distribution histogram for the latest date."""
+def _get_latest_date(preset_id: str, min_etf_ratio: float = 0.6) -> str:
+    """Get the latest date with sufficient configured SECTOR_ETF coverage.
+
+    Finds the most recent trading date where at least `min_etf_ratio` of the
+    currently configured SECTOR_ETFs have factor data. This prevents showing
+    a date with only partial data (e.g. when share data for some ETFs lags).
+
+    Falls back to the simple MAX(trade_date) if no date meets the threshold.
+    """
+    from config.config import SECTOR_ETF
+    conn = _get_conn()
+    try:
+        total_configured = len(SECTOR_ETF)
+        placeholders = ",".join(f":c{i}" for i in range(total_configured))
+        params = {
+            "pid": preset_id,
+            "min_cnt": max(3, int(total_configured * min_etf_ratio)),
+        }
+        for i, code in enumerate(SECTOR_ETF.keys()):
+            params[f"c{i}"] = code
+
+        sql = text("""
+            SELECT f.trade_date, COUNT(DISTINCT f.etf_code) as etf_cnt
+            FROM factor_daily f
+            INNER JOIN (SELECT DISTINCT trade_date FROM factor_daily
+                        WHERE preset_id = :pid) td
+                   ON f.trade_date = td.trade_date
+            WHERE f.preset_id = :pid
+              AND f.etf_code IN ({})
+            GROUP BY f.trade_date
+            HAVING COUNT(DISTINCT f.etf_code) >= :min_cnt
+            ORDER BY f.trade_date DESC
+            LIMIT 1
+        """.format(placeholders))
+
+        row = conn.execute(sql, params).fetchone()
+        if row:
+            return row[0]
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+    # Fallback: simple MAX
     conn = _get_conn()
     try:
         row = conn.execute(text(
             "SELECT MAX(trade_date) FROM factor_daily WHERE preset_id = :pid"
         ), {"pid": preset_id}).fetchone()
-        if not row or not row[0]:
-            return {"error": "no_data"}
-        latest_date = row[0]
+        return row[0] if row else None
+    finally:
+        conn.close()
 
+
+def build_factor_distribution(preset_id: str) -> dict:
+    """Chart 1: Factor distribution histogram for the latest date."""
+    latest_date = _get_latest_date(preset_id)
+    if not latest_date:
+        return {"error": "no_data"}
+
+    conn = _get_conn()
+    try:
         rows = conn.execute(text(
             "SELECT factor FROM factor_daily WHERE preset_id = :pid AND trade_date = :d"
         ), {"pid": preset_id, "d": latest_date}).fetchall()
@@ -117,19 +168,30 @@ def build_quadrant_heatmap(preset_id: str) -> dict:
 
     conn = _get_conn()
     try:
-        row = conn.execute(text(
-            "SELECT MAX(trade_date) FROM quadrant_perf "
-            "WHERE preset_id = :pid AND forward_days = :h"
-        ), {"pid": preset_id, "h": h}).fetchone()
-
-        if not row or not row[0]:
+        # Use the latest date from factor_daily (with sufficient coverage)
+        # rather than quadrant_perf, which may have dates with sparse data
+        latest_date = _get_latest_date(preset_id)
+        if not latest_date:
             return {"error": "no_data"}
-        latest_date = row[0]
 
+        # Look up quadrant_perf for that date (may be slightly older, that's OK)
         rows = conn.execute(text(
             "SELECT quadrant, avg_forward_ret FROM quadrant_perf "
             "WHERE preset_id = :pid AND forward_days = :h AND trade_date = :d"
         ), {"pid": preset_id, "h": h, "d": latest_date}).fetchall()
+
+        if not rows:
+            # Fallback: try the latest quadrant_perf date
+            row = conn.execute(text(
+                "SELECT MAX(trade_date) FROM quadrant_perf "
+                "WHERE preset_id = :pid AND forward_days = :h"
+            ), {"pid": preset_id, "h": h}).fetchone()
+            if row and row[0]:
+                latest_date = row[0]
+                rows = conn.execute(text(
+                    "SELECT quadrant, avg_forward_ret FROM quadrant_perf "
+                    "WHERE preset_id = :pid AND forward_days = :h AND trade_date = :d"
+                ), {"pid": preset_id, "h": h, "d": latest_date}).fetchall()
     finally:
         conn.close()
 
@@ -224,19 +286,21 @@ def build_rolling_icir(preset_id: str, window: int = 60) -> dict:
     if not rows:
         return {"error": "no_data"}
 
-    if len(rows) < window:
-        window = max(20, len(rows) // 2)
-    if len(rows) < 20:
+    n = len(rows)
+    if n < 10:
         return {"error": "no_data"}
+
+    # Auto-adapt window: use requested window if enough data, otherwise smaller
+    actual_window = min(window, max(10, n // 2))
 
     dates_all = [str(r[0]) for r in rows]
     ics = pd.Series([float(r[1]) if r[1] is not None else np.nan for r in rows])
 
-    rolling_mean = ics.rolling(window).mean()
-    rolling_std = ics.rolling(window).std()
+    rolling_mean = ics.rolling(actual_window).mean()
+    rolling_std = ics.rolling(actual_window).std()
     rolling_icir = (rolling_mean / rolling_std).fillna(0)
 
-    valid_idx = list(range(window - 1, len(dates_all)))
+    valid_idx = list(range(actual_window - 1, n))
     valid_dates = [dates_all[i] for i in valid_idx]
     valid_icir = [round(float(rolling_icir.iloc[i]), 4) for i in valid_idx]
 
@@ -254,80 +318,17 @@ def build_rolling_icir(preset_id: str, window: int = 60) -> dict:
     })
 
 
-def build_weight_recommendation(preset_id: str) -> dict:
-    """Chart 6: Allocation weight recommendation based on latest factor values."""
-    conn = _get_conn()
-    try:
-        row = conn.execute(text(
-            "SELECT MAX(trade_date) FROM factor_daily WHERE preset_id = :pid"
-        ), {"pid": preset_id}).fetchone()
-        if not row or not row[0]:
-            return {"error": "no_data"}
-        latest_date = row[0]
-
-        rows = conn.execute(text(
-            "SELECT etf_code, factor, quadrant FROM factor_daily "
-            "WHERE preset_id = :pid AND trade_date = :d ORDER BY factor DESC"
-        ), {"pid": preset_id, "d": latest_date}).fetchall()
-    finally:
-        conn.close()
-
-    if not rows:
-        return {"error": "no_data"}
-
-    from config.config import SECTOR_ETF
-
-    recommended = []
-    for r in rows:
-        code, factor, quadrant = r[0], float(r[1]) if r[1] else 0, int(r[2])
-        if quadrant in [1, 2]:
-            name = SECTOR_ETF.get(code, code)
-            recommended.append({"name": name, "factor": round(factor, 3),
-                                "quadrant": quadrant, "code": code})
-
-    if not recommended:
-        return _safe_dict({"chart": {"xAxis": {"type": "category", "data": []},
-                                      "yAxis": {"type": "value"}, "series": []}})
-
-    pos_factors = [abs(r["factor"]) for r in recommended]
-    total = sum(pos_factors)
-    weights = [f / total for f in pos_factors] if total > 0 else [1.0 / len(recommended)] * len(recommended)
-
-    for i, r in enumerate(recommended):
-        r["weight"] = round(weights[i] * 100, 1)
-
-    colors_map = {1: "#4a7c4a", 2: "#8fbc8f"}
-
-    return _safe_dict({
-        "date": str(latest_date),
-        "chart": {
-            "xAxis": {"type": "category",
-                      "data": [f"{r['name']}(Q{r['quadrant']})" for r in recommended]},
-            "yAxis": {"type": "value", "name": "建议权重(%)", "max": max(w * 100 for w in weights) * 1.2 if weights else 100},
-            "series": [{"type": "bar",
-                        "data": [{"value": r["weight"],
-                                  "itemStyle": {"color": colors_map[r["quadrant"]]}}
-                                 for r in recommended],
-                        "barMaxWidth": 40}],
-            "tooltip": {"trigger": "axis"},
-        }
-    })
-
-
 def build_summary(preset_id: str) -> dict:
     """Text summary with factor validity and recommendations."""
     h = _get_forward_days(preset_id)
+    latest_date = _get_latest_date(preset_id)
+
     conn = _get_conn()
     try:
         summary_row = conn.execute(text(
             "SELECT ic_mean, icir, ic_win_rate, sample_count "
             "FROM ic_summary WHERE preset_id = :pid AND forward_days = :h"
         ), {"pid": preset_id, "h": h}).fetchone()
-
-        latest_row = conn.execute(text(
-            "SELECT MAX(trade_date) FROM factor_daily WHERE preset_id = :pid"
-        ), {"pid": preset_id}).fetchone()
-        latest_date = latest_row[0] if latest_row else None
 
         latest_factors = []
         if latest_date:
@@ -337,10 +338,26 @@ def build_summary(preset_id: str) -> dict:
             ), {"pid": preset_id, "d": latest_date}).fetchall()
             from config.config import SECTOR_ETF
             for r in rows:
+                code = r[0]
+                # Skip ETFs no longer in current config
+                if code not in SECTOR_ETF:
+                    continue
+                factor = round(float(r[1]), 3) if r[1] else 0
+                quadrant = int(r[2])
                 latest_factors.append({
-                    "code": r[0], "name": SECTOR_ETF.get(r[0], r[0]),
-                    "factor": round(float(r[1]), 3) if r[1] else 0, "quadrant": int(r[2]),
+                    "code": code, "name": SECTOR_ETF[code],
+                    "factor": factor, "quadrant": quadrant,
                 })
+
+            # Compute suggested weight for Q1/Q2 (same logic as recommendation engine)
+            q12 = [f for f in latest_factors if f["quadrant"] in (1, 2)]
+            pos_scores = [max(0, f["factor"]) for f in q12]
+            total_pos = sum(pos_scores)
+            for f in latest_factors:
+                if f["quadrant"] in (1, 2) and total_pos > 0:
+                    f["weight"] = round(max(0, f["factor"]) / total_pos * 100, 1)
+                else:
+                    f["weight"] = 0.0
     finally:
         conn.close()
 

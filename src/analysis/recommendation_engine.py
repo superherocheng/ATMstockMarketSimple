@@ -179,7 +179,11 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
 
     # ── Select and rank candidates ──
     # Only Q1 (strong) and Q2 (lurk) are recommended
-    candidates = [e for e in etf_data.values() if e["quadrant"] in (1, 2)]
+    # Exclude ETFs no longer in current SECTOR_ETF config
+    candidates = [
+        e for e in etf_data.values()
+        if e["quadrant"] in (1, 2) and e["code"] in sector_names
+    ]
     candidates.sort(key=lambda x: -x["factor"])
 
     if not candidates:
@@ -218,8 +222,9 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
     scored = []
     selected_codes = []
     for c in candidates:
-        # Base score from factor value
-        base_score = abs(c["factor"])
+        # Base score: only positive factor scores get allocation
+        # Negative factor scores mean the ETF is below cross-sectional average
+        base_score = max(0, c["factor"])
 
         # Quadrant multiplier: Q1=1.0, Q2=0.7
         quad_mult = 1.0 if c["quadrant"] == 1 else 0.7
@@ -240,37 +245,25 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
     total_score = max(sum(s for _, s in top), 1e-6)
 
     # ── Position sizing ──
-    # Base budget: 100% (full allocation)
-    # Adjusted by market timing
+    # Proportional allocation: all candidates share total_budget by final_score.
+    # Q2's 0.7x multiplier already penalizes it in the scoring stage,
+    # so no separate Q1/Q2 budget split is needed.
     base_budget = 1.0
     timing_adj = timing.get("adjustment", 0.0)
     total_budget = max(0.3, min(1.3, base_budget + timing_adj))
 
-    # Q1 total weight: 60% of budget, Q2: 40%
-    q1_count = sum(1 for c, _ in top if c["quadrant"] == 1)
-    q2_count = sum(1 for c, _ in top if c["quadrant"] == 2)
+    total_final_score = sum(s for _, s in top)
+    if total_final_score <= 0:
+        return {"error": "无有效因子信号", "recommendations": []}
 
-    q1_budget = total_budget * 0.60
-    q2_budget = total_budget * 0.40
-
-    # Per-ETF cap: 25% absolute, or budget share + buffer
-    max_single = min(0.25, total_budget / max(len(top), 1) + 0.05)
+    # Per-ETF cap: 25% absolute
+    max_single = 0.25
 
     recommendations = []
     allocated = 0.0
     for c, score in top:
-        if c["quadrant"] == 1 and q1_count > 0:
-            share = score / max(
-                sum(s for cc, s in top if cc["quadrant"] == 1), 1e-6
-            )
-            raw_weight = q1_budget * share
-        elif c["quadrant"] == 2 and q2_count > 0:
-            share = score / max(
-                sum(s for cc, s in top if cc["quadrant"] == 2), 1e-6
-            )
-            raw_weight = q2_budget * share
-        else:
-            raw_weight = total_budget / len(top)
+        share = score / total_final_score
+        raw_weight = total_budget * share
 
         weight = min(raw_weight, max_single)
         allocated += weight
@@ -336,8 +329,9 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
             f"总仓位已上调{timing_adj*100:.0f}%"
         )
 
-    if q1_count > 0 and q2_count > 0:
-        total_pct = q1_count + q2_count
+    q1_in_top = sum(1 for c, _ in top if c["quadrant"] == 1)
+    q2_in_top = sum(1 for c, _ in top if c["quadrant"] == 2)
+    if q1_in_top > 0 and q2_in_top > 0:
         corr_high = any(
             _correlation_penalty(c["code"], []) < 0.7
             for c, _ in top
@@ -360,7 +354,7 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
         )
     reasons.append("只推荐Q1（强势）+ Q2（潜伏）象限ETF，剔除Q3/Q4高风险品种")
     reasons.append(
-        f"风险预算：单ETF≤{max_single*100:.0f}%，Q1:Q2={q1_budget/total_budget*100:.0f}:{q2_budget/total_budget*100:.0f}"
+        f"风险预算：单ETF≤{max_single*100:.0f}%，按因子分比例配仓"
     )
     if abs(timing_adj) > 0.05:
         reasons.append(f"大盘择时信号：{timing.get('narrative','')}")

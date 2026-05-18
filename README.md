@@ -31,15 +31,19 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 - 📈 **份额变化分析** - 自动计算份额变化标准差，提供趋势判断
 - 📉 **K线图表展示** - 基于ECharts 5的专业K线图，支持多维度数据分析
 
-- 🔄 **一键数据更新** - ETF份额自动检测更新，智能判断数据新鲜度
+- 🔄 **一键更新+回测** - 更新ETF数据后自动运行因子计算+IC分析，一步到位
+- 🏠 **首页因子概览** - 首页新增IC汇总卡片，展示各预设的IC均值/ICIR/胜率及三因子权重
 
 ### 🔬 量化分析
 - 🔬 **三因子评分模型** - RSRS(阻力支撑) + 资金流(Flow) + 动量(Mom)因子线性组合，ICIR=0.35
 - 💪 **RSRS因子** - 基于高低点滚动OLS回归(β×R²)，衡量支撑/阻力结构强度，与动量极低共线性(Pearson<0.23)
+- ⚡ **向量化因子引擎** - 滑动窗口预计算RSRS/Flow/Mom，全量回测从~25s降至~5s，提速5-8x
+- 🔄 **并行预设计算** - 4组预设因子+IC并行计算，充分利用多核CPU
 - 📈 **IC有效性检验** - Spearman Rank IC + ICIR + IC衰减曲线
 - 🎯 **四象限分类** - Q1强势/Q2潜伏/Q3撤离/Q4风险，直观定位ETF
 - 🏆 **投资建议引擎** - 三因子得分 + IC置信度 + 大盘择时 + ETF间相关惩罚 → 仓位配置
 - 📡 **大盘择时** - 基于中证500 RSI+动量+份额变化的市场状态判断
+- 🛡️ **数据覆盖回退** - 最新交易日数据不全时自动回退到最近完整日期
 
 ### 🎨 用户体验
 - 📋 **专业投资报告** - 报告式投资建议页，含KPI指标+排名表+风险提示
@@ -272,13 +276,12 @@ uvicorn src.web.app:app --reload --port 8000
 |------|------|------|
 | GET | `/api/analysis/presets` | 因子预设列表 |
 | GET | `/api/analysis/summary` | 因子摘要（IC均值、ICIR、胜率） |
+| GET | `/api/analysis/ic-summary-all` | 首页因子概览（全预设IC汇总） |
 | GET | `/api/analysis/factor-distribution` | 因子分布直方图 |
 | GET | `/api/analysis/ic-series` | IC时间序列 |
-| GET | `/api/analysis/ic-decay` | IC衰减曲线 |
 | GET | `/api/analysis/quadrant-heatmap` | 四象限收益热力图 |
 | GET | `/api/analysis/group-returns` | 分组累计收益 |
 | GET | `/api/analysis/rolling-icir` | 滚动ICIR |
-| GET | `/api/analysis/weight-recommendation` | 权重推荐（旧版） |
 | **GET** | **`/api/investment-recommendation`** | **📋 投资建议报告（含仓位配置）** |
 | **GET** | **`/api/market-timing`** | **📡 大盘择时信号** |
 | POST | `/api/analysis/recompute` | 触发因子+IC重算 |
@@ -287,10 +290,10 @@ uvicorn src.web.app:app --reload --port 8000
 
 | 方法 | 路由 | 描述 |
 |------|------|------|
+| POST | `/api/fetch/all` | 一键更新+回测（获取数据→份额更新→因子计算→IC分析） |
+| GET | `/api/fetch/status` | 数据获取+回测任务状态轮询 |
 | GET | `/api/etf-share/status` | ETF份额数据状态检查 |
 | POST | `/api/etf-share/update` | ETF份额智能更新 |
-| POST | `/api/fetch/etf` | ETF数据获取 |
-| GET | `/api/fetch/status` | 数据获取任务状态轮询 |
 
 ## 📈 份额变化分析
 
