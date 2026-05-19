@@ -397,58 +397,45 @@
         var html = '<table class="w-full text-sm zebra-table" style="min-width:580px;">';
         html += '<thead><tr>' +
             '<th class="px-3 py-2 text-left whitespace-nowrap">预设</th>' +
-            '<th class="px-3 py-2 text-center whitespace-nowrap">三因子权重</th>' +
+            '<th class="px-3 py-2 text-center whitespace-nowrap">H</th>' +
             '<th class="px-3 py-2 text-center whitespace-nowrap">IC均值</th>' +
+            '<th class="px-3 py-2 text-center whitespace-nowrap hidden sm:table-cell">IC标准差</th>' +
             '<th class="px-3 py-2 text-center whitespace-nowrap">ICIR</th>' +
-            '<th class="px-3 py-2 text-center whitespace-nowrap hidden sm:table-cell">IC胜率</th>' +
+            '<th class="px-3 py-2 text-center whitespace-nowrap hidden sm:table-cell">胜率</th>' +
             '<th class="px-3 py-2 text-center whitespace-nowrap hidden sm:table-cell">样本</th>' +
             '</tr></thead><tbody>';
 
-        // Render time-horizon group header
-        html += '<tr style="background:var(--c-bg-secondary);"><td colspan="6" class="px-3 py-2 text-xs font-semibold" style="color:var(--c-text-tertiary);letter-spacing:0.5px;">▸ 时间周期预设</td></tr>';
-
         data.presets.forEach(function(p) {
             var icMean = p.ic_mean !== null ? p.ic_mean.toFixed(4) : '--';
+            var icStd = p.ic_std !== null ? p.ic_std.toFixed(4) : '--';
             var icir = p.icir !== null ? p.icir.toFixed(4) : '--';
             var winRate = p.ic_win_rate !== null ? p.ic_win_rate.toFixed(2) + '%' : '--';
             var samples = p.sample_count || '--';
 
-            // Weights display
-            var w = p.weights || {};
-            var wHtml = 'R:' + (w.rsrs || 0).toFixed(1) + ' F:' + (w.flow || 0).toFixed(1) + ' M:' + (w.mom || 0).toFixed(1);
-
             // Color coding
-            var meanColor = p.ic_mean !== null ? (Math.abs(p.ic_mean) > 0.03 ? 'var(--c-down)' : 'var(--c-text)') : '';
-            var icirColor = p.icir !== null ? (Math.abs(p.icir) > 0.5 ? 'var(--c-down)' : Math.abs(p.icir) > 0.2 ? '#D97706' : 'var(--c-text)') : '';
-            var winColor = p.ic_win_rate !== null ? (p.ic_win_rate > 60 ? 'var(--c-down)' : p.ic_win_rate > 50 ? '#D97706' : 'var(--c-text)') : '';
+            var meanColor = p.ic_mean !== null ? (Math.abs(p.ic_mean) > 0.03 ? 'var(--c-up)' : 'var(--c-text)') : '';
+            var icirColor = p.icir !== null ? (Math.abs(p.icir) > 0.3 ? 'var(--c-up)' : Math.abs(p.icir) > 0.15 ? '#D97706' : 'var(--c-text)') : '';
+            var winColor = p.ic_win_rate !== null ? (p.ic_win_rate > 60 ? 'var(--c-up)' : p.ic_win_rate > 50 ? '#D97706' : 'var(--c-text)') : '';
 
-            // Determine row style: rsrs_aggressive gets a subtle visual cue
-            var rowStyle = '';
-            var labelSuffix = '';
+            var labelSuffix = p.preset_id === 'rsrs_aggressive'
+                ? ' <span class="tech-tag tag-amber" style="font-size:10px;padding:1px 5px;">实验</span>'
+                : ' <span class="tech-tag tag-green" style="font-size:10px;padding:1px 5px;">标准</span>';
 
-            if (p.preset_id === 'rsrs_aggressive') {
-                labelSuffix = ' <span class="tech-tag tag-amber" style="font-size:10px;padding:1px 5px;">实验</span>';
-            } else {
-                labelSuffix = ' <span class="tech-tag tag-green" style="font-size:10px;padding:1px 5px;">标准</span>';
-            }
-
-            html += '<tr' + rowStyle + '>' +
-                '<td class="px-3 py-2 align-middle"><span class="font-semibold">' + p.label + '</span>' + labelSuffix + '<br><span class="text-xs" style="color:var(--c-text-tertiary);">H=' + p.forward_days + '日</span></td>' +
-                '<td class="px-3 py-2 text-center align-middle font-mono text-xs" style="color:var(--c-text-secondary);">' + wHtml + '</td>' +
+            html += '<tr>' +
+                '<td class="px-3 py-2 align-middle"><span class="font-semibold">' + p.label + '</span>' + labelSuffix + '</td>' +
+                '<td class="px-3 py-2 text-center align-middle font-mono text-xs" style="color:var(--c-text-tertiary);">' + p.forward_days + '</td>' +
                 '<td class="px-3 py-2 text-center align-middle font-mono" style="color:' + meanColor + ';">' + icMean + '</td>' +
+                '<td class="px-3 py-2 text-center align-middle font-mono hidden sm:table-cell" style="color:var(--c-text-tertiary);">' + icStd + '</td>' +
                 '<td class="px-3 py-2 text-center align-middle font-mono" style="color:' + icirColor + ';">' + icir + '</td>' +
                 '<td class="px-3 py-2 text-center align-middle font-mono hidden sm:table-cell" style="color:' + winColor + ';">' + winRate + '</td>' +
                 '<td class="px-3 py-2 text-center align-middle font-mono hidden sm:table-cell" style="color:var(--c-text-tertiary);">' + samples + '</td>' +
                 '</tr>';
         });
 
-        // Render experimental group header after standard presets (rsrs_aggressive already rendered above)
-        // Actually, for simplicity, add a footnote explaining weights
         html += '</tbody></table>';
         html += '<div class="mt-3 text-xs flex flex-wrap gap-3" style="color:var(--c-text-tertiary);">' +
-            '<span><b>R</b>=RSRS <b>F</b>=资金流 <b>M</b>=动量</span>' +
             '<span><span class="tech-tag tag-green" style="font-size:10px;">标准</span> 三周期标准参数</span>' +
-            '<span><span class="tech-tag tag-amber" style="font-size:10px;">实验</span> RSRS主导权重(0.5)验证</span>' +
+            '<span><span class="tech-tag tag-amber" style="font-size:10px;">实验</span> RSRS主导权重</span>' +
             '</div>';
         el.innerHTML = html;
     }
