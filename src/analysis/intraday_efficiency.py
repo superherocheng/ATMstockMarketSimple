@@ -94,8 +94,16 @@ def _smooth_5(efficiency: np.ndarray) -> np.ndarray:
 
 
 # ════════════════════════════════════════════════════════════
-#  Step 3: EWMA Difference (short - long)
+#  Step 3: EWMA Difference (short - long) — MACD of efficiency
 # ════════════════════════════════════════════════════════════
+#  IntEff = EWMA_short(SMA_5(Eff)) - EWMA_long(SMA_5(Eff))
+#
+#  This is analogous to a MACD applied to price efficiency:
+#  - Positive IntEff: efficiency is rising (trend is strengthening)
+#  - Negative IntEff: efficiency is falling (trend is weakening/going choppy)
+#  This measures the *momentum of efficiency*, not the absolute efficiency level.
+#  The raw efficiency level (Eff) represents directional purity of a single day,
+#  while IntEff captures whether the market is becoming more or less efficient.
 def _ewma_halflife(series: np.ndarray, halflife: float) -> np.ndarray:
     """Compute EWMA with given halflife (days).
 
@@ -109,13 +117,18 @@ def _ewma_halflife(series: np.ndarray, halflife: float) -> np.ndarray:
     return ewma.values
 
 
-def _compute_intraday_efficiency_series(opens, highs, lows, closes) -> np.ndarray:
+def _compute_intraday_efficiency_series(opens, highs, lows, closes,
+                                        sma_window: int = 0) -> np.ndarray:
     """Compute Intraday Efficiency factor series for one ETF.
 
     Pipeline:
       1. Daily efficiency (OHLC proxy)
-      2. 5-day SMA smoothing
+      2. Optional SMA smoothing (skipped when sma_window=0)
       3. EWMA_short(5) - EWMA_long(20) → IntEff
+
+    sma_window controls signal smoothness:
+      >0  classic pipeline with SMA smoothing (medium/long presets)
+      =0  reduced lag for short-term presets (H=10)
 
     Returns:
         Array of length n (same as input).
@@ -128,12 +141,17 @@ def _compute_intraday_efficiency_series(opens, highs, lows, closes) -> np.ndarra
     # Step 1: daily efficiency
     eff = _daily_efficiency_ohlc(opens, highs, lows, closes)
 
-    # Step 2: 5-day SMA
-    eff_sma5 = _smooth_5(eff)
+    # Step 2: optional SMA smoothing
+    if sma_window > 1:
+        eff_smoothed = pd.Series(eff).rolling(
+            window=sma_window, min_periods=sma_window
+        ).mean().values
+    else:
+        eff_smoothed = eff
 
     # Step 3: EWMA difference
-    ewma_short = _ewma_halflife(eff_sma5, halflife=EWMA_SHORT_HALFLIFE)
-    ewma_long = _ewma_halflife(eff_sma5, halflife=EWMA_LONG_HALFLIFE)
+    ewma_short = _ewma_halflife(eff_smoothed, halflife=EWMA_SHORT_HALFLIFE)
+    ewma_long = _ewma_halflife(eff_smoothed, halflife=EWMA_LONG_HALFLIFE)
 
     int_eff = ewma_short - ewma_long
 
@@ -143,12 +161,13 @@ def _compute_intraday_efficiency_series(opens, highs, lows, closes) -> np.ndarra
 # ════════════════════════════════════════════════════════════
 #  Batch interface (called by factor_engine)
 # ════════════════════════════════════════════════════════════
-def compute_efficiency_for_etf(etf_df: pd.DataFrame) -> pd.Series:
+def compute_efficiency_for_etf(etf_df: pd.DataFrame, sma_window: int = 0) -> pd.Series:
     """Compute Intraday Efficiency for one ETF's kline DataFrame.
 
     Args:
         etf_df: DataFrame with columns ['open','high','low','close']
                 sorted by trade_date ascending.
+        sma_window: optional SMA smoothing window (0=skip, >0=apply).
 
     Returns:
         pd.Series of IntEff values, index matching etf_df.index.
@@ -158,7 +177,8 @@ def compute_efficiency_for_etf(etf_df: pd.DataFrame) -> pd.Series:
     lows = etf_df["low"].values
     closes = etf_df["close"].values
 
-    int_eff = _compute_intraday_efficiency_series(opens, highs, lows, closes)
+    int_eff = _compute_intraday_efficiency_series(opens, highs, lows, closes,
+                                                   sma_window=sma_window)
     return pd.Series(int_eff, index=etf_df.index)
 
 

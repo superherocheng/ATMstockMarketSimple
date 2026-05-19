@@ -477,7 +477,7 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
     # ── Reasons ──
     reasons = [
         f"基于{preset['label']}预设（flow_lookback={preset['flow_lookback']}d, "
-        f"mom_lookback={preset['mom_lookback']}d）的四因子模型（RSRS+资金流+动量+财务质量）",
+        f"mom_lookback={preset['mom_lookback']}d）的五因子模型（RSRS+资金流+动量+财务质量+日内效率）",
     ]
     if best_h in ic_summary and ic_summary[best_h]["icir"] is not None:
         ic = ic_summary[best_h]

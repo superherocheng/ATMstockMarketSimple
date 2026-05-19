@@ -62,21 +62,26 @@
             <p>本系统采用<strong>五因子四象限模型</strong>（V5升级），对行业ETF进行截面分析。将RSRS阻力支撑强度、资金流向（Flow）、价格动量（Momentum）、财务质量（F_Quality）和日内效率（IntEff）五个维度标准化后，加权组合为复合因子。</p>
             <ul>
                 <li><strong>RSRS因子 (Resistance Support Relative Strength)</strong>：对ETF每日高点和低点做OLS回归（β &times; R²），衡量支撑/阻力结构稳定度。正值表示趋势结构稳定，负值表示结构不稳定。</li>
-                <li><strong>资金流因子 (Flow)</strong>：对ETF份额数据做EWMA加权回归斜率（半衰期3天），然后用tanh压缩到[-1,1]。正值为资金流入，负值为流出。</li>
+                <li><strong>资金流因子 (Flow)</strong>：对ETF份额数据做EWMA加权回归斜率（半衰期3天），再经横截面Rank标准化。正值为资金流入，负值为流出。</li>
                 <li><strong>动量因子 (Momentum)</strong>：计算过去M日价格收益率，除以同期波动率（60日）进行风险调整。</li>
                 <li><strong>财务质量因子 (F_Quality)</strong>：综合行业成分股的ROE、PB估值分位（反向）、盈利增速三个基本面维度，流通市值加权合成。详见下方财务质量因子说明。</li>
-                <li><strong>日内效率因子 (IntEff)</strong>：基于OHLC代理的日内价格方向性指标，衡量趋势流畅度。高IntEff=单边趋势强、噪音低；低IntEff=震荡折返多。详见下方日内效率因子说明。</li>
+                <li><strong>日内效率因子 (IntEff)</strong>：基于OHLC代理计算每日价格效率（Eff=当日净变动/日内路径长度），再取Eff 5日SMA上做长短EWMA差值。衡量的是<strong>效率水平的动量变化</strong>：正值表示效率在提升（趋势在加强），负值表示效率下降（趋势钝化/转为震荡）。详见下方日内效率因子说明。</li>
             </ul>
             <div class="tech-formula">
                 RSRS = &beta; &times; R&sup2; (High ~ Low, OLS回归, N日窗口)<br>
-                Flow = tanh(EWMA_Slope(份额, N日) &times; 3)<br>
+                Flow = EWMA_Slope(份额, N日) &rarr; Rank标准化<br>
                 Mom = Return(M日) / Std(日收益率, 60日)<br>
-                IntEff = EWMA_short(Eff_5) - EWMA_long(Eff_20)<br>
+                Eff = |Close(t)-Close(t-1)| / [(High-Low) + |Close-Open|] (OHLC代理)<br>
+                IntEff = EWMA_short(SMA_5(Eff)) - EWMA_long(SMA_5(Eff))<br>
                 <br>
-                复合因子 = 0.20&times;Z(RSRS) + 0.20&times;Z(Flow) + 0.20&times;Z(Mom) + 0.20&times;Z(F_Quality) + 0.20&times;Z(IntEff)
+                复合因子 = w_rsrs&times;Z_rank(RSRS) + w_flow&times;Z_rank(Flow) + w_mom&times;Z_rank(Mom)<br>
+                &emsp;&emsp;&emsp;&emsp;+ w_quality&times;Z_rank(F_Quality) + w_efficiency&times;Z_rank(IntEff)<br>
+                <br>
+                Z_rank(x) = Z-score(Rank(x))  — 先秩排序再标准化
             </div>
-            <p>截面Z-Score标准化经过<strong>Winsorize 10%</strong>（截断极端值）处理，适应小样本（17只ETF）场景。</p>
-            <p style="margin-top:10px;"><strong>五因子权重</strong>：各预设使用等权配置（RSRS 0.20 / Flow 0.20 / Mom 0.20 / Quality 0.20 / Efficiency 0.20）。所有因子经日内效率（IntEff）横截面Z-Score后合成。RSRS与动量<strong>极低共线性（Pearson &lt; 0.23）</strong>，提供完全独立的信息增量。</p>
+            <p>权重 w_* 因预设而异（详见下方预设参数说明），且财务质量权重会根据市场择时信号在 0.10~0.40 间浮动。</p>
+            <p>所有因子经<strong>Rank秩标准化</strong>（标准分排名）处理，比常规Winsorize+Z-Score更适合17只ETF的小样本截面：避免截断1~2只尾部样本带来的统计失真，且对异常值天然鲁棒。</p>
+            <p style="margin-top:10px;">RSRS与动量<strong>极低共线性（Pearson &lt; 0.23）</strong>，提供完全独立的信息增量。</p>
         </div>
 
         <!-- V4: Financial Quality Factor -->
@@ -84,18 +89,35 @@
             <h3><span class="icon" style="background:#d4edda;">&#9733;</span> 财务质量因子 (F_Quality) — V4新增</h3>
             <p>V4引入了第四个因子维度——<strong>财务质量因子 (F_Quality)</strong>，从上市公司财务基本面角度提供横截面筛选能力。该因子由三个子因子等权合成：</p>
             <ul>
-                <li><strong>预期ROE (F_ROE)</strong>：行业成分股最新季度ROE的流通市值加权平均值。衡量行业整体盈利能力。</li>
+                <li><strong>最新ROE (F_ROE)</strong>：行业成分股最新季度ROE的流通市值加权平均值。衡量行业整体盈利能力。</li>
                 <li><strong>PB估值分位 (F_PB_Pct)</strong>：行业成分股最新PB_TTM在5年历史中的估值分位，取反向指标（1-分位数）。低估值（低PB历史分位）得高分。</li>
                 <li><strong>盈利加速度 (F_Earnings_YoY)</strong>：成分股单季度归母净利润同比增长率的行业均值，再做截面Z-Score。反映行业盈利增长动能。</li>
             </ul>
             <div class="tech-formula">
-                F_Quality = (Z(F_ROE) + Z(F_PB_Pct) + Z(F_Earnings_YoY)) / 3<br>
-                综合因子 = 0.25×Z(RSRS) + 0.25×Z(Flow) + 0.25×Z(Mom) + 0.25×Z(F_Quality)
+                F_Quality = (Z(F_ROE) + Z(F_PB_Pct) + Z(F_Earnings_YoY)) / 3
             </div>
-            <p><strong>行业成分股映射</strong>：每只行业ETF使用10只代表性成分股作为代理组合，优先使用流通市值加权，数据不足时降级为等权。有效成分股少于3只时该行业因子设为NaN（用截面中位数填充）。</p>
+            <p>（注：V4阶段复合因子为四因子等权；V5加入IntEff后改为五因子差异化权重。）</p>
+            <p><strong>行业成分股映射</strong>：每只行业ETF使用10只代表性成分股作为代理组合，优先使用流通市值加权，数据不足时降级为等权。有效成分股少于3只时该行业因子赋值为截面中位数。</p>
             <p><strong>数据源</strong>：ROE及净利润增速来自 Tushare fina_indicator；PB及流通市值来自 stock_daily_basic。</p>
-            <p><strong>商品类ETF处理</strong>：石油ETF等商品类ETF不计算财务因子，其F_Quality赋值为截面中位数。</p>
-            <p><strong>容错机制</strong>：某只成分股数据缺失则从该期计算中剔除；整个行业有效数据不足3只则用截面中位数填充。</p>
+            <p><strong>商品类ETF处理</strong>：石油ETF、黄金ETF等商品类不计算财务因子。底层代码实现<strong>资产掩码+权重重分配</strong>：在复合因子合成时，商品ETF的F_Quality权重被等比例分摊到RSRS/Flow/Mom/IntEff四个技术面因子（除权公式：<code>factor = 技术面加权和 / (1 - w_quality)</code>），确保截面评分在同维度下公平竞技。</p>
+            <p><strong>容错机制</strong>：某只成分股数据缺失则从该期计算中剔除；整个行业有效数据不足3只则该行业因子赋值为截面中位数。</p>
+        </div>
+
+        <!-- V5: Intraday Efficiency Factor -->
+        <div class="tech-section">
+            <h3><span class="icon" style="background:#f0e6ff;">&#8644;</span> 日内效率因子 (IntEff) — V5新增</h3>
+            <p>V5引入第五个因子维度——<strong>日内效率因子 (IntEff)</strong>，从价格运动结构角度衡量趋势的流畅程度。该因子并非直接使用效率绝对值，而是通过<strong>效率指标的MACD</strong>（长短周期EWMA差值）捕捉效率的变动方向。</p>
+            <ul>
+                <li><strong>底层效率 (Eff)</strong>：每日OHLC代理指标，计算当日净变动(|Close(t)-Close(t-1)|)占日内总路径((High-Low)+|Close-Open|)的比例。Eff值高=单边趋势强、噪音低；Eff值低=盘中折返多。</li>
+                <li><strong>信号平滑</strong>：对Eff做可选SMA平滑（短期预设sma=0跳过此步以减少滞后，中/长期预设sma=5做5日均线），消除单日异常波动。</li>
+                <li><strong>动量化</strong>：对平滑后的序列做两个EWMA（半衰期5天和20天），取差值即为IntEff。正值=效率在提升（趋势在增强），负值=效率下降（趋势钝化/转为震荡）。</li>
+            </ul>
+            <div class="tech-formula">
+                Eff(t) = |Close(t)-Close(t-1)| / [(High(t)-Low(t)) + |Close(t)-Open(t)|]<br>
+                Eff_5 = SMA_5(Eff)<br>
+                IntEff = EWMA(Eff_5, &lambda;=5d) - EWMA(Eff_5, &lambda;=20d)
+            </div>
+            <p>IntEff经过横截面Rank标准化后参与复合因子合成。因子的核心价值在于识别趋势结构的变化拐点：当IntEff由负转正时提示噪音下降、趋势可能加速；由正转负时提示趋势衰竭风险。</p>
         </div>
 
         <!-- Quadrant Model -->
@@ -108,7 +130,7 @@
                 <li><span class="tech-tag tag-amber">Q3 撤离</span> Z_Flow &lt; 0, Z_Mom &lt; 0 &mdash; 资金流出+价格下跌。风险最高，建议回避。</li>
                 <li><span class="tech-tag tag-red">Q4 风险</span> Z_Flow &lt; 0, Z_Mom &ge; 0 &mdash; 资金流出但价格仍涨。警惕诱多陷阱。</li>
             </ul>
-            <p><strong>投资含义</strong>：投资建议引擎仅从Q1（60%预算）和Q2（40%预算）中筛选候选标的，Q3/Q4始终排除。</p>
+            <p><strong>投资含义</strong>：投资建议引擎优先从Q1（60%预算）和Q2（40%预算）中筛选候选标的。Q3中RSRS因子>0.3且复合因子>0的品种按信号强度纳入候选（RSRS覆盖机制），Q4始终排除。</p>
         </div>
 
         <!-- IC Analysis -->
@@ -120,7 +142,7 @@
             <p>关键统计量：</p>
             <ul>
                 <li><strong>IC均值</strong>：所有日IC的平均值。<span class="tech-tag tag-green">|IC均值| &gt; 0.03 为显著</span>，表示因子有预测力。</li>
-                <li><strong>ICIR</strong>：IC均值 / IC标准差。<span class="tech-tag tag-green">|ICIR| &gt; 0.5 为稳定</span>，&gt; 2为非常稳定。</li>
+                <li><strong>ICIR</strong>：IC均值 / IC标准差。<span class="tech-tag tag-green">|ICIR| &gt; 0.05 为弱有效</span>，&gt; 0.10为可用，&gt; 0.20为良好。注意：行业内截面ICIR通常远低于选股领域，|ICIR|能在日频滚动中稳定>0.05即具有实用价值。</li>
                 <li><strong>IC胜率</strong>：IC &gt; 0的交易日占比。<span class="tech-tag tag-green">&gt; 50% 表示因子方向正确</span>，&gt; 60%为优秀。</li>
             </ul>
         </div>
@@ -145,7 +167,7 @@
             <p>四个象限的累计收益率随时间变化。Q1与Q3差距越大，因子区分度越好。</p>
 
             <p style="margin-top:16px;"><strong>6. 因子滚动ICIR</strong></p>
-            <p>60日滚动窗口计算的ICIR。滚动ICIR &gt; 0.5表示因子在该时段表现稳定。</p>
+            <p>60日滚动窗口计算的ICIR。滚动ICIR稳定 &gt; 0.05 表示因子在该时段具有实用预测力。</p>
 
 
         </div>
@@ -153,13 +175,15 @@
         <!-- Preset Parameters -->
         <div class="tech-section">
             <h3><span class="icon" style="background:#e8e0f4;">&#9881;</span> 预设参数说明</h3>
-            <p>每个预设定义了五因子参数和权重（V5等权）：</p>
+            <p>每个预设定义了五因子参数和差异化权重：</p>
             <ul>
-                <li><strong>短期</strong>：RSRS=20, Flow=10, Mom=20, H=10。权重 RSRS 0.20 / Flow 0.20 / Mom 0.20 / Quality 0.20 / Efficiency 0.20。</li>
-                <li><strong>中期</strong>：RSRS=20, Flow=20, Mom=60, H=20。权重 RSRS 0.20 / Flow 0.20 / Mom 0.20 / Quality 0.20 / Efficiency 0.20。</li>
-                <li><strong>长期</strong>：RSRS=30, Flow=40, Mom=120, H=40。权重 RSRS 0.20 / Flow 0.20 / Mom 0.20 / Quality 0.20 / Efficiency 0.20。</li>
-                <li><strong>RSRS进取</strong>：RSRS=15, Flow=10, Mom=10, H=10。权重 RSRS 0.20 / Flow 0.20 / Mom 0.20 / Quality 0.20 / Efficiency 0.20。</li>
+                <li><strong>短期</strong>：RSRS=20, Flow=10, Mom=20, H=10。权重 RSRS 0.28 / Flow 0.14 / Mom 0.28 / Quality 0.20 / Eff 0.10。</li>
+                <li><strong>中期</strong>：RSRS=20, Flow=20, Mom=60, H=20。权重 RSRS 0.21 / Flow 0.21 / Mom 0.28 / Quality 0.20 / Eff 0.10。</li>
+                <li><strong>长期</strong>：RSRS=30, Flow=40, Mom=120, H=40。权重 RSRS 0.175 / Flow 0.175 / Mom 0.35 / Quality 0.20 / Eff 0.10。</li>
+                <li><strong>RSRS进取</strong>：RSRS=15, Flow=10, Mom=10, H=10。权重 RSRS 0.35 / Flow 0.14 / Mom 0.21 / Quality 0.20 / Eff 0.10。</li>
             </ul>
+            <p style="margin-top:8px;"><strong>权重动态调整</strong>：财务质量权重会根据大盘择时信号在 0.10~0.40 之间浮动（市场偏弱时 quality 降至 0.10，释放更多权重给技术面；超跌反弹时 quality 升至 0.40 加强防御）。</p>
+            <p style="margin-top:8px;"><strong>弱市反转模式</strong>：当大盘择时信号 < -0.3（偏弱/过热），动量(Mom)因子自动切换为<strong>短周期反转信号</strong>（5日收益率的负值），使系统在趋势失效时捕获均值回归机会。弱市中的四象限定义变为：Q1=资金流入+价格超跌 和 Q2=资金流入+价格反弹，Q3=资金流出+价格超买 和 Q4=资金流出+价格下跌。</p>
             <p>RSRS=回归窗口天数, Flow=份额回溯天数, Mom=动量回溯天数, Quality=财务质量因子, Efficiency=日内效率因子, H=最优预测周期。</p>
         </div>
 

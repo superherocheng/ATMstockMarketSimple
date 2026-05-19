@@ -62,7 +62,8 @@ def _compute_flow_series(shares, lookback: int, halflife: int = 3) -> np.ndarray
     """Compute EWMA-weighted share-flow slope for every valid index.
 
     Returns an array of length n where early entries are NaN.
-    Flow = tanh(EWMA_slope(shares[-lookback:]) / mean(shares[-lookback:]) * 3)
+    Flow = EWMA_slope(shares[-lookback:]) / mean(shares[-lookback:])
+    (raw slope, no tanh — cross-sectional Z-score is applied later.)
     """
     n = len(shares)
     result = np.full(n, np.nan)
@@ -85,7 +86,7 @@ def _compute_flow_series(shares, lookback: int, halflife: int = 3) -> np.ndarray
         x_w = x - (x * weights).sum()
         y_w = y - (y * weights).sum()
         slope = (weights * x_w * y_w).sum() / (weights * x_w * x_w).sum()
-        result[i] = float(np.tanh(slope * 3))
+        result[i] = float(slope)
 
     return result
 
@@ -127,18 +128,17 @@ def _compute_mom_series(closes, lookback: int, vol_window: int = 60) -> np.ndarr
 #  Cross-sectional helpers
 # ════════════════════════════════════════════════════════════
 def _cross_sectional_zscore(values: pd.Series) -> pd.Series:
-    """Compute cross-sectional Z-scores after Winsorizing extreme values.
+    """Rank-based normalization robust to small cross-section (N < 30).
 
-    Winsorization clips the top/bottom 10% to reduce the impact of outliers
-    on the small cross-section (22 ETFs). This consistently improves ICIR.
+    Converts values to standardized ranks (mean ≈ 0, std ≈ 1).
+    More robust than Winsorize+Z-score when only 17–22 ETFs are available:
+    avoids the distortion of clipping 1–2 samples in each tail.
     """
-    p10 = values.quantile(0.10)
-    p90 = values.quantile(0.90)
-    clipped = values.clip(p10, p90)
-    std = clipped.std()
-    if std == 0 or pd.isna(std):
+    ranks = values.rank()
+    rank_std = ranks.std()
+    if rank_std == 0 or pd.isna(rank_std):
         return pd.Series(0.0, index=values.index)
-    return (clipped - clipped.mean()) / std
+    return (ranks - ranks.mean()) / rank_std
 
 
 def _classify_quadrant(z_flow: float, z_mom: float) -> int:
@@ -228,10 +228,10 @@ def _get_adjusted_weights(base_weights: dict) -> dict:
 
     Strategy:
     - Weak/bearish market (score < -0.3, momentum overheated):
-      reduce quality to 0.20, distribute to RSRS/Flow/Mom proportionally
+      reduce quality to 0.10, distribute to RSRS/Flow/Mom/Eff proportionally
     - Strong recovery (score > 0.3, oversold bounce):
-      increase quality to 0.30, reduce others proportionally
-    - Neutral: keep base weights (0.25 each)
+      increase quality to 0.40, reduce others proportionally
+    - Neutral: keep base weights
 
     Returns adjusted weights dict with keys rsrs/flow/mom/quality summing to 1.0.
     """
@@ -246,10 +246,10 @@ def _get_adjusted_weights(base_weights: dict) -> dict:
     # Determine target quality weight
     if score < -0.3:
         # Overheated/caution — strong momentum trend → reduce quality reliance
-        target_q = 0.20
+        target_q = min(0.10, base_q)
     elif score > 0.3:
         # Oversold/recovery — weak momentum → increase quality reliance
-        target_q = 0.30
+        target_q = 0.40
     else:
         target_q = base_q
 
@@ -328,15 +328,21 @@ def _compute_preset_factors(pid: str, *,
         rsrs_arr = _compute_rsrs_series(ek["high"], ek["low"], rsrs_lb)
         mom_arr = _compute_mom_series(ek["close"], mom_lb)
 
+        # Reversal series (short-lookback, negated) for weak-market mode
+        rev_lb = preset.get("reversal_lookback", 5)
+        rev_arr = -_compute_mom_series(ek["close"], rev_lb)
+
         flow_arr = _compute_flow_series(es["fd_share"], flow_lb, halflife=3)
 
         # V5: Intraday Efficiency Factor (from OHLC proxy)
-        eff_arr = compute_efficiency_for_etf(ek)
+        eff_sma = preset.get("eff_sma_window", 0)
+        eff_arr = compute_efficiency_for_etf(ek, sma_window=eff_sma)
 
         # Build a DataFrame with all factor series per (etf_code, trade_date)
         df = ek[["ts_code", "trade_date"]].copy()
         df["rsrs"] = rsrs_arr
         df["mom"] = mom_arr
+        df["mom_rev"] = rev_arr
         df["efficiency"] = eff_arr.values if hasattr(eff_arr, 'values') else eff_arr
 
         # Merge flow from share data (join on trade_date)
@@ -385,6 +391,14 @@ def _compute_preset_factors(pid: str, *,
     # Filter raw_all to dates we care about (speeds up lookups)
     raw_new = raw_all[raw_all["trade_date"].isin(new_dates)].copy()
 
+    # Fetch market regime once for weight adjustment + reversal mode detection
+    try:
+        from src.analysis.market_timing import compute_market_timing
+        _timing = compute_market_timing()
+        _market_score = _timing.get("score", 0.0)
+    except Exception:
+        _market_score = 0.0
+
     batch_rows = []
     for d in new_dates:
         day_raw = raw_new[raw_new["trade_date"] == d].copy()
@@ -396,6 +410,13 @@ def _compute_preset_factors(pid: str, *,
 
         if len(day_raw) < 2:
             continue
+
+        # ── Weak-market reversal mode ──
+        # In bearish/overheated regime, replace trend momentum with short-term reversal.
+        # This flips the mom sign: stocks that fell recently get positive reversal scores,
+        # making the quadrant model capture mean-reversion opportunities.
+        if _market_score < -0.3 and "mom_rev" in day_raw.columns:
+            day_raw["mom"] = day_raw["mom_rev"]
 
         # Cross-sectional Z-scores for RSRS/Flow/Mom/Efficiency
         day_raw["z_rsrs"] = _cross_sectional_zscore(day_raw["rsrs"]).values
@@ -441,6 +462,25 @@ def _compute_preset_factors(pid: str, *,
                              + w_mom * day_raw["z_mom"]
                              + w_quality * day_raw["z_quality"]
                              + w_efficiency * day_raw["z_efficiency"])
+
+        # Commodity ETF: redistribute quality weight to technical factors.
+        # 商品ETF（石油/黄金）无财务基本面，F_Quality=截面中位数（z≈0），
+        # 但中位数在股票基本面普遍偏弱/偏强时会产生虚假的相对优势。
+        # 处理方式：将 quality 权重等比例分摊到其余四个技术面因子。
+        try:
+            from src.analysis.financial_factor import COMMODITY_ETF_CODES
+        except ImportError:
+            COMMODITY_ETF_CODES = set()
+        commodity_mask = day_raw["ts_code"].isin(COMMODITY_ETF_CODES)
+        if commodity_mask.any():
+            technical_weight = 1.0 - w_quality
+            if technical_weight > 0:
+                day_raw.loc[commodity_mask, "factor"] = (
+                    w_rsrs * day_raw.loc[commodity_mask, "z_rsrs"]
+                    + w_flow * day_raw.loc[commodity_mask, "z_flow"]
+                    + w_mom * day_raw.loc[commodity_mask, "z_mom"]
+                    + w_efficiency * day_raw.loc[commodity_mask, "z_efficiency"]
+                ) / technical_weight
 
         # Quadrant (unchanged: still based on flow + mom only)
         day_raw["quadrant"] = day_raw.apply(

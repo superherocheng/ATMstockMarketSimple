@@ -176,6 +176,15 @@ def _run_fetch(task_type):
         total_elapsed = time.time() - backtest_start
         _add_log(f"[DONE] 回测完成！总耗时约 {total_elapsed:.0f}s")
 
+        # 投资建议预生成（缓存预热）
+        try:
+            from src.analysis.recommendation_engine import build_investment_recommendation
+            for pid in ["short", "medium", "long", "rsrs_aggressive"]:
+                build_investment_recommendation(pid)
+            _add_log("[OK] 投资建议已预生成（4个预设）")
+        except Exception as e:
+            _add_log(f"[WARN] 投资建议预生成失败: {e}")
+
         _cache_invalidate("etf", "overview", "analysis")
         with _fetch_lock:
             _fetch_status["backtest_done"] = True

@@ -26,6 +26,8 @@ PRESETS = {
         "mom_lookback": 20,
         "forward_periods": [10],
         "factor_weights": {"rsrs": 0.28, "flow": 0.14, "mom": 0.28, "quality": 0.20, "efficiency": 0.10},
+        "eff_sma_window": 0,
+        "reversal_lookback": 5,
     },
     "medium": {
         "id": "medium",
@@ -36,6 +38,8 @@ PRESETS = {
         "mom_lookback": 60,
         "forward_periods": [20],
         "factor_weights": {"rsrs": 0.21, "flow": 0.21, "mom": 0.28, "quality": 0.20, "efficiency": 0.10},
+        "eff_sma_window": 5,
+        "reversal_lookback": 5,
     },
     "long": {
         "id": "long",
@@ -46,6 +50,8 @@ PRESETS = {
         "mom_lookback": 120,
         "forward_periods": [40],
         "factor_weights": {"rsrs": 0.175, "flow": 0.175, "mom": 0.35, "quality": 0.20, "efficiency": 0.10},
+        "eff_sma_window": 5,
+        "reversal_lookback": 5,
     },
     "rsrs_aggressive": {
         "id": "rsrs_aggressive",
@@ -56,6 +62,8 @@ PRESETS = {
         "mom_lookback": 10,
         "forward_periods": [10],
         "factor_weights": {"rsrs": 0.35, "flow": 0.14, "mom": 0.21, "quality": 0.20, "efficiency": 0.10},
+        "eff_sma_window": 0,
+        "reversal_lookback": 5,
     },
 }
 
