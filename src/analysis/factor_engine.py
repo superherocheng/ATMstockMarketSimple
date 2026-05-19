@@ -1,9 +1,11 @@
 """Factor computation engine for sector ETF four-quadrant analysis.
 
 Computes RSRS (resistance support), Flow (share trend), Momentum (vol-adj),
-cross-sectional Z-scores, three-factor composite, and quadrant classification.
+Financial Quality (F_Quality), cross-sectional Z-scores, four-factor composite,
+and quadrant classification.
 
-Optimized: vectorized rolling-window per ETF, parallel preset computation.
+V4: Integrated Financial Quality Factor (F_Quality) as the 4th factor.
+See financial_factor.py for the F_Quality computation methodology.
 """
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -12,6 +14,9 @@ import numpy as np
 import pandas as pd
 
 from src.analysis.presets import get_preset, all_preset_ids
+from src.analysis.intraday_efficiency import compute_efficiency_for_etf
+# BARRA neutralization available but disabled for small cross-section.
+# See src/analysis/barra_neutralization.py and comments in _compute_preset_factors.
 
 logger = logging.getLogger(__name__)
 
@@ -88,9 +93,6 @@ def _compute_flow_series(shares, lookback: int, halflife: int = 3) -> np.ndarray
 # ════════════════════════════════════════════════════════════
 #  Mom: 波动率调整动量 — vectorized per-ETF series
 # ════════════════════════════════════════════════════════════
-# ════════════════════════════════════════════════════════════
-#  Mom: 波动率调整动量 — vectorized per-ETF series
-# ════════════════════════════════════════════════════════════
 def _compute_mom_series(closes, lookback: int, vol_window: int = 60) -> np.ndarray:
     """Compute volatility-adjusted momentum for every valid index.
 
@@ -122,7 +124,7 @@ def _compute_mom_series(closes, lookback: int, vol_window: int = 60) -> np.ndarr
 
 
 # ════════════════════════════════════════════════════════════
-#  Cross-sectional helpers (unchanged)
+#  Cross-sectional helpers
 # ════════════════════════════════════════════════════════════
 def _cross_sectional_zscore(values: pd.Series) -> pd.Series:
     """Compute cross-sectional Z-scores after Winsorizing extreme values.
@@ -174,7 +176,7 @@ def _fetch_factor_base_data():
     conn = get_conn()
     try:
         kline_rows = conn.execute(text(
-            "SELECT ts_code, trade_date, high, low, close, pct_chg FROM sector_etf_daily "
+            "SELECT ts_code, trade_date, open, high, low, close, pct_chg FROM sector_etf_daily "
             "ORDER BY ts_code, trade_date"
         )).fetchall()
         share_rows = conn.execute(text(
@@ -192,7 +194,7 @@ def _fetch_factor_base_data():
         return None, None, False
 
     kline_df = pd.DataFrame(kline_rows,
-                            columns=["ts_code", "trade_date", "high", "low", "close", "pct_chg"])
+                            columns=["ts_code", "trade_date", "open", "high", "low", "close", "pct_chg"])
     share_df = pd.DataFrame(share_rows, columns=["ts_code", "trade_date", "fd_share"])
 
     # Normalise dates to string (once, shared by all presets)
@@ -205,6 +207,72 @@ def _fetch_factor_base_data():
     return kline_df, share_df, has_rsrs
 
 
+def _get_latest_financial_factors() -> dict:
+    """Load the latest F_Quality values from the financial_factor table.
+
+    Returns dict[etf_code] -> f_quality (raw float), or empty dict.
+    """
+    try:
+        from src.analysis.financial_factor import load_latest_financial_factors
+        factors = load_latest_financial_factors()
+        if not factors:
+            return {}
+        return {code: data["f_quality"] for code, data in factors.items()}
+    except Exception as exc:
+        logger.warning(f"Could not load financial factors: {exc}")
+        return {}
+
+
+def _get_adjusted_weights(base_weights: dict) -> dict:
+    """Adjust quality factor weight based on market regime.
+
+    Strategy:
+    - Weak/bearish market (score < -0.3, momentum overheated):
+      reduce quality to 0.20, distribute to RSRS/Flow/Mom proportionally
+    - Strong recovery (score > 0.3, oversold bounce):
+      increase quality to 0.30, reduce others proportionally
+    - Neutral: keep base weights (0.25 each)
+
+    Returns adjusted weights dict with keys rsrs/flow/mom/quality summing to 1.0.
+    """
+    base_q = base_weights.get("quality", 0.25)
+    try:
+        from src.analysis.market_timing import compute_market_timing
+        timing = compute_market_timing()
+        score = timing.get("score", 0.0)
+    except Exception:
+        return dict(base_weights)
+
+    # Determine target quality weight
+    if score < -0.3:
+        # Overheated/caution — strong momentum trend → reduce quality reliance
+        target_q = 0.20
+    elif score > 0.3:
+        # Oversold/recovery — weak momentum → increase quality reliance
+        target_q = 0.30
+    else:
+        target_q = base_q
+
+    if abs(target_q - base_q) < 0.01:
+        return dict(base_weights)
+
+    # Distribute the delta proportionally among other factors
+    other_keys = ["rsrs", "flow", "mom", "efficiency"]
+    other_total = sum(base_weights.get(k, 0.0) for k in other_keys)
+    if other_total <= 0:
+        return dict(base_weights)
+
+    adjusted = dict(base_weights)
+    remaining = 1.0 - target_q
+    for k in other_keys:
+        adjusted[k] = round(base_weights.get(k, 0.0) / other_total * remaining, 6)
+    adjusted["quality"] = target_q
+
+    logger.info(f"Weight adjustment: quality {base_q}->{target_q} "
+                f"(market_score={score:.3f}, regime={timing.get('regime_cn', '?')})")
+    return adjusted
+
+
 # ════════════════════════════════════════════════════════════
 #  Batch compute all dates — vectorized
 # ════════════════════════════════════════════════════════════
@@ -213,6 +281,10 @@ def _compute_preset_factors(pid: str, *,
                             share_df: pd.DataFrame = None,
                             has_rsrs: bool = False) -> int:
     """Compute factors for one preset using vectorized per-ETF series.
+
+    V4: Now integrates Financial Quality Factor (F_Quality) as a 4th factor.
+    F_Quality is loaded from the financial_factor table and Z-scored
+    cross-sectionally alongside RSRS/Flow/Mom.
 
     When called from ``compute_all_factors`` (multi‑preset path), the
     caller passes pre‑fetched *kline_df*, *share_df* and *has_rsrs* so
@@ -230,7 +302,9 @@ def _compute_preset_factors(pid: str, *,
     rsrs_lb = preset.get("rsrs_lookback", 20)
     flow_lb = preset["flow_lookback"]
     mom_lb = preset["mom_lookback"]
-    weights = preset.get("factor_weights", {"rsrs": 0.4, "flow": 0.2, "mom": 0.4})
+    weights = preset.get("factor_weights", {"rsrs": 0.25, "flow": 0.25, "mom": 0.25, "quality": 0.25})
+    # S1: Dynamic quality weight based on market regime
+    weights = _get_adjusted_weights(weights)
     lookback_needed = max(rsrs_lb, flow_lb, mom_lb) + 1
 
     # ── Fetch data if caller didn't provide it (standalone path) ──
@@ -256,11 +330,14 @@ def _compute_preset_factors(pid: str, *,
 
         flow_arr = _compute_flow_series(es["fd_share"], flow_lb, halflife=3)
 
-        # Align: keep only kline dates that also have valid flow
-        # Build a DataFrame with all three raw factors per (etf_code, trade_date)
+        # V5: Intraday Efficiency Factor (from OHLC proxy)
+        eff_arr = compute_efficiency_for_etf(ek)
+
+        # Build a DataFrame with all factor series per (etf_code, trade_date)
         df = ek[["ts_code", "trade_date"]].copy()
         df["rsrs"] = rsrs_arr
         df["mom"] = mom_arr
+        df["efficiency"] = eff_arr.values if hasattr(eff_arr, 'values') else eff_arr
 
         # Merge flow from share data (join on trade_date)
         flow_df = pd.DataFrame({"trade_date": es["trade_date"].values,
@@ -300,7 +377,11 @@ def _compute_preset_factors(pid: str, *,
         logger.info(f"All factor data already computed for preset={pid}")
         return 0
 
-    # ── Step 4: compute cross-sectional stats per date ──
+    # ── Step 4: load latest financial quality factors ──
+    quality_factors = _get_latest_financial_factors()
+    has_quality = bool(quality_factors)
+
+    # ── Step 5: compute cross-sectional stats per date ──
     # Filter raw_all to dates we care about (speeds up lookups)
     raw_new = raw_all[raw_all["trade_date"].isin(new_dates)].copy()
 
@@ -311,25 +392,57 @@ def _compute_preset_factors(pid: str, *,
             continue
 
         # Drop rows with any NaN factor
-        day_raw = day_raw.dropna(subset=["rsrs", "flow", "mom"])
+        day_raw = day_raw.dropna(subset=["rsrs", "flow", "mom", "efficiency"])
 
         if len(day_raw) < 2:
             continue
 
-        # Cross-sectional Z-scores
+        # Cross-sectional Z-scores for RSRS/Flow/Mom/Efficiency
         day_raw["z_rsrs"] = _cross_sectional_zscore(day_raw["rsrs"]).values
         day_raw["z_flow"] = _cross_sectional_zscore(day_raw["flow"]).values
         day_raw["z_mom"] = _cross_sectional_zscore(day_raw["mom"]).values
+        day_raw["z_efficiency"] = _cross_sectional_zscore(day_raw["efficiency"]).values
 
-        # Composite factor
-        w_rsrs = weights.get("rsrs", 0.4)
-        w_flow = weights.get("flow", 0.2)
-        w_mom = weights.get("mom", 0.4)
+        # ── V4: Merge Financial Quality Factor ──
+        if has_quality:
+            # Map F_Quality values to each ETF in the cross-section
+            day_raw["f_quality"] = day_raw["ts_code"].map(
+                lambda code: quality_factors.get(code, np.nan)
+            )
+            # Z-score only valid (non-NaN) values to avoid distribution bias
+            quality_series = day_raw["f_quality"].copy()
+            valid_mask = quality_series.notna()
+            day_raw["z_quality"] = 0.0
+            if valid_mask.sum() >= 2:
+                z_scored = _cross_sectional_zscore(quality_series[valid_mask])
+                day_raw.loc[valid_mask, "z_quality"] = z_scored.values
+            # Fill raw f_quality NaN with 0 AFTER Z-scoring
+            day_raw["f_quality"] = day_raw["f_quality"].fillna(0.0)
+        else:
+            day_raw["f_quality"] = 0.0
+            day_raw["z_quality"] = 0.0
+
+        # ── BARRA neutralization (disabled for small cross-section N≈22) ──
+        # With only 17-22 ETFs, 3 risk factors (VOL/BETA/SIZE) consume too many
+        # degrees of freedom, causing overfitting. Testing showed IC dropped from
+        # 0.104→0.044 and ICIR from 0.41→0.21 after BARRA.
+        # Re-enable when cross-section grows to 50+ ETFs.
+        # See src/analysis/barra_neutralization.py for implementation.
+        pass
+
+        # Composite factor (five-factor model)
+        w_rsrs = weights.get("rsrs", 0.20)
+        w_flow = weights.get("flow", 0.20)
+        w_mom = weights.get("mom", 0.20)
+        w_quality = weights.get("quality", 0.20)
+        w_efficiency = weights.get("efficiency", 0.20)
         day_raw["factor"] = (w_rsrs * day_raw["z_rsrs"]
                              + w_flow * day_raw["z_flow"]
-                             + w_mom * day_raw["z_mom"])
+                             + w_mom * day_raw["z_mom"]
+                             + w_quality * day_raw["z_quality"]
+                             + w_efficiency * day_raw["z_efficiency"])
 
-        # Quadrant
+        # Quadrant (unchanged: still based on flow + mom only)
         day_raw["quadrant"] = day_raw.apply(
             lambda r: _classify_quadrant(r["z_flow"], r["z_mom"]), axis=1
         )
@@ -343,6 +456,10 @@ def _compute_preset_factors(pid: str, *,
                 "mom": float(row["mom"]),
                 "z_flow": float(row["z_flow"]),
                 "z_mom": float(row["z_mom"]),
+                "f_quality": float(row["f_quality"]),
+                "z_quality": float(row["z_quality"]),
+                "intraday_eff": float(row["efficiency"]),
+                "z_efficiency": float(row["z_efficiency"]),
                 "factor": float(row["factor"]),
                 "quadrant": int(row["quadrant"]),
             }

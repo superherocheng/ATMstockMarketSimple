@@ -135,6 +135,7 @@ def _compute_sector_etf_all():
 
     # Fetch latest factor data from factor_daily (short preset)
     factor_quadrants = {}
+    financial_quality = {}
     try:
         from src.core.db_manager_postgresql import get_conn
         from sqlalchemy import text
@@ -150,6 +151,35 @@ def _compute_sector_etf_all():
             ), {"d": latest_fdate}).fetchall()
             for fr in frows:
                 factor_quadrants[fr[0]] = int(fr[1])
+            # V4: Load financial quality data for sector display
+            # Primary source: financial_factor table (all 17 ETFs, latest calc_date)
+            try:
+                ffrows = conn.execute(text("""
+                    SELECT f.ts_code, f.f_roe, f.f_pb_pct, f.f_earnings_yoy, f.f_quality
+                    FROM financial_factor f
+                    WHERE f.calc_date = (SELECT MAX(calc_date) FROM financial_factor)
+                """)).fetchall()
+                for ffr in ffrows:
+                    financial_quality[ffr[0]] = {
+                        "z_quality": float(ffr[4]) if ffr[4] else 0,
+                        "f_quality": float(ffr[4]) if ffr[4] else 0,
+                        "f_roe": float(ffr[1]) if ffr[1] else 0,
+                        "f_pb_pct": float(ffr[2]) if ffr[2] else 0,
+                        "f_earnings_yoy": float(ffr[3]) if ffr[3] else 0,
+                    }
+                # Override z_quality from factor_daily (cross-sectionally Z-scored) when available
+                try:
+                    qrows = conn.execute(text("""
+                        SELECT etf_code, z_quality FROM factor_daily
+                        WHERE preset_id = 'short' AND trade_date = :d AND z_quality IS NOT NULL
+                    """), {"d": latest_fdate}).fetchall()
+                    for qr in qrows:
+                        if qr[0] in financial_quality:
+                            financial_quality[qr[0]]["z_quality"] = float(qr[1]) if qr[1] else 0
+                except Exception:
+                    pass
+            except Exception:
+                pass  # financial_factor table may not exist yet
         conn.close()
     except Exception:
         pass  # Factor data may not exist yet — fallback only
@@ -174,12 +204,20 @@ def _compute_sector_etf_all():
             quadrant=quadrant,
         )
 
+        quality_data = financial_quality.get(code, {})
         result.append({
             "ts_code": code,
             "name": name,
             "kline": kline_serialized,
             "shares": safe_json(pd.DataFrame(df_share) if df_share else []),
             "signal": signal,
+            "financial_quality": {
+                "z_quality": quality_data.get("z_quality", 0),
+                "f_quality": quality_data.get("f_quality", 0),
+                "f_roe": quality_data.get("f_roe", 0),
+                "f_pb_pct": quality_data.get("f_pb_pct", 0),
+                "f_earnings_yoy": quality_data.get("f_earnings_yoy", 0),
+            },
         })
     return result
 

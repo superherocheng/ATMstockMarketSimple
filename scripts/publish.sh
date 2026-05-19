@@ -100,7 +100,7 @@ function create_release {
     local RELEASE_NAME="Version ${TAG#v}"
     
     echo "📦 打包项目..."
-    bash package.sh
+    bash scripts/package.sh
     
     echo "📝 创建 Release: $TAG..."
     
@@ -127,11 +127,11 @@ ATMstockMarket/
 \`\`\`bash
 git clone https://github.com/$OWNER/$REPO.git
 cd $REPO
-bash setup.sh
-cp tushare-py/config.py.example tushare-py/config.py
+bash scripts/setup.sh
+cp config/config.py.example config/config.py
 # 编辑 config.py 填入 Tushare Token
-cd tushare-py && python fetch_data.py
-cd ../web && python -m uvicorn app:app --host 0.0.0.0 --port 8000
+cd src/data_fetchers && python tushare_fetcher.py --etf
+cd ../web && python -m uvicorn src.web.app:app --host 0.0.0.0 --port 8000
 \`\`\`
 EOF
 )

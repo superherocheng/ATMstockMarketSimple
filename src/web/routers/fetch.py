@@ -312,10 +312,15 @@ async def api_etf_share_status():
 
 
 def _get_previous_trading_date(current_date_str):
-    """获取前一个交易日"""
+    """获取前一个实际交易日（基于交易日历，正确处理周末/节假日）"""
+    from src.core.trading_calendar import get_open_trade_dates
     dt = datetime.strptime(current_date_str, "%Y%m%d")
-    prev_dt = dt - timedelta(days=1)
-    return prev_dt.strftime("%Y%m%d")
+    start = (dt - timedelta(days=10)).strftime("%Y%m%d")
+    dates = get_open_trade_dates(start, current_date_str)
+    if len(dates) >= 2:
+        return dates[-2]  # 倒数第二个是上一个交易日
+    # fallback: 简单减1天
+    return (dt - timedelta(days=1)).strftime("%Y%m%d")
 
 
 def _fetch_etf_share_for_code(pro, ts_code, start_date):

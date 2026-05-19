@@ -785,14 +785,18 @@ def fetch_daily_basic():
 #  财务指标（季度）
 # ══════════════════════════════════════════════════
 def _recent_quarters(n=4):
-    """返回最近 n 个报告期的 end_date 列表，如 ['20250930','20250630',...]"""
+    """返回最近 n 个报告期的 end_date 列表，如 ['20250930','20250630',...]
+
+    注意：12月季度末为 12月31日（1231），其他为 30日。
+    """
     now = now_beijing()
     quarters = []
     for offset in range(n):
         total_q = now.year * 4 + (now.month - 1) // 3 - offset
         qy = total_q // 4
         qm = (total_q % 4) * 3 + 3  # 季度末月份
-        quarters.append(f"{qy}{qm:02d}30")
+        day = "31" if qm == 12 else "30"
+        quarters.append(f"{qy}{qm:02d}{day}")
     return quarters
 
 

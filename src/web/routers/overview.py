@@ -202,7 +202,7 @@ async def health_check():
     checks = {
         "status": "healthy",
         "timestamp": now_beijing().isoformat(),
-        "version": "13.0.0",
+        "version": "15.0.0",
         "checks": {}
     }
 

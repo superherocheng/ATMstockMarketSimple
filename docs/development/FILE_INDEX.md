@@ -13,15 +13,15 @@
 | `pyproject.toml` | Python 项目配置文件，定义依赖、版本、构建信息 |
 | `requirements.txt` | Python 依赖列表，用于 pip 安装 |
 | `setup.py` | 项目安装脚本，支持 pip install 方式安装 |
-| `setup.sh` | 项目初始化 Shell 脚本，一键配置开发环境 |
+| `scripts/setup.sh` | 项目初始化 Shell 脚本，一键配置开发环境 |
 | `.gitignore` | Git 忽略规则，排除不需要版本控制的文件 |
 | `.dockerignore` | Docker 构建忽略规则，排除不需要打包的文件 |
 | `.env.example` | 环境变量配置模板，复制为 `.env` 使用 |
 | `.pre-commit-config.yaml` | Git pre-commit 钩子配置，代码提交前自动检查 |
 | `Dockerfile` | Docker 镜像构建文件，多阶段构建优化体积 |
 | `docker-compose.yml` | Docker Compose 编排配置，简化容器部署 |
-| `package.sh` | 项目打包脚本，生成发布包 |
-| `publish.sh` | 项目发布脚本，自动化发布流程 |
+| `scripts/package.sh` | 项目打包脚本，生成发布包 |
+| `scripts/publish.sh` | 项目发布脚本，自动化发布流程 |
 
 ---
 

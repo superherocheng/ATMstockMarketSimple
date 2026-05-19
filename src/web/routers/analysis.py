@@ -160,14 +160,56 @@ async def api_market_timing():
     )
 
 
+@router.get("/api/analysis/financial-factors")
+async def api_financial_factors():
+    """Return latest financial quality factor data for all ETFs."""
+    try:
+        from src.analysis.financial_factor import load_latest_financial_factors
+        factors = load_latest_financial_factors()
+        return {"factors": factors, "count": len(factors)}
+    except Exception as exc:
+        logger.warning(f"Could not load financial factors: {exc}")
+        return {"factors": {}, "count": 0, "error": str(exc)}
+
+
+@router.post("/api/analysis/recompute-financial")
+async def api_recompute_financial():
+    """Trigger financial quality factor recomputation."""
+    import threading
+
+    def _run():
+        try:
+            from src.analysis.financial_factor import compute_and_persist
+            logger.info("Starting financial factor recomputation")
+            result = compute_and_persist()
+            logger.info(f"Financial factor recomputation complete: {len(result)} ETFs")
+        except Exception as e:
+            logger.error(f"Financial factor recomputation failed: {e}")
+
+    thread = threading.Thread(target=_run, daemon=True)
+    thread.start()
+    return {"status": "started", "message": "财务因子计算已启动"}
+
+
 @router.post("/api/analysis/recompute")
 async def api_recompute(preset_id: str = None):
-    """Trigger factor + IC recomputation in a background thread."""
+    """Trigger factor + IC recomputation in a background thread.
+
+    V4: Now also triggers financial factor recomputation before factor_engine.
+    """
     import threading
 
     def _run():
         try:
             logger.info(f"Starting analysis recomputation (preset={preset_id or 'all'})")
+            # First compute financial factors (if available)
+            try:
+                from src.analysis.financial_factor import compute_and_persist
+                finance_result = compute_and_persist()
+                logger.info(f"Financial factors computed: {len(finance_result)} ETFs")
+            except Exception as fe:
+                logger.warning(f"Financial factor computation skipped: {fe}")
+            # Then compute factor engine + IC
             factor_engine.compute_all_factors(preset_id)
             ic_analyzer.compute_all_ic(preset_id)
             logger.info("Analysis recomputation complete")

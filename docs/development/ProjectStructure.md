@@ -158,12 +158,12 @@ ATMstockMarket/
 ├── FILE_INDEX.md                    # 文件索引
 ├── MIGRATION_COMPLETE.md            # 迁移完成记录
 ├── README.md
-├── package.sh                       # 打包脚本
-├── publish.sh                       # 发布脚本
+├── scripts/package.sh               # 打包脚本
+├── scripts/publish.sh               # 发布脚本
 ├── pyproject.toml                   # 项目配置
 ├── requirements.txt                 # 依赖列表
 ├── setup.py
-└── setup.sh
+└── scripts/setup.sh
 ```
 
 ---

@@ -6,6 +6,9 @@
     <title>可视化分析 - ATMstockMarket</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="/static/css/app.css">
     <script defer src="/static/js/vendor.js"></script>
@@ -49,6 +52,14 @@
         <span class="preset-freshness" id="freshness-label">--</span>
     </div>
 
+    <!-- Executive Summary Banner -->
+    <div class="exec-summary">
+        <div class="exec-summary-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div class="exec-summary-body" id="summary-text"><div class="skeleton" style="height:60px;border-radius:var(--radius-sm);"></div></div>
+    </div>
+
     <!-- KPI cards -->
     <div class="kpi-row">
         <div class="kpi-card">
@@ -73,57 +84,82 @@
         </div>
     </div>
 
-    <!-- Row 1: Factor distribution histogram + Quadrant heatmap -->
-    <div class="chart-grid">
-        <div class="chart-cell">
-            <h3>因子分布直方图</h3>
-            <div id="chart-factor-dist" class="chart-container">
-                <div class="no-data">加载中...</div>
+    <!-- Collapsible chart sections -->
+    <div class="chart-group">
+        <details class="chart-group-details" open>
+            <summary class="chart-group-summary">
+                <span class="chart-group-title">因子分布与象限分析</span>
+                <span class="chart-group-chevron"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></span>
+            </summary>
+            <div class="chart-grid">
+                <div class="chart-cell">
+                    <h3>因子分布直方图
+                        <span class="info-tip" title="所有ETF的最新复合因子分布。正偏→多数板块偏强，负偏→偏弱">ⓘ</span>
+                    </h3>
+                    <div id="chart-factor-dist" class="chart-container">
+                        <div class="skeleton" style="height:280px;border-radius:var(--radius-md);"></div>
+                    </div>
+                </div>
+                <div class="chart-cell">
+                    <h3>四象限收益热力图
+                        <span class="info-tip" title="四个象限平均远期收益。理想：Q1 > Q2 > Q3 > Q4">ⓘ</span>
+                    </h3>
+                    <div id="chart-quadrant" class="chart-container">
+                        <div class="skeleton" style="height:280px;border-radius:var(--radius-md);"></div>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="chart-cell">
-            <h3>四象限收益热力图</h3>
-            <div id="chart-quadrant" class="chart-container">
-                <div class="no-data">加载中...</div>
-            </div>
-        </div>
-    </div>
+        </details>
 
-    <!-- Row 2: IC series curve + Factor ranking table -->
-    <div class="chart-grid" style="margin-top:12px;">
-        <div class="chart-cell">
-            <h3>IC序列曲线</h3>
-            <div id="chart-ic-series" class="chart-container">
-                <div class="no-data">加载中...</div>
+        <details class="chart-group-details" open>
+            <summary class="chart-group-summary">
+                <span class="chart-group-title">IC 序列与因子排名</span>
+                <span class="chart-group-chevron"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></span>
+            </summary>
+            <div class="chart-grid">
+                <div class="chart-cell">
+                    <h3>IC序列曲线
+                        <span class="info-tip" title="每日IC值时序。持续为正→因子预测力稳定">ⓘ</span>
+                    </h3>
+                    <div id="chart-ic-series" class="chart-container">
+                        <div class="skeleton" style="height:280px;border-radius:var(--radius-md);"></div>
+                    </div>
+                </div>
+                <div class="chart-cell">
+                    <h3>最新因子排名
+                        <span class="info-tip" title="按复合因子降序排列，含象限标签">ⓘ</span>
+                    </h3>
+                    <div id="factor-ranking" class="chart-container" style="overflow-y:auto;">
+                        <div class="skeleton" style="height:280px;border-radius:var(--radius-md);"></div>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="chart-cell">
-            <h3>最新因子排名</h3>
-            <div id="factor-ranking" class="chart-container" style="overflow-y:auto;">
-                <div class="no-data">加载中...</div>
-            </div>
-        </div>
-    </div>
+        </details>
 
-    <!-- Row 3: Group cumulative return curves + Rolling ICIR -->
-    <div class="chart-grid" style="margin-top:12px;">
-        <div class="chart-cell">
-            <h3>分组累计收益曲线</h3>
-            <div id="chart-group-returns" class="chart-container">
-                <div class="no-data">加载中...</div>
+        <details class="chart-group-details" open>
+            <summary class="chart-group-summary">
+                <span class="chart-group-title">收益曲线与滚动 ICIR</span>
+                <span class="chart-group-chevron"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></span>
+            </summary>
+            <div class="chart-grid">
+                <div class="chart-cell">
+                    <h3>分组累计收益曲线
+                        <span class="info-tip" title="四象限累计收益率。Q1与Q3差距越大→因子区分度越好">ⓘ</span>
+                    </h3>
+                    <div id="chart-group-returns" class="chart-container">
+                        <div class="skeleton" style="height:280px;border-radius:var(--radius-md);"></div>
+                    </div>
+                </div>
+                <div class="chart-cell">
+                    <h3>因子滚动ICIR
+                        <span class="info-tip" title="60日滚动ICIR。>0.5表示因子表现稳定">ⓘ</span>
+                    </h3>
+                    <div id="chart-rolling-icir" class="chart-container">
+                        <div class="skeleton" style="height:280px;border-radius:var(--radius-md);"></div>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="chart-cell">
-            <h3>因子滚动ICIR</h3>
-            <div id="chart-rolling-icir" class="chart-container">
-                <div class="no-data">加载中...</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Text summary card -->
-    <div class="summary-card">
-        <div class="summary-content" id="summary-text">加载中...</div>
+        </details>
     </div>
 
     <!-- Investment recommendation entry -->

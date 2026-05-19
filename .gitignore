@@ -104,3 +104,6 @@ logs/
 *.bak
 *.swp
 .superpowers/
+
+# DeepSeek TUI artifacts
+checklist.json

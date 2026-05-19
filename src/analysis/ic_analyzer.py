@@ -143,8 +143,10 @@ def _compute_preset_ic(pid: str, *,
     for _, row in price_df.iterrows():
         price_lookup[(row["ts_code"], row["trade_date"])] = row["close"]
 
-    all_dates = sorted(price_df["trade_date"].unique())
-    date_idx = {d: i for i, d in enumerate(all_dates)}
+    # Build date index if caller didn't provide it (only recompute when necessary)
+    if all_dates is None or date_idx is None:
+        all_dates = sorted(price_df["trade_date"].unique())
+        date_idx = {d: i for i, d in enumerate(all_dates)}
     factor_dates = sorted(factor_df["trade_date"].unique())
 
     total_upserted = 0

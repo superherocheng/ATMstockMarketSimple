@@ -69,12 +69,12 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 
 各预设使用不同的三因子权重：
 
-| 预设 | RSRS权重 | Flow权重 | Mom权重 | 适用场景 |
-|------|:--------:|:--------:|:-------:|----------|
-| **short** | 0.4 | 0.2 | 0.4 | 短线 (H=10) |
-| **medium** | 0.3 | 0.3 | 0.4 | 中线 (H=20) |
-| **long** | 0.25 | 0.25 | 0.5 | 长线 (H=40) |
-| **rsrs_aggressive** | 0.5 | 0.2 | 0.3 | 牛市偏RSRS (H=10) |
+| 预设 | RSRS | Flow | Mom | Quality | Efficiency | 适用场景 |
+|------|:----:|:----:|:---:|:-------:|:----------:|----------|
+| **short** | 0.28 | 0.14 | 0.28 | 0.20 | 0.10 | 短线 (H=10) |
+| **medium** | 0.21 | 0.21 | 0.28 | 0.20 | 0.10 | 中线 (H=20) |
+| **long** | 0.175 | 0.175 | 0.35 | 0.20 | 0.10 | 长线 (H=40) |
+| **rsrs_aggressive** | 0.35 | 0.14 | 0.21 | 0.20 | 0.10 | 牛市偏RSRS (H=10) |
 
 ### RSRS因子验证
 
@@ -146,6 +146,7 @@ ATMstockMarketSimple/
 │   │   └── presets.py               # 因子预设配置
 │   ├── core/                        # 数据库管理、交易日历
 │   └── data_fetchers/              # Tushare数据获取
+├── scripts/                         # 工具脚本（setup.sh / package.sh / publish.sh）
 ├── config/                          # ETF定义、阈值配置
 ├── data/                            # 本地数据缓存
 ├── alembic/                         # 数据库迁移
@@ -328,6 +329,38 @@ uvicorn src.web.app:app --reload --port 8000
 | **Q4 风险** | z_flow < 0, z_mom ≥ 0 — 资金流出但价格上涨，警惕诱多 |
 | **IC** | 信息系数，衡量因子预测力（>0.03为有效） |
 | **ICIR** | IC均值/标准差，衡量因子稳定性（>0.3为可用） |
+
+## 📋 v15.0.0 更新日志
+
+### 🐛 BUG修复
+| 严重程度 | 问题 | 修复 |
+|----------|------|------|
+| 🔴 关键 | 黄金ETF(518880.SH)无成分股/商品标记，扭曲财务因子截面分布 | 加入商品ETF集合（`COMMODITY_ETF_CODES`） |
+| 🔴 关键 | 4个预设的 `factor_weights` 完全相同，策略切换失效 | 恢复差异化权重（按README规划重分配） |
+| 🔴 关键 | `health_check` 版本号 `13.0.0` 与 `pyproject.toml` 的 `15.0.0` 不一致 | 统一为 `15.0.0` |
+| 🔴 关键 | `app.py` 默认端口 8500 vs Docker/README 端口 8000 | 统一为 8000 |
+| 🟠 中等 | `_recent_quarters` 12月报告期写死 `30` 应为 `31` | 修正为 `31` if qm=12 |
+| 🟠 中等 | `_get_previous_trading_date` 简单减1天（可能跳到非交易日） | 改用交易日历查询 |
+| 🟡 低级 | `ic_analyzer._compute_preset_ic` 参数被函数体无条件覆盖 | 仅在未传入时重新计算 |
+| 🟡 低级 | `stock_concept` 全表删除不在事务中 | 包裹在 DELETE+INSERT 事务内 |
+
+### 📂 文件整理
+
+| 操作 | 文件 | 目标 |
+|------|------|------|
+| 移入 `scripts/` | `setup.sh` | 根目录 → `scripts/setup.sh` |
+| 移入 `scripts/` | `package.sh` | 根目录 → `scripts/package.sh` |
+| 移入 `scripts/` | `publish.sh` | 根目录 → `scripts/publish.sh` |
+| 删除 | `tweaks.html` | 未跟踪杂项文件 |
+| 删除 | `tweaks.zip` | 未跟踪杂项文件 |
+
+### 📝 文档更新
+- README 项目结构树新增 `scripts/` 目录
+- README 权重表更新为五因子模型（含 Quality + Efficiency）
+- `publish.sh` 内部过时路径修复
+- `docs/development/ProjectStructure.md` / `FILE_INDEX.md` 路径同步
+
+---
 
 ## 📄 License
 

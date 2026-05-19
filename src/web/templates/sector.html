@@ -6,6 +6,9 @@
     <title>行业ETF轮动 - ATMstockMarket</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="/static/css/app.css">
     <script defer src="/static/js/vendor.js"></script>
@@ -38,14 +41,14 @@
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 stagger-children">
 
-        <a href="/" class="back-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>返回首页</a>
+        <!-- 返回首页链接已移除 -->
         <h2 class="flex items-center gap-3 text-base font-semibold">
             <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
             行业ETF横向对比 &amp; 板块轮动
         </h2>
 
-        <div id="sector-cards" class="grid grid-cols-4 gap-2">
-            <div class="glass rounded-lg p-3 text-center animate-pulse" style="color:var(--c-text-tertiary);"><span class="spinner inline-block mr-2"></span>加载中...</div>
+        <div id="sector-cards">
+            <div class="skeleton" style="height:80px;border-radius:var(--radius-md);"></div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 stagger-children">
@@ -95,7 +98,7 @@
                 <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">最新交易日份额变化标准差排名</span>
             </h3>
             <div id="share-rank-table" class="overflow-x-auto">
-                <div class="skeleton skeleton-text"><span class="spinner inline-block mr-2"></span>加载中...</div>
+                <div class="skeleton" style="height:200px;border-radius:var(--radius-sm);"></div>
             </div>
         </div>
     </main>
@@ -165,8 +168,13 @@
                     }
                 } catch(e) { console.error('Chart render error:', e); }
             });
+            // Auto-select first ETF if no code in URL
             var urlCode = new URLSearchParams(window.location.search).get('code');
-            if (urlCode) selectSector(urlCode);
+            if (urlCode) {
+                selectSector(urlCode);
+            } else if (allSectors.length > 0) {
+                selectSector(allSectors[0].ts_code);
+            }
         } catch(e) {
             console.error('加载失败:', e);
             document.getElementById('sector-cards').innerHTML =
@@ -183,33 +191,30 @@
 
     function renderSectorCards() {
         var container = document.getElementById('sector-cards');
-        // Sort by signal priority: strong > lurk > risk > exit > none
-        var sigOrder = { strong: 0, lurk: 1, risk: 2, exit: 3 };
+        // Sort by pct_chg descending (涨幅从高到低)
         var sorted = allSectors.slice().sort(function(a, b) {
-            var sa = (a.signal && a.signal.tag !== 'none') ? (sigOrder[a.signal.tag] !== undefined ? sigOrder[a.signal.tag] : 99) : 99;
-            var sb = (b.signal && b.signal.tag !== 'none') ? (sigOrder[b.signal.tag] !== undefined ? sigOrder[b.signal.tag] : 99) : 99;
-            if (sa !== sb) return sa - sb;
-            // Same signal group: sort by pct_chg descending
             var pa = a.kline && a.kline.length ? parseFloat(a.kline[a.kline.length-1].pct_chg || 0) : 0;
             var pb = b.kline && b.kline.length ? parseFloat(b.kline[b.kline.length-1].pct_chg || 0) : 0;
             return pb - pa;
         });
-        container.innerHTML = sorted.map(function(s) {
-            var kline = s.kline || [];
-            var last = kline.length > 0 ? kline[kline.length - 1] : null;
-            var pct = last ? parseFloat(last.pct_chg || 0) : 0;
-            var isSelected = selectedCode === s.ts_code;
-            var sig = (s.signal && s.signal.tag !== 'none') ? SIGNAL_STYLE[s.signal.tag] : null;
-            var sigClass = sig ? sig.tag : '';
-            var sigHtml = sig
-                ? '<div style="margin-top:4px;font-size:10px;font-weight:600;padding:1px 6px;border-radius:9999px;display:inline-block;background:' + sig.bg + ';color:' + sig.color + ';">' + sig.label + '</div>'
-                : '';
-            return '<div class="sector-card glass rounded-lg p-2 text-center ' + sigClass + ' ' + (isSelected ? 'selected' : '') + '" onclick="selectSector(\'' + s.ts_code + '\')">' +
-                '<div class="text-xs font-bold mb-1">' + s.name + '</div>' +
-                '<div class="text-base font-bold" style="color:' + ATM.pctColor(pct) + '">' + ATM.pctText(pct) + '</div>' +
-                '<div class="text-xs" style="color:var(--c-text-tertiary);">' + (last ? '<span class="pulse-dot"></span> ' + (last.close || '') : '--') + '</div>' +
-                sigHtml + '</div>';
-        }).join('');
+        // Chip-style layout — compact colored chips, clickable
+        container.innerHTML = '<div class="sector-chips">' +
+            sorted.map(function(s) {
+                var kline = s.kline || [];
+                var last = kline.length > 0 ? kline[kline.length - 1] : null;
+                var pct = last ? parseFloat(last.pct_chg || 0) : 0;
+                var isSelected = selectedCode === s.ts_code;
+                var sig = (s.signal && s.signal.tag !== 'none') ? SIGNAL_STYLE[s.signal.tag] : null;
+                // Background color: signal-based
+                var chipBg = sig ? sig.bg : 'var(--c-bg-tertiary)';
+                var chipBorder = sig ? sig.color : 'var(--c-border-light)';
+                var selClass = isSelected ? ' chip-selected' : '';
+                return '<div class="sector-chip' + selClass + '" style="background:' + chipBg + ';border-color:' + chipBorder + ';" onclick="selectSector(\'' + s.ts_code + '\')">' +
+                    '<span class="chip-name">' + s.name + '</span>' +
+                    '<span class="chip-pct" style="color:' + ATM.pctColor(pct) + '">' + ATM.pctText(pct) + '</span>' +
+                '</div>';
+            }).join('') +
+            '</div>';
     }
 
     function selectSector(code) {
@@ -224,6 +229,7 @@
         section.classList.remove('hidden');
         document.getElementById('detail-title').textContent = sector.name + ' K线走势';
         document.getElementById('detail-share-title').textContent = sector.name + ' 份额实际值';
+        // ── Kline chart rendering ──
         var el = document.getElementById('detail-kline');
         if (detailChart && !detailChart.isDisposed()) detailChart.dispose();
         el.innerHTML = '';
@@ -430,7 +436,10 @@
                 }
             ]
         }, true);
+        
     }
+
+    // renderFinancialQuality removed — F_Quality display removed from sector page
 
     function renderCompareChart() {
         var el = document.getElementById('compare-chart');

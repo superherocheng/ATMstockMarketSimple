@@ -60,10 +60,46 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
             "WHERE table_name='factor_daily' AND column_name='rsrs'"
         )).fetchone() is not None
 
-        if has_rsrs:
+        # Check if quality columns exist (V4)
+        has_quality = conn.execute(text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='factor_daily' AND column_name='z_quality'"
+        )).fetchone() is not None
+
+        # Check if efficiency columns exist (V5)
+        has_efficiency = conn.execute(text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='factor_daily' AND column_name='z_efficiency'"
+        )).fetchone() is not None
+
+        if has_rsrs and has_quality and has_efficiency:
+            factor_rows = conn.execute(text("""
+                SELECT etf_code, z_flow, z_mom, factor, quadrant, flow, mom,
+                       rsrs, z_rsrs, f_quality, z_quality, intraday_eff, z_efficiency
+                FROM factor_daily
+                WHERE preset_id = :pid AND trade_date = :d
+                ORDER BY factor DESC
+            """), {"pid": preset_id, "d": latest_date}).fetchall()
+        elif has_rsrs and has_quality:
+            factor_rows = conn.execute(text("""
+                SELECT etf_code, z_flow, z_mom, factor, quadrant, flow, mom,
+                       rsrs, z_rsrs, f_quality, z_quality
+                FROM factor_daily
+                WHERE preset_id = :pid AND trade_date = :d
+                ORDER BY factor DESC
+            """), {"pid": preset_id, "d": latest_date}).fetchall()
+        elif has_rsrs:
             factor_rows = conn.execute(text("""
                 SELECT etf_code, z_flow, z_mom, factor, quadrant, flow, mom,
                        rsrs, z_rsrs
+                FROM factor_daily
+                WHERE preset_id = :pid AND trade_date = :d
+                ORDER BY factor DESC
+            """), {"pid": preset_id, "d": latest_date}).fetchall()
+        elif has_quality:
+            factor_rows = conn.execute(text("""
+                SELECT etf_code, z_flow, z_mom, factor, quadrant, flow, mom,
+                       f_quality, z_quality
                 FROM factor_daily
                 WHERE preset_id = :pid AND trade_date = :d
                 ORDER BY factor DESC
@@ -159,8 +195,28 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
             "flow_raw": float(r[5]) if r[5] else 0,
             "mom_raw": float(r[6]) if r[6] else 0,
         }
-        if has_rsrs and len(r) >= 9:
+        # V4: financial quality factor columns
+        entry["z_quality"] = 0.0
+        entry["f_quality_raw"] = 0.0
+        # V5: intraday efficiency columns
+        entry["z_efficiency"] = 0.0
+        entry["efficiency_raw"] = 0.0
+
+        if has_rsrs and has_quality and has_efficiency and len(r) >= 13:
             entry["z_rsrs"] = float(r[8]) if r[8] else 0
+            entry["f_quality_raw"] = float(r[9]) if r[9] else 0
+            entry["z_quality"] = float(r[10]) if r[10] else 0
+            entry["efficiency_raw"] = float(r[11]) if r[11] else 0
+            entry["z_efficiency"] = float(r[12]) if r[12] else 0
+        elif has_rsrs and has_quality and len(r) >= 11:
+            entry["z_rsrs"] = float(r[8]) if r[8] else 0
+            entry["f_quality_raw"] = float(r[9]) if r[9] else 0
+            entry["z_quality"] = float(r[10]) if r[10] else 0
+        elif has_rsrs and len(r) >= 9:
+            entry["z_rsrs"] = float(r[8]) if r[8] else 0
+        elif has_quality and len(r) >= 9:
+            entry["z_quality"] = float(r[8]) if r[8] else 0
+            entry["f_quality_raw"] = float(r[7]) if r[7] else 0
         else:
             entry["z_rsrs"] = 0
         etf_data[code] = entry
@@ -346,6 +402,10 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
             "holding_days": f"{holding}个交易日",
             "position_ratio": f"{round(weight * 100, 1)}%",
             "confidence": "高" if c["quadrant"] == 1 else "中",
+            "z_quality": round(c["z_quality"], 4),
+            "f_quality_raw": round(c["f_quality_raw"], 4),
+            "z_efficiency": round(c["z_efficiency"], 4),
+            "efficiency_raw": round(c["efficiency_raw"], 4),
         })
 
     # ── Risk warnings (use optimal forward period's ICIR) ──
@@ -417,7 +477,7 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
     # ── Reasons ──
     reasons = [
         f"基于{preset['label']}预设（flow_lookback={preset['flow_lookback']}d, "
-        f"mom_lookback={preset['mom_lookback']}d）的多因子模型",
+        f"mom_lookback={preset['mom_lookback']}d）的四因子模型（RSRS+资金流+动量+财务质量）",
     ]
     if best_h in ic_summary and ic_summary[best_h]["icir"] is not None:
         ic = ic_summary[best_h]
@@ -426,6 +486,14 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
             f"近{ic['sample_count']}个交易日胜率{ic['ic_win_rate']:.1%}"
         )
     reasons.append("主要推荐Q1（强势）+ Q2（潜伏）象限ETF；Q3（撤离）中RSRS>0.3的品种按信号强度纳入候选")
+    reasons.append(
+        "V4新增财务质量因子（F_Quality）：综合预期ROE、PB估值分位（反向）、盈利加速度三个子因子，"
+        "基于行业成分股流通市值加权合成"
+    )
+    reasons.append(
+        "V5新增日内效率因子（IntEff）：基于OHLC代理的日内价格方向性指标，"
+        "衡量趋势流畅度。高IntEff=单边趋势强、噪音低；低IntEff=震荡折返多"
+    )
     reasons.append(
         f"风险预算：单ETF≤{max_single*100:.0f}%，按因子分比例配仓"
     )

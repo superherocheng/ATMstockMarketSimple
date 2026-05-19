@@ -196,16 +196,22 @@ def extract_and_load_data(df: pd.DataFrame, separator: str = None):
                         'concept_id': concept_map[concept]
                     })
         
-        conn.execute(text("DELETE FROM stock_concept"))
-        conn.commit()
-        
         if stock_concept_records:
             stock_concept_df = pd.DataFrame(stock_concept_records)
             stock_concept_df = stock_concept_df.drop_duplicates()
             
-            db.insert_dataframe(stock_concept_df, 'stock_concept')
-            print(f"[OK] 建立 {len(stock_concept_df)} 条股票-概念关联")
+            # 在单个事务内执行 DELETE + INSERT：若INSERT失败，DELETE自动回滚
+            try:
+                conn.execute(text("DELETE FROM stock_concept"))
+                db.insert_dataframe(stock_concept_df, 'stock_concept')
+                conn.commit()
+                print(f"[OK] 建立 {len(stock_concept_df)} 条股票-概念关联")
+            except Exception:
+                conn.rollback()
+                raise
         else:
+            conn.execute(text("DELETE FROM stock_concept"))
+            conn.commit()
             print(f"[INFO] 概念列为空，已清空股票-概念关联表")
 
 

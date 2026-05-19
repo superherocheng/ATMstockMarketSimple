@@ -3,7 +3,7 @@
 # 自动：删除 token → 打包 zip → 恢复 token
 set -e
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 PROJECT_NAME="ATMstockMarket"
 
 echo "========================================="
