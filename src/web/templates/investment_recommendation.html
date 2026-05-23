@@ -17,6 +17,7 @@
     /* ── Report layout ── */
     .report-section { background:var(--c-card); border-radius:var(--radius-md); padding:20px 24px; margin-bottom:14px; border:1px solid var(--c-border-light); }
     .report-section h3 { font-size:14px; font-weight:600; color:var(--c-text-secondary); margin:0 0 14px; display:flex; align-items:center; gap:8px; letter-spacing:0.3px; }
+    @media (max-width:640px) { .report-section { padding:14px 14px; } .report-section h3 { font-size:13px; } }
 
     /* ── Report header ── */
     .report-header { background:linear-gradient(135deg, var(--c-card), var(--c-bg-tertiary)); border:1px solid var(--c-border-light); border-radius:var(--radius-md); padding:24px 28px; margin-bottom:14px; }
@@ -38,6 +39,7 @@
     .kpi-value { font-size:18px; font-weight:700; color:var(--c-text); line-height:1.2; }
     .kpi-sub { font-size:10px; color:var(--c-text-muted); margin-top:2px; }
     @media (max-width:720px) { .kpi-row { grid-template-columns:repeat(3, 1fr); } }
+    @media (max-width:480px) { .kpi-row { grid-template-columns:repeat(2, 1fr); } }
 
     /* ── Recommendation table ── */
     .rec-table { width:100%; border-collapse:collapse; }
@@ -99,6 +101,25 @@
     @media (max-width:600px) {
         .rec-table th:nth-child(5), .rec-table td:nth-child(5) { display:none; }
         .rec-table th:nth-child(7), .rec-table td:nth-child(7) { display:none; }
+        .rec-table td {
+            padding: 8px 6px;
+            font-size: 12px;
+        }
+        .rec-table th {
+            padding: 6px 6px;
+            font-size: 10px;
+        }
+        .pos-bar-wrap { gap: 6px; }
+        .pos-bar { min-width: 40px; }
+        .pos-text { font-size: 11px; min-width: 34px; }
+    }
+    @media (max-width:400px) {
+        .rec-table th:nth-child(4), .rec-table td:nth-child(4) { display:none; }
+        .rec-table td { font-size: 11px; padding: 6px 4px; }
+        .rec-table th { padding: 5px 4px; }
+        .pos-bar-wrap { gap: 4px; }
+        .pos-bar { min-width: 32px; height: 6px; }
+        .pos-text { font-size: 10px; min-width: 28px; }
     }
     </style>
     <script>document.documentElement.dataset.theme = 'light';</script>
@@ -162,6 +183,7 @@
             <!-- ═══════ ETF 推荐表 ═══════ -->
             <div class="report-section">
                 <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:2px;"><path d="M18 20V10M12 20V4M6 20v-6"/></svg> ETF 配置建议</h3>
+                <div class="table-scroll">
                 <table class="rec-table" id="rec-table">
                     <thead>
                         <tr>
@@ -176,6 +198,7 @@
                     </thead>
                     <tbody id="rec-body"></tbody>
                 </table>
+                </div>
             </div>
 
             <!-- ═══════ 风险警告 ═══════ -->

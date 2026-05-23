@@ -369,16 +369,33 @@ def _compute_preset_factors(pid: str, *,
         return 0
 
     # ── Step 3: check what's already computed per preset ──
+    # Handle partial dates: a date is "fully computed" only when ALL ETF codes
+    # have factor data.  Dates with partial data (e.g. only 4 of 18 ETFs) need
+    # full recomputation so that newly fetched tickers are not silently skipped.
     conn = get_conn()
     try:
-        existing = conn.execute(text(
-            "SELECT DISTINCT trade_date FROM factor_daily WHERE preset_id = :pid"
+        existing_counts = conn.execute(text(
+            "SELECT trade_date, COUNT(DISTINCT etf_code) AS cnt "
+            "FROM factor_daily WHERE preset_id = :pid "
+            "GROUP BY trade_date"
         ), {"pid": pid}).fetchall()
-        existing_dates = {str(r[0]).replace("-", "") for r in existing}
     finally:
         conn.close()
 
-    new_dates = [d for d in computable_dates if d not in existing_dates]
+    total_codes = len(kline_df["ts_code"].unique())
+    fully_computed_dates = set()
+    for r in existing_counts:
+        d = str(r[0]).replace("-", "")
+        cnt = int(r[1])
+        if cnt >= total_codes:
+            fully_computed_dates.add(d)
+        else:
+            logger.info(
+                f"Partial date {r[0]} for preset={pid}: "
+                f"{cnt}/{total_codes} ETFs computed, will recompute"
+            )
+
+    new_dates = [d for d in computable_dates if d not in fully_computed_dates]
     if not new_dates:
         logger.info(f"All factor data already computed for preset={pid}")
         return 0
@@ -451,12 +468,48 @@ def _compute_preset_factors(pid: str, *,
         # See src/analysis/barra_neutralization.py for implementation.
         pass
 
-        # Composite factor (five-factor model)
+        # ── Composite factor with weight redistribution ──
+        # Detect which factors are actually contributing (have non-zero Z-scores
+        # in the current cross-section). Dead factors get their weight
+        # redistributed proportionally to the remaining active factors.
         w_rsrs = weights.get("rsrs", 0.20)
         w_flow = weights.get("flow", 0.20)
         w_mom = weights.get("mom", 0.20)
         w_quality = weights.get("quality", 0.20)
         w_efficiency = weights.get("efficiency", 0.20)
+
+        quality_active = (
+            has_quality
+            and (day_raw["z_quality"].abs() > 1e-10).any()
+        )
+        eff_active = (day_raw["z_efficiency"].abs() > 1e-10).any()
+
+        dead_factors = []
+        if not quality_active:
+            dead_factors.append("quality")
+        if not eff_active:
+            dead_factors.append("efficiency")
+
+        if dead_factors:
+            dead_weight = 0.0
+            if "quality" in dead_factors:
+                dead_weight += w_quality
+                w_quality = 0.0
+            if "efficiency" in dead_factors:
+                dead_weight += w_efficiency
+                w_efficiency = 0.0
+            # Proportionally redistribute to RSRS/Flow/Mom
+            active_weight = w_rsrs + w_flow + w_mom
+            if active_weight > 0:
+                scale = (active_weight + dead_weight) / active_weight
+                w_rsrs *= scale
+                w_flow *= scale
+                w_mom *= scale
+            logger.info(
+                f"  Weight redistribution: {','.join(dead_factors)} inactive, "
+                f"redistributed {dead_weight:.2f} weight to RSRS/Flow/Mom"
+            )
+
         day_raw["factor"] = (w_rsrs * day_raw["z_rsrs"]
                              + w_flow * day_raw["z_flow"]
                              + w_mom * day_raw["z_mom"]

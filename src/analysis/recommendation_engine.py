@@ -262,6 +262,23 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
         logger.warning(f"Market timing failed: {exc}")
         timing = {"score": 0, "adjustment": 0, "regime_cn": "未知", "narrative": ""}
 
+    # ── Data coverage stats (right after fetching factor data) ──
+    total_tracked_etfs = len(sector_names)
+    try:
+        conn_cov = _get_conn()
+        cov_row = conn_cov.execute(text("""
+            SELECT trade_date, COUNT(*) as cnt
+            FROM factor_daily
+            WHERE preset_id = :pid AND trade_date = (
+                SELECT MAX(trade_date) FROM factor_daily WHERE preset_id = :pid
+            )
+            GROUP BY trade_date
+        """), {"pid": preset_id}).fetchone()
+        latest_etf_count = cov_row[1] if cov_row else 0
+        conn_cov.close()
+    except Exception:
+        latest_etf_count = 0
+
     # ── Select and rank candidates ──
     # Standard: Q1 (strong) and Q2 (lurk) are always recommended.
     # RSRS override: Q3 (exit) ETFs with strong RSRS (z_rsrs > 0.3)
@@ -269,6 +286,11 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
     #   because RSRS indicates structural support even when
     #   short-term flow/momentum are negative.
     # Q4 (risk) remains excluded — it's the highest-risk quadrant.
+    # Fallback: if fewer than MIN_RECOMMEND candidates pass strict
+    #   filtering, relax Q3/Q4 thresholds to ensure diversification.
+
+    MIN_RECOMMEND = 3
+
     candidates = []
     for e in etf_data.values():
         if e["code"] not in sector_names:
@@ -278,6 +300,20 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
         elif e["quadrant"] == 3 and e.get("z_rsrs", 0) > 0.3 and e["factor"] > 0:
             candidates.append(e)
     candidates.sort(key=lambda x: -x["factor"])
+
+    # ── Fallback: relax thresholds when strict candidates are too few ──
+    if len(candidates) < MIN_RECOMMEND:
+        existing_codes = {c["code"] for c in candidates}
+        for e in etf_data.values():
+            if e["code"] not in sector_names or e["code"] in existing_codes:
+                continue
+            # Relaxed Q3: any positive RSRS
+            if e["quadrant"] == 3 and e.get("z_rsrs", 0) > 0 and e["factor"] > 0:
+                candidates.append(e)
+            # Relaxed Q4: strong RSRS can compensate for risk quadrant
+            elif e["quadrant"] == 4 and e.get("z_rsrs", 0) > 0.3 and e["factor"] > 0:
+                candidates.append(e)
+        candidates.sort(key=lambda x: -x["factor"])
 
     if not candidates:
         return {
@@ -295,7 +331,11 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
     # ── Phase 1: Initial scoring (no correlation penalty) ──
     initial_scored = []
     for c in candidates:
-        base_score = max(0, c["factor"])
+        # Q1/Q2 always get a minimum score to survive the final_score > 0 check
+        if c["quadrant"] in (1, 2):
+            base_score = max(0.05, c["factor"])
+        else:
+            base_score = max(0, c["factor"])
         quad_mult = 1.0 if c["quadrant"] == 1 else 0.7
         initial_scored.append((c, base_score * quad_mult))
 
@@ -474,6 +514,14 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
                 f"已通过相关性惩罚控制集中度"
             )
 
+    # ── Data coverage warning ──
+    if latest_etf_count < total_tracked_etfs:
+        risk_warnings.append(
+            f"ℹ️ ETF数据覆盖: 当前仅{latest_etf_count}/{total_tracked_etfs}只"
+            f"行业ETF有最新因子数据（剩余ETF份额数据延迟），"
+            f"排名仅供参考"
+        )
+
     # ── Reasons ──
     reasons = [
         f"基于{preset['label']}预设（flow_lookback={preset['flow_lookback']}d, "
@@ -540,6 +588,15 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
         "recommendations": recommendations,
         "risk_warning": risk_warnings,
         "stats": stats,
+        "etf_data_coverage": {
+            "with_data": latest_etf_count,
+            "tracked_total": total_tracked_etfs,
+            "pct": round(latest_etf_count / total_tracked_etfs * 100, 0) if total_tracked_etfs > 0 else 0,
+        },
+        "weight_allocation": {
+            "quality_active": has_quality,
+            "efficiency_active": True,
+        },
         "timing": {
             "score": timing.get("score", 0),
             "regime": timing.get("regime_cn", ""),

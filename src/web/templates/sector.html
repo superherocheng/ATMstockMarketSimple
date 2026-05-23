@@ -57,7 +57,7 @@
                     <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
                     近期涨跌幅对比
                 </h3>
-                <div id="compare-chart" class="chart-main" style="height: 350px;">
+                <div id="compare-chart" class="chart-main">
                     <div class="skeleton skeleton-chart"></div>
                 </div>
             </div>
@@ -66,7 +66,7 @@
                     <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
                     份额变化趋势
                 </h3>
-                <div id="share-compare-chart" class="chart-sub" style="height: 350px;">
+                <div id="share-compare-chart" class="chart-sub">
                     <div class="skeleton skeleton-chart"></div>
                 </div>
             </div>
@@ -79,14 +79,14 @@
                         <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
                         <span id="detail-title">ETF详情</span>
                     </h3>
-                    <div id="detail-kline" class="chart-sub" style="height: 350px;"></div>
+                    <div id="detail-kline" class="chart-sub"></div>
                 </div>
                 <div class="glass rounded-xl p-4 sm:p-6">
                     <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
                         <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
                         <span id="detail-share-title">份额实际值</span>
                     </h3>
-                    <div id="detail-share-chart" class="chart-sub" style="height: 350px;"></div>
+                    <div id="detail-share-chart" class="chart-sub"></div>
                 </div>
             </div>
         </div>
@@ -650,7 +650,7 @@
             return;
         }
         
-        var html = '<table class="w-full text-sm" style="min-width:600px;">';
+        var html = '<div class="table-scroll"><table class="w-full text-sm">';
         html += '<thead><tr style="background:var(--c-bg-secondary);">';
         html += '<th class="px-3 py-2 text-left">排名</th>';
         html += '<th class="px-3 py-2 text-left">ETF名称</th>';
@@ -673,7 +673,7 @@
             html += '</tr>';
         });
         
-        html += '</tbody></table>';
+        html += '</tbody></table></div>';
         el.innerHTML = html;
     }
 

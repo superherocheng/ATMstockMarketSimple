@@ -19,7 +19,8 @@
     <style>
         @media (max-width: 640px) {
             .etf-info-grid { flex-direction: column; gap: 0.75rem; }
-            .etf-stats { flex-wrap: wrap; gap: 0.75rem !important; }
+            .etf-stats { flex-wrap: wrap; gap: 0.5rem !important; }
+            .etf-stats > div { flex: 1 1 45%; }
         }
     </style>
 </head>
@@ -90,7 +91,7 @@
                         <button class="range-btn" data-days="0" onclick="setDateRange(this, 0)">全部</button>
                     </div>
                 </div>
-                <div id="kline-chart" class="chart-main" style="height: 380px;">
+                <div id="kline-chart" class="chart-main">
                     <div class="skeleton skeleton-chart"></div>
                 </div>
             </div>
@@ -101,7 +102,7 @@
                     份额实际值
                     <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">折线：120日绝对值 &nbsp; 柱状：每日变化ZSCORE</span>
                 </h3>
-                <div id="share-value-chart" class="chart-sub" style="height: 380px;">
+                <div id="share-value-chart" class="chart-sub">
                     <div class="skeleton skeleton-chart"></div>
                 </div>
             </div>

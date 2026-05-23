@@ -198,7 +198,7 @@
             { group: 'ETF数据', items: ['index_etf_daily','sector_etf_daily','etf_share'] },
         ];
         var anyNeedUpdate = false;
-        var html = '<div class="overflow-x-auto" style="-webkit-overflow-scrolling:touch;overflow-x:auto;"><table class="w-full text-sm zebra-table" style="min-width:520px;">';
+        var html = '<div class="table-scroll"><table class="w-full text-sm zebra-table">';
         html += '<thead><tr><th class="px-3 py-2 text-left whitespace-nowrap">数据类型</th><th class="px-3 py-2 text-left whitespace-nowrap">数据表</th><th class="px-3 py-2 text-center whitespace-nowrap">记录数</th><th class="px-3 py-2 text-left hidden sm:table-cell whitespace-nowrap">日期范围</th><th class="px-3 py-2 text-center whitespace-nowrap">状态</th></tr></thead><tbody>';
 
         rows.forEach(function(section) {
@@ -394,7 +394,7 @@
             el.innerHTML = '<div class="empty-state"><div class="empty-state-title">暂无数据</div><div class="empty-state-detail">运行「一键更新+回测」后生成</div></div>';
             return;
         }
-        var html = '<table class="w-full text-sm zebra-table" style="min-width:580px;">';
+        var html = '<div class="table-scroll"><table class="w-full text-sm zebra-table">';
         html += '<thead><tr>' +
             '<th class="px-3 py-2 text-left whitespace-nowrap">预设</th>' +
             '<th class="px-3 py-2 text-center whitespace-nowrap">H</th>' +
@@ -432,7 +432,7 @@
                 '</tr>';
         });
 
-        html += '</tbody></table>';
+        html += '</tbody></table></div>';
         html += '<div class="mt-3 text-xs flex flex-wrap gap-3" style="color:var(--c-text-tertiary);">' +
             '<span><span class="tech-tag tag-green" style="font-size:10px;">标准</span> 三周期标准参数</span>' +
             '<span><span class="tech-tag tag-amber" style="font-size:10px;">实验</span> RSRS主导权重</span>' +
