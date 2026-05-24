@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>行业ETF轮动 - ATMstockMarket</title>
+    <title>Sector ETF - ATM</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="/static/css/app.css">
     <script defer src="/static/js/vendor.js"></script>
@@ -16,121 +16,137 @@
     <script>
         document.documentElement.dataset.theme = 'light';
     </script>
+    <style>
+        @media (max-width: 640px) {
+            #share-rank-table th:nth-child(4),
+            #share-rank-table td:nth-child(4) { display: none; }
+        }
+        @media (max-width: 480px) {
+            #share-rank-table th:nth-child(5),
+            #share-rank-table td:nth-child(5) { display: none; }
+        }
+    </style>
 </head>
 <body class="min-h-screen">
-    <nav>
-      <div class="nav-container">
-        <a href="/" class="nav-logo">
-          <span class="nav-logo-icon">AM</span>
-          ATMstockMarket
-        </a>
-        <div class="nav-links" id="nav-links">
-          <a href="/" class="nav-link">首页</a>
-          <a href="/etf" class="nav-link">指数ETF</a>
-          <a href="/sector" class="nav-link active">行业ETF</a>
-          <a href="/analysis" class="nav-link">可视化分析</a>
-          
-        </div>
-        <button class="mobile-menu-btn" onclick="document.getElementById('nav-links').classList.toggle('open')" aria-label="菜单">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M0 3h20v2H0V3zm0 6h20v2H0V9zm0 6h20v2H0v-2z"/></svg>
-        </button>
-      </div>
-    </nav>
 
-    <div id="freshness-bar" class="freshness-bar"></div>
+    <div class="tablet-topbar">
+        <div class="tablet-topbar-logo"><a href="/">ATMstockMarket</a></div>
+        <nav class="tablet-topbar-nav">
+            <a href="/">Home</a>
+            <a href="/etf">Index ETF</a>
+            <a href="/sector" class="active">Sector ETF</a>
+            <a href="/analysis">Analysis</a>
+        </nav>
+    </div>
+
+    <div class="page-layout">
+    <aside class="sidebar-nav">
+        <div class="sidebar-logo">
+            <a href="/">ATMstockMarket</a>
+            <div class="sidebar-logo-sub">A-Share Market Analysis</div>
+        </div>
+        <div class="sidebar-nav-section">
+            <div class="sidebar-nav-label">Navigation</div>
+            <nav class="sidebar-nav-links">
+                <a href="/" class="sidebar-nav-link">Home</a>
+                <a href="/etf" class="sidebar-nav-link">Index ETF</a>
+                <a href="/sector" class="sidebar-nav-link active">Sector ETF</a>
+                <a href="/analysis" class="sidebar-nav-link">Analysis</a>
+            </nav>
+        </div>
+        <div class="sidebar-nav-footer">
+            <p>Data Source</p>
+            <span>Tushare · AKShare</span>
+        </div>
+    </aside>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 stagger-children">
 
-        <!-- 返回首页链接已移除 -->
-        <h2 class="flex items-center gap-3 text-base font-semibold">
-            <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-            行业ETF横向对比 &amp; 板块轮动
+        <!-- Home link removed -->
+        <h2 class="flex items-center gap-3 text-base font-semibold border-b border-black pb-3">
+            Sector ETF Comparison &amp; Rotation
         </h2>
 
         <div id="sector-cards">
-            <div class="skeleton" style="height:80px;border-radius:var(--radius-md);"></div>
+            <div class="hard-skeleton hard-skeleton-sm"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 stagger-children">
-            <div class="glass rounded-xl p-4 sm:p-6">
-                <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
-                    <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                    近期涨跌幅对比
+            <div class="glass p-4 sm:p-6">
+                <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
+                    Recent Change Comparison
                 </h3>
-                <div id="compare-chart" class="chart-main" style="height: 350px;">
-                    <div class="skeleton skeleton-chart"></div>
+                <div id="compare-chart" class="chart-main">
+                    <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                 </div>
             </div>
-            <div class="glass rounded-xl p-4 sm:p-6">
-                <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
-                    <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                    份额变化趋势
+            <div class="glass p-4 sm:p-6">
+                <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
+                    Share Change Trends
                 </h3>
-                <div id="share-compare-chart" class="chart-sub" style="height: 350px;">
-                    <div class="skeleton skeleton-chart"></div>
+                <div id="share-compare-chart" class="chart-sub">
+                    <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                 </div>
             </div>
         </div>
 
         <div id="detail-section" class="hidden">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 stagger-children">
-                <div class="glass rounded-xl p-4 sm:p-6">
-                    <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
-                        <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                        <span id="detail-title">ETF详情</span>
+                <div class="glass p-4 sm:p-6">
+                    <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
+                        <span id="detail-title">ETF Details</span>
                     </h3>
-                    <div id="detail-kline" class="chart-sub" style="height: 350px;"></div>
+                    <div id="detail-kline" class="chart-sub"></div>
                 </div>
-                <div class="glass rounded-xl p-4 sm:p-6">
-                    <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
-                        <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                        <span id="detail-share-title">份额实际值</span>
+                <div class="glass p-4 sm:p-6">
+                    <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
+                        <span id="detail-share-title">Share Value</span>
                     </h3>
-                    <div id="detail-share-chart" class="chart-sub" style="height: 350px;"></div>
+                    <div id="detail-share-chart" class="chart-sub"></div>
                 </div>
             </div>
         </div>
 
-        <div class="glass rounded-xl p-4 sm:p-6">
-            <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
-                <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                行业ETF份额变化排名
-                <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">最新交易日份额变化标准差排名</span>
+        <div class="glass p-4 sm:p-6">
+            <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
+                Sector ETF Share Change Ranking
+                <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">Latest trading day share change std dev ranking</span>
             </h3>
             <div id="share-rank-table" class="overflow-x-auto">
-                <div class="skeleton" style="height:200px;border-radius:var(--radius-sm);"></div>
+                <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
             </div>
         </div>
     </main>
+    </div><!-- /page-layout -->
 
     <footer>
-        <p>ATMstockMarket — 数据来源: Tushare / AKShare | 仅供学习研究，不构成投资建议</p>
+        <p>ATMstockMarket — Data Source: Tushare / AKShare | For educational purposes only, not investment advice</p>
     </footer>
 
-    <div class="bottom-nav" role="navigation" aria-label="主导航">
-      <a href="/" class="bottom-nav-item" aria-label="首页">
+    <div class="bottom-nav" role="navigation" aria-label="Main navigation">
+      <a href="/" class="bottom-nav-item" aria-label="Home">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
         </span>
-        <span class="bottom-nav-label">首页</span>
+        <span class="bottom-nav-label">Home</span>
       </a>
-      <a href="/etf" class="bottom-nav-item" aria-label="指数ETF">
+      <a href="/etf" class="bottom-nav-item" aria-label="Index ETF">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
         </span>
-        <span class="bottom-nav-label">指数ETF</span>
+        <span class="bottom-nav-label">Index ETF</span>
       </a>
-      <a href="/sector" class="bottom-nav-item active" aria-label="行业ETF">
+      <a href="/sector" class="bottom-nav-item active" aria-label="Sector ETF">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
         </span>
-        <span class="bottom-nav-label">行业ETF</span>
+        <span class="bottom-nav-label">Sector ETF</span>
       </a>
-      <a href="/analysis" class="bottom-nav-item" aria-label="可视化分析">
+      <a href="/analysis" class="bottom-nav-item" aria-label="Analysis">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
         </span>
-        <span class="bottom-nav-label">分析</span>
+        <span class="bottom-nav-label">Analysis</span>
       </a>
     </div>
 
@@ -176,22 +192,22 @@
                 selectSector(allSectors[0].ts_code);
             }
         } catch(e) {
-            console.error('加载失败:', e);
+            console.error('Load failed:', e);
             document.getElementById('sector-cards').innerHTML =
-                '<div class="glass rounded-lg p-3 text-center" style="grid-column:1/-1;color:var(--c-text-tertiary);">暂无数据，请先运行 fetch_data.py</div>';
+                '<div class="glass p-3 text-center" style="grid-column:1/-1;color:var(--c-text-tertiary);">No data available, please run fetch_data.py first</div>';
         }
     }
 
     var SIGNAL_STYLE = {
-        strong: { bg: 'var(--c-up-bg)', color: 'var(--c-up)', label: '强势' },
-        lurk:   { bg: 'var(--c-accent-bg)', color: 'var(--c-accent)', label: '潜伏' },
-        exit:   { bg: 'var(--c-down-bg)', color: 'var(--c-down)', label: '撤离' },
-        risk:   { bg: 'rgba(255,93,0,0.1)', color: '#ff5d00', label: '风险' },
+        strong: { bg: 'var(--c-up-bg)', color: 'var(--c-up)', label: 'Strong' },
+        lurk:   { bg: 'var(--c-accent-bg)', color: 'var(--c-accent)', label: 'Lurk' },
+        exit:   { bg: 'var(--c-down-bg)', color: 'var(--c-down)', label: 'Exit' },
+        risk:   { bg: 'rgba(255,93,0,0.1)', color: '#ff5d00', label: 'Risk' },
     };
 
     function renderSectorCards() {
         var container = document.getElementById('sector-cards');
-        // Sort by pct_chg descending (涨幅从高到低)
+        // Sort by pct_chg descending (high to low)
         var sorted = allSectors.slice().sort(function(a, b) {
             var pa = a.kline && a.kline.length ? parseFloat(a.kline[a.kline.length-1].pct_chg || 0) : 0;
             var pb = b.kline && b.kline.length ? parseFloat(b.kline[b.kline.length-1].pct_chg || 0) : 0;
@@ -227,13 +243,14 @@
     function showDetail(sector) {
         var section = document.getElementById('detail-section');
         section.classList.remove('hidden');
-        document.getElementById('detail-title').textContent = sector.name + ' K线走势';
-        document.getElementById('detail-share-title').textContent = sector.name + ' 份额实际值';
+        document.getElementById('detail-title').textContent = sector.name + ' K-Line Trend';
+        document.getElementById('detail-share-title').textContent = sector.name + ' Share Value';
         // ── Kline chart rendering ──
         var el = document.getElementById('detail-kline');
         if (detailChart && !detailChart.isDisposed()) detailChart.dispose();
         el.innerHTML = '';
         if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
+        requestAnimationFrame(function() {
         detailChart = echarts.init(el);
         var kline = sector.kline || [];
         if (kline.length === 0) return;
@@ -263,7 +280,7 @@
                     params.forEach(function(p) {
                         var val = p.value;
                         if (Array.isArray(val)) {
-                            result += p.marker + ' 开盘: ' + val[1].toFixed(2) + ', 收盘: ' + val[2].toFixed(2) + ', 最低: ' + val[3].toFixed(2) + ', 最高: ' + val[4].toFixed(2) + '<br/>';
+                            result += p.marker + ' Open: ' + val[1].toFixed(2) + ', Close: ' + val[2].toFixed(2) + ', Low: ' + val[3].toFixed(2) + ', High: ' + val[4].toFixed(2) + '<br/>';
                         } else {
                             result += p.marker + ' ' + p.seriesName + ': ' + val + '%<br/>';
                         }
@@ -288,23 +305,25 @@
                 { type: 'slider', xAxisIndex: [0, 1], start: 60, end: 100 }
             ],
             series: [
-                { name: 'K线', type: 'candlestick', data: ohlc, xAxisIndex: 0, yAxisIndex: 0,
+                { name: 'K-Line', type: 'candlestick', data: ohlc, xAxisIndex: 0, yAxisIndex: 0,
                   itemStyle: { color: th.upColor, color0: th.downColor, borderColor: th.upColor, borderColor0: th.downColor } },
-                { name: '成交量百分位', type: 'bar', xAxisIndex: 1, yAxisIndex: 1,
+                { name: 'Volume Percentile', type: 'bar', xAxisIndex: 1, yAxisIndex: 1,
                   data: volPercentiles.map(function(pct, i) { return { value: pct, itemStyle: { color: pcts[i] >= 0 ? th.upColor + '66' : th.downColor + '66' } }; }),
                   label: { show: true, position: 'top', color: th.axisLabelColor, fontSize: 8, formatter: '{c}%' }
                 }
             ]
         }, true);
+        }); // end requestAnimationFrame
         renderShareDetail(sector);
     }
 
-    // 份额实际值图表：过去120天折线(绝对值) + 每日变化ZSCORE柱状
+    // Share value chart: 120-day line (absolute value) + daily change Z-Score bars
     function renderShareDetail(sector) {
         var el = document.getElementById('detail-share-chart');
         if (shareDetailChart && !shareDetailChart.isDisposed()) shareDetailChart.dispose();
         el.innerHTML = '';
         if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
+        requestAnimationFrame(function() {
         shareDetailChart = echarts.init(el);
         var th = ATM.getChartTheme();
 
@@ -312,12 +331,12 @@
         if (shares.length === 0) {
             shareDetailChart.setOption({
                 backgroundColor: 'transparent',
-                title: { text: '暂无份额数据', left: 'center', top: 'center', textStyle: { color: th.axisLabelColor, fontSize: 14, fontWeight: 'normal' } }
+                title: { text: 'No share data available', left: 'center', top: 'center', textStyle: { color: th.axisLabelColor, fontSize: 14, fontWeight: 'normal' } }
             }, true);
             return;
         }
 
-        // 取过去120天数据
+        // Take last 120 days of data
         var chartData = shares.slice(-120);
         var dates = chartData.map(function(sh) {
             var d = sh.trade_date;
@@ -325,19 +344,19 @@
         });
         var values = chartData.map(function(sh) { return parseFloat(sh.fd_share || 0); });
 
-        // 计算每日变化量: delta[i] = values[i] - values[i-1]
+        // Calculate daily change: delta[i] = values[i] - values[i-1]
         var dailyChanges = [];
         for (var i = 0; i < values.length; i++) {
             dailyChanges.push(i === 0 ? null : values[i] - values[i-1]);
         }
 
-        // 计算变化量的均值和标准差
+        // Calculate mean and std dev of changes
         var validChanges = dailyChanges.filter(function(v) { return v !== null; });
         var chgMean = validChanges.reduce(function(a, b) { return a + b; }, 0) / validChanges.length;
         var chgVariance = validChanges.reduce(function(a, b) { return a + Math.pow(b - chgMean, 2); }, 0) / validChanges.length;
         var chgStd = Math.sqrt(chgVariance) || 1;
 
-        // ZSCORE = (每日变化 - 均值) / 标准差
+        // ZSCORE = (daily change - mean) / std dev
         var zscores = dailyChanges.map(function(v) {
             return v === null ? null : (v - chgMean) / chgStd;
         });
@@ -359,14 +378,14 @@
                             var zcolor = zv > 0 ? th.upColor : zv < 0 ? th.downColor : '#888';
                             tip += p.marker + ' ' + p.seriesName + ': <span style="color:' + zcolor + ';font-weight:bold;">' + (zv > 0 ? '+' : '') + zv.toFixed(2) + 'σ</span><br/>';
                         } else {
-                            tip += p.marker + ' ' + p.seriesName + ': ' + p.value.toFixed(2) + ' 亿份<br/>';
+                            tip += p.marker + ' ' + p.seriesName + ': ' + p.value.toFixed(2) + ' 100M shares<br/>';
                         }
                     });
                     return tip;
                 }
             },
             legend: {
-                data: ['份额绝对值(120日)', '份额变化ZSCORE'],
+                data: ['Share Value (120-day)', 'Share Change Z-Score'],
                 textStyle: th.legend.textStyle
             },
             grid: { left: '8%', right: '8%', top: '15%', bottom: '12%' },
@@ -379,7 +398,7 @@
             yAxis: [
                 {
                     type: 'value',
-                    name: '亿份',
+                    name: '100M shares',
                     nameTextStyle: { color: th.axisLabelColor, fontSize: 10 },
                     axisLabel: { color: th.axisLabelColor, formatter: '{value}' },
                     splitLine: { lineStyle: { color: th.splitLineColor } }
@@ -399,26 +418,17 @@
             ],
             series: [
                 {
-                    name: '份额绝对值(120日)',
+                    name: 'Share Value (120-day)',
                     type: 'line',
                     yAxisIndex: 0,
                     data: values,
-                    smooth: true,
+                    smooth: false,
                     showSymbol: false,
-                    lineStyle: { width: 2, color: '#6B8F71' },
-                    areaStyle: {
-                        color: {
-                            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-                            colorStops: [
-                                { offset: 0, color: '#6B8F7144' },
-                                { offset: 1, color: '#6B8F7108' }
-                            ]
-                        }
-                    },
+                    lineStyle: { width: 2, color: '#000000' },
                     z: 1
                 },
                 {
-                    name: '份额变化ZSCORE',
+                    name: 'Share Change Z-Score',
                     type: 'bar',
                     yAxisIndex: 1,
                     data: zscores.map(function(z) {
@@ -436,7 +446,7 @@
                 }
             ]
         }, true);
-        
+        }); // end requestAnimationFrame
     }
 
     // renderFinancialQuality removed — F_Quality display removed from sector page
@@ -446,6 +456,7 @@
         if (compareChart && !compareChart.isDisposed()) compareChart.dispose();
         el.innerHTML = '';
         if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
+        requestAnimationFrame(function() {
         compareChart = echarts.init(el);
         var th = ATM.getChartTheme();
 
@@ -481,16 +492,17 @@
             backgroundColor: 'transparent',
             textStyle: th.textStyle,
             tooltip: { trigger: 'axis', backgroundColor: th.tooltip.backgroundColor, borderColor: th.tooltip.borderColor, textStyle: th.tooltip.textStyle },
-            legend: { data: ['5日', '10日', '20日'], textStyle: th.legend.textStyle },
+            legend: { data: ['5D', '10D', '20D'], textStyle: th.legend.textStyle },
             grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
             xAxis: { type: 'category', data: names, axisLabel: { color: th.axisLabelColor, rotate: 30, fontSize: 10 } },
             yAxis: { type: 'value', axisLabel: { color: th.axisLabelColor, formatter: '{value}%' }, splitLine: { lineStyle: { color: th.splitLineColor } } },
             series: [
-                { name: '5日', type: 'bar', data: series5, itemStyle: { color: '#6B8F71' }, barMaxWidth: 15 },
-                { name: '10日', type: 'bar', data: series10, itemStyle: { color: '#8FBF97' }, barMaxWidth: 15 },
-                { name: '20日', type: 'bar', data: series20, itemStyle: { color: '#4A7050' }, barMaxWidth: 15 }
+                { name: '5D', type: 'bar', data: series5, itemStyle: { color: '#000000' }, barMaxWidth: 15 },
+                { name: '10D', type: 'bar', data: series10, itemStyle: { color: '#2563EB' }, barMaxWidth: 15 },
+                { name: '20D', type: 'bar', data: series20, itemStyle: { color: '#777777' }, barMaxWidth: 15 }
             ]
         }, true);
+        }); // end requestAnimationFrame
     }
 
     function renderShareCompare() {
@@ -498,31 +510,39 @@
         if (shareCompareChart && !shareCompareChart.isDisposed()) shareCompareChart.dispose();
         el.innerHTML = '';
         if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
+        requestAnimationFrame(function() {
         shareCompareChart = echarts.init(el);
         var th = ATM.getChartTheme();
 
+        // Build category dates from the first sector with data (last 6 trading days)
+        var dates = [];
+        var firstSector = allSectors.find(function(s) { return s.shares && s.shares.length >= 6; });
+        if (firstSector) {
+            var sl = firstSector.shares.slice(-6);
+            dates = sl.map(function(sh) {
+                var d = sh.trade_date;
+                return d ? d.slice(4,6) + '/' + d.slice(6,8) : d;
+            });
+        }
+
         var seriesList = allSectors.map(function(s) {
-            var shares = (s.shares || []).slice(-16);
+            var shares = (s.shares || []).slice(-6);
             var vals = shares.map(function(sh) { return parseFloat(sh.fd_share || 0); });
             var mean = vals.reduce(function(a, b) { return a + b; }, 0) / vals.length;
             var std = Math.sqrt(vals.reduce(function(a, b) { return a + Math.pow(b - mean, 2); }, 0) / vals.length) || 1;
             return {
                 name: s.name, type: 'line',
-                data: shares.map(function(sh, i) {
-                    var d = sh.trade_date;
-                    var fmt = d ? d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8) : d;
-                    return [fmt, parseFloat(((vals[i] - mean) / std).toFixed(2))];
-                }),
-                smooth: true, showSymbol: false,
+                data: vals.map(function(v) { return parseFloat(((v - mean) / std).toFixed(2)); }),
+                smooth: false, showSymbol: true, symbolSize: 4,
                 lineStyle: { width: 1.5 },
-                emphasis: { lineStyle: { width: 3 } }
+                emphasis: { lineStyle: { width: 2 } }
             };
         });
 
         if (seriesList.length === 0 || seriesList.every(function(s) { return s.data.length === 0; })) {
             shareCompareChart.setOption({
                 backgroundColor: 'transparent',
-                title: { text: '暂无份额数据', left: 'center', top: 'center', textStyle: { color: th.axisLabelColor, fontSize: 14, fontWeight: 'normal' } }
+                title: { text: 'No share data available', left: 'center', top: 'center', textStyle: { color: th.axisLabelColor, fontSize: 14, fontWeight: 'normal' } }
             }, true);
             return;
         }
@@ -545,11 +565,11 @@
             },
             legend: { type: 'scroll', textStyle: { color: th.legend.textStyle.color, fontSize: 10 } },
             grid: { left: '10%', right: '3%', top: '15%', bottom: '10%' },
-            xAxis: { type: 'time', axisLabel: { color: th.axisLabelColor } },
+            xAxis: { type: 'category', data: dates, axisLabel: { color: th.axisLabelColor, fontSize: 10 }, boundaryGap: false },
             yAxis: { type: 'value', axisLabel: { color: th.axisLabelColor, formatter: '{value}σ' }, splitLine: { lineStyle: { color: th.splitLineColor } } },
-            dataZoom: [{ type: 'inside' }],
             series: seriesList
         }, true);
+        }); // end requestAnimationFrame
     }
 
     function renderShareRankTable() {
@@ -592,42 +612,42 @@
             
             if (zScore > 1.5 && trend > 0) {
                 if (volRatio > 1.2) {
-                    judgment = '强势流入';
+                    judgment = 'Strong Inflow';
                     judgmentColor = '#059669';
                     judgmentBg = '#ecfdf5';
                 } else {
-                    judgment = '持续流入';
+                    judgment = 'Sustained Inflow';
                     judgmentColor = '#10b981';
                     judgmentBg = '#d1fae5';
                 }
             } else if (zScore > 0.5 && trend > 0) {
-                judgment = '温和流入';
+                judgment = 'Mild Inflow';
                 judgmentColor = '#0ea5e9';
                 judgmentBg = '#f0f9ff';
             } else if (zScore < -1.5 && trend < 0) {
                 if (volRatio > 1.2) {
-                    judgment = '强势流出';
+                    judgment = 'Strong Outflow';
                     judgmentColor = '#dc2626';
                     judgmentBg = '#fef2f2';
                 } else {
-                    judgment = '持续流出';
+                    judgment = 'Sustained Outflow';
                     judgmentColor = '#ef4444';
                     judgmentBg = '#fee2e2';
                 }
             } else if (zScore < -0.5 && trend < 0) {
-                judgment = '温和流出';
+                judgment = 'Mild Outflow';
                 judgmentColor = '#f97316';
                 judgmentBg = '#fff7ed';
             } else if (zScore > 0.5 && trend < 0) {
-                judgment = '分歧加大';
+                judgment = 'Divergence';
                 judgmentColor = '#8b5cf6';
                 judgmentBg = '#f5f3ff';
             } else if (zScore < -0.5 && trend > 0) {
-                judgment = '企稳回升';
+                judgment = 'Stabilizing';
                 judgmentColor = '#06b6d4';
                 judgmentBg = '#ecfeff';
             } else {
-                judgment = '震荡整理';
+                judgment = 'Consolidating';
                 judgmentColor = '#6b7280';
                 judgmentBg = '#f9fafb';
             }
@@ -646,34 +666,34 @@
         }).filter(function(d) { return d !== null; }).sort(function(a, b) { return b.zScore - a.zScore; });
         
         if (rankData.length === 0) {
-            el.innerHTML = '<div style="color:var(--c-text-tertiary);text-align:center;padding:1rem;">暂无份额数据</div>';
+            el.innerHTML = '<div style="color:var(--c-text-tertiary);text-align:center;padding:1rem;">No share data available</div>';
             return;
         }
         
-        var html = '<table class="w-full text-sm" style="min-width:600px;">';
+        var html = '<div class="table-scroll"><table class="w-full text-sm responsive-card">';
         html += '<thead><tr style="background:var(--c-bg-secondary);">';
-        html += '<th class="px-3 py-2 text-left">排名</th>';
-        html += '<th class="px-3 py-2 text-left">ETF名称</th>';
-        html += '<th class="px-3 py-2 text-center">最新变化</th>';
-        html += '<th class="px-3 py-2 text-center">标准差</th>';
-        html += '<th class="px-3 py-2 text-center">ZScore</th>';
-        html += '<th class="px-3 py-2 text-center">趋势判断</th>';
+        html += '<th class="px-3 py-2 text-left">Rank</th>';
+        html += '<th class="px-3 py-2 text-left">ETF Name</th>';
+        html += '<th class="px-3 py-2 text-center">Latest Change</th>';
+        html += '<th class="px-3 py-2 text-center">Std Dev</th>';
+        html += '<th class="px-3 py-2 text-center">Z-Score</th>';
+        html += '<th class="px-3 py-2 text-center">Trend Signal</th>';
         html += '</tr></thead><tbody>';
         
         rankData.forEach(function(d, i) {
             var zScoreColor = d.zScore > 0 ? 'var(--c-up)' : (d.zScore < 0 ? 'var(--c-down)' : '#888');
             var changeColor = d.latestChange > 0 ? 'var(--c-up)' : (d.latestChange < 0 ? 'var(--c-down)' : '#888');
             html += '<tr class="border-t" style="border-color:var(--c-border);">';
-            html += '<td class="px-3 py-2 font-bold" style="color:var(--c-accent);">' + (i + 1) + '</td>';
-            html += '<td class="px-3 py-2">' + d.name + '</td>';
-            html += '<td class="px-3 py-2 text-center font-mono" style="color:' + changeColor + ';">' + (d.latestChange > 0 ? '+' : '') + d.latestChange.toFixed(4) + '%</td>';
-            html += '<td class="px-3 py-2 text-center font-mono" style="color:#888;">' + d.std.toFixed(4) + '%</td>';
-            html += '<td class="px-3 py-2 text-center font-mono font-bold" style="color:' + zScoreColor + ';">' + (d.zScore > 0 ? '+' : '') + d.zScore.toFixed(2) + 'σ</td>';
-            html += '<td class="px-3 py-2 text-center"><span class="px-2 py-1 rounded text-xs font-medium" style="background:' + d.judgmentBg + ';color:' + d.judgmentColor + ';">' + d.judgment + '</span></td>';
+            html += '<td data-label="Rank" class="px-3 py-2 font-bold" style="color:var(--c-accent);">' + (i + 1) + '</td>';
+            html += '<td data-label="ETF" class="px-3 py-2">' + d.name + '</td>';
+            html += '<td data-label="Change" class="px-3 py-2 text-center font-mono" style="color:' + changeColor + ';">' + (d.latestChange > 0 ? '+' : '') + d.latestChange.toFixed(4) + '%</td>';
+            html += '<td data-label="Std Dev" class="px-3 py-2 text-center font-mono" style="color:#888;">' + d.std.toFixed(4) + '%</td>';
+            html += '<td data-label="Z-Score" class="px-3 py-2 text-center font-mono font-bold" style="color:' + zScoreColor + ';">' + (d.zScore > 0 ? '+' : '') + d.zScore.toFixed(2) + 'σ</td>';
+            html += '<td data-label="Signal" class="px-3 py-2 text-center"><span class="px-2 py-1 text-xs font-medium" style="background:' + d.judgmentBg + ';color:' + d.judgmentColor + ';border:1px solid ' + d.judgmentColor + ';">' + d.judgment + '</span></td>';
             html += '</tr>';
         });
         
-        html += '</tbody></table>';
+        html += '</tbody></table></div>';
         el.innerHTML = html;
     }
 
@@ -697,7 +717,10 @@
         if (shareDetailChart && !shareDetailChart.isDisposed()) shareDetailChart.dispose();
     });
 
-    loadSectors();
+    // Defer data fetch one frame so skeleton paints first
+    requestAnimationFrame(function() {
+        loadSectors();
+    });
     window.__atmPageReady();
     
     // Expose for JS-generated onclick handlers

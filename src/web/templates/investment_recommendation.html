@@ -1,25 +1,26 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>投资建议 - ATMstockMarket</title>
+    <title>Investment Advice - ATM</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="/static/css/app.css">
     <script defer src="/static/js/vendor.js"></script>
     <script defer src="/static/js/app.js"></script>
     <style>
     /* ── Report layout ── */
-    .report-section { background:var(--c-card); border-radius:var(--radius-md); padding:20px 24px; margin-bottom:14px; border:1px solid var(--c-border-light); }
+    .report-section { background:var(--c-card); border-radius:var(--radius-md); padding:20px 24px; margin-bottom:14px; border:1px solid var(--c-border); }
     .report-section h3 { font-size:14px; font-weight:600; color:var(--c-text-secondary); margin:0 0 14px; display:flex; align-items:center; gap:8px; letter-spacing:0.3px; }
+    @media (max-width:640px) { .report-section { padding:12px; } .report-section h3 { font-size:13px; } }
 
     /* ── Report header ── */
-    .report-header { background:linear-gradient(135deg, var(--c-card), var(--c-bg-tertiary)); border:1px solid var(--c-border-light); border-radius:var(--radius-md); padding:24px 28px; margin-bottom:14px; }
+    .report-header { background:linear-gradient(135deg, var(--c-card), var(--c-bg-tertiary)); border:1px solid var(--c-border); border-radius:var(--radius-md); padding:24px 28px; margin-bottom:14px; }
     .report-header-top { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:12px; }
     .report-title { font-size:17px; font-weight:700; color:var(--c-text); line-height:1.4; }
     .report-date { font-size:12px; color:var(--c-text-tertiary); font-family:var(--font-mono); }
@@ -33,16 +34,17 @@
 
     /* ── KPI row ── */
     .kpi-row { display:grid; grid-template-columns:repeat(6, 1fr); gap:10px; margin-bottom:14px; }
-    .kpi-card { background:var(--c-card); border:1px solid var(--c-border-light); border-radius:var(--radius-sm); padding:12px 14px; }
+    .kpi-card { background:var(--c-card); border:1px solid var(--c-border); border-radius:var(--radius-sm); padding:12px 14px; }
     .kpi-label { font-size:11px; color:var(--c-text-tertiary); margin-bottom:4px; letter-spacing:0.3px; }
     .kpi-value { font-size:18px; font-weight:700; color:var(--c-text); line-height:1.2; }
     .kpi-sub { font-size:10px; color:var(--c-text-muted); margin-top:2px; }
-    @media (max-width:720px) { .kpi-row { grid-template-columns:repeat(3, 1fr); } }
+    @media (max-width:640px) { .kpi-row { grid-template-columns:repeat(3, 1fr); } }
+    @media (max-width:480px) { .kpi-row { grid-template-columns:repeat(2, 1fr); } }
 
     /* ── Recommendation table ── */
     .rec-table { width:100%; border-collapse:collapse; }
-    .rec-table th { text-align:left; font-size:11px; font-weight:600; color:var(--c-text-tertiary); padding:8px 10px; border-bottom:1px solid var(--c-border-light); letter-spacing:0.5px; }
-    .rec-table td { padding:10px; border-bottom:1px solid var(--c-border-light); font-size:13px; vertical-align:middle; }
+    .rec-table th { text-align:left; font-size:11px; font-weight:600; color:var(--c-text-tertiary); padding:8px 10px; border-bottom:1px solid var(--c-border); letter-spacing:0.5px; }
+    .rec-table td { padding:10px; border-bottom:1px solid var(--c-border); font-size:13px; vertical-align:middle; }
     .rec-table tr:last-child td { border-bottom:none; }
     .rec-table tr:hover td { background:var(--c-table-hover); }
 
@@ -70,7 +72,7 @@
 
     /* ── Risk warnings ── */
     .risk-list { list-style:none; padding:0; margin:0; }
-    .risk-item { display:flex; align-items:flex-start; gap:8px; padding:8px 0; font-size:13px; line-height:1.5; border-bottom:1px solid var(--c-border-light); }
+    .risk-item { display:flex; align-items:flex-start; gap:8px; padding:8px 0; font-size:13px; line-height:1.5; border-bottom:1px solid var(--c-border); }
     .risk-item:last-child { border-bottom:none; }
     .risk-icon { flex-shrink:0; margin-top:1px; }
 
@@ -92,58 +94,85 @@
 
     /* ── Loading / error ── */
     .loading-state { text-align:center; padding:60px 20px; color:var(--c-text-tertiary); }
-    .loading-state .spinner { display:inline-block; width:24px; height:24px; border:3px solid var(--c-border-light); border-top-color:var(--c-accent); border-radius:50%; animation:spin 0.8s linear infinite; }
-    @keyframes spin { to { transform:rotate(360deg); } }
 
     /* ── Responsive table ── */
-    @media (max-width:600px) {
+    @media (max-width:640px) {
         .rec-table th:nth-child(5), .rec-table td:nth-child(5) { display:none; }
         .rec-table th:nth-child(7), .rec-table td:nth-child(7) { display:none; }
+        .rec-table td {
+            padding: 8px 6px;
+            font-size: 12px;
+        }
+        .rec-table th {
+            padding: 6px 6px;
+            font-size: 10px;
+        }
+        .pos-bar-wrap { gap: 6px; }
+        .pos-bar { min-width: 40px; }
+        .pos-text { font-size: 11px; min-width: 34px; }
+    }
+    @media (max-width:400px) {
+        .rec-table th:nth-child(4), .rec-table td:nth-child(4) { display:none; }
+        .rec-table td { font-size: 11px; padding: 6px 4px; }
+        .rec-table th { padding: 5px 4px; }
+        .pos-bar-wrap { gap: 4px; }
+        .pos-bar { min-width: 32px; height: 6px; }
+        .pos-text { font-size: 10px; min-width: 28px; }
     }
     </style>
     <script>document.documentElement.dataset.theme = 'light';</script>
 </head>
 <body class="min-h-screen">
-    <nav>
-      <div class="nav-container">
-        <a href="/" class="nav-logo">
-          <span class="nav-logo-icon">AM</span>
-          ATMstockMarket
-        </a>
-        <div class="nav-links" id="nav-links">
-          <a href="/" class="nav-link">首页</a>
-          <a href="/etf" class="nav-link">指数ETF</a>
-          <a href="/sector" class="nav-link">行业ETF</a>
-          <a href="/analysis" class="nav-link">可视化分析</a>
-          
-        </div>
-        <button class="mobile-menu-btn" onclick="document.getElementById('nav-links').classList.toggle('open')" aria-label="菜单">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M0 3h20v2H0V3zm0 6h20v2H0V9zm0 6h20v2H0v-2z"/></svg>
-        </button>
-      </div>
-    </nav>
 
-    <div id="freshness-bar" class="freshness-bar"></div>
+    <div class="tablet-topbar">
+        <div class="tablet-topbar-logo"><a href="/">ATMstockMarket</a></div>
+        <nav class="tablet-topbar-nav">
+            <a href="/">Home</a>
+            <a href="/etf">Index ETF</a>
+            <a href="/sector">Sector ETF</a>
+            <a href="/analysis" class="active">Analysis</a>
+        </nav>
+    </div>
+
+    <div class="page-layout">
+    <aside class="sidebar-nav">
+        <div class="sidebar-logo">
+            <a href="/">ATMstockMarket</a>
+            <div class="sidebar-logo-sub">A-Share Market Analysis</div>
+        </div>
+        <div class="sidebar-nav-section">
+            <div class="sidebar-nav-label">Navigation</div>
+            <nav class="sidebar-nav-links">
+                <a href="/" class="sidebar-nav-link">Home</a>
+                <a href="/etf" class="sidebar-nav-link">Index ETF</a>
+                <a href="/sector" class="sidebar-nav-link">Sector ETF</a>
+                <a href="/analysis" class="sidebar-nav-link active">Analysis</a>
+            </nav>
+        </div>
+        <div class="sidebar-nav-footer">
+            <p>Data Source</p>
+            <span>Tushare · AKShare</span>
+        </div>
+    </aside>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-8">
 
-        <a href="/analysis" class="back-link">&larr; 返回分析页</a>
+        <a href="/analysis" class="back-link">&larr; Back to Analysis</a>
 
         <!-- Loading -->
-        <div id="loading" class="loading-state">
-            <div class="spinner"></div>
-            <p style="margin-top:12px;">加载投资建议中...</p>
+        <div id="loading" class="hard-skeleton" style="min-height:300px;">
+            <span class="hard-skeleton-text">[ AWAITING DATA ... ]</span>
         </div>
 
         <!-- Error state -->
         <div id="error-state" class="loading-state" style="display:none;">
-            <p id="error-msg">暂无投资建议数据</p>
+            <p id="error-msg">No investment advice data</p>
         </div>
 
         <!-- Main content -->
         <div id="content" style="display:none;">
 
-            <!-- ═══════ 报告头 ═══════ -->
+            <!-- ═══════ Report Header ═══════ -->
             <div class="report-header" id="report-header">
                 <div class="report-header-top">
                     <div>
@@ -156,81 +185,90 @@
                 <p style="font-size:12px;color:var(--c-text-tertiary);margin-top:6px;" id="holding-period"></p>
             </div>
 
-            <!-- ═══════ KPI 指标行 ═══════ -->
+            <!-- ═══════ KPI Row ═══════ -->
             <div class="kpi-row" id="kpi-row"></div>
 
-            <!-- ═══════ ETF 推荐表 ═══════ -->
+            <!-- ═══════ ETF Recommendations ═══════ -->
             <div class="report-section">
-                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:2px;"><path d="M18 20V10M12 20V4M6 20v-6"/></svg> ETF 配置建议</h3>
-                <table class="rec-table" id="rec-table">
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:2px;"><path d="M18 20V10M12 20V4M6 20v-6"/></svg> ETF Allocation Advice</h3>
+                <div class="table-scroll">
+                <table class="rec-table responsive-card" id="rec-table">
                     <thead>
                         <tr>
                             <th style="width:32px;">#</th>
                             <th>ETF</th>
-                            <th style="width:48px;">象限</th>
-                            <th style="width:64px;">因子分</th>
-                            <th style="width:80px;">策略</th>
-                            <th>仓位分配</th>
-                            <th style="width:50px;">置信</th>
+                            <th style="width:48px;">Quadrant</th>
+                            <th style="width:64px;">Factor Score</th>
+                            <th style="width:80px;">Strategy</th>
+                            <th>Position</th>
+                            <th style="width:50px;">Confidence</th>
                         </tr>
                     </thead>
                     <tbody id="rec-body"></tbody>
                 </table>
+                </div>
             </div>
 
-            <!-- ═══════ 风险警告 ═══════ -->
+            <!-- ═══════ Risk Alerts ═══════ -->
             <div class="report-section">
-                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:2px;"><path d="M12 9v2m0 4h.01M12 3l9.66 17H2.34L12 3z"/></svg> 风险提示</h3>
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:2px;"><path d="M12 9v2m0 4h.01M12 3l9.66 17H2.34L12 3z"/></svg> Risk Alerts</h3>
                 <ul class="risk-list" id="risk-list"></ul>
             </div>
 
-            <!-- ═══════ 历史表现 ═══════ -->
+            <!-- ═══════ Historical Performance ═══════ -->
             <div class="report-section">
-                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:2px;"><path d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/></svg> 策略历史表现</h3>
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:2px;"><path d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/></svg> Historical Performance</h3>
                 <div class="stats-grid" id="stats-grid"></div>
             </div>
 
-            <!-- ═══════ 策略依据 ═══════ -->
+            <!-- ═══════ Strategy Basis ═══════ -->
             <div class="report-section">
-                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:2px;"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> 策略依据</h3>
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:2px;"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> Strategy Basis</h3>
                 <ul class="reason-list" id="reasons-list"></ul>
             </div>
 
         </div>
 
     </main>
+    </div><!-- /page-layout -->
 
-    <!-- ─── Bottom nav ─── -->
-    <div class="bottom-nav">
-      <a href="/" class="bottom-nav-item" aria-label="首页">
+    <footer>
+        <p>ATMstockMarket — Data Source: Tushare / AKShare | For learning and research only, not investment advice</p>
+    </footer>
+
+    <div class="bottom-nav" role="navigation" aria-label="Main navigation">
+      <a href="/" class="bottom-nav-item" aria-label="Home">
         <span class="bottom-nav-icon">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
         </span>
-        <span class="bottom-nav-label">首页</span>
+        <span class="bottom-nav-label">Home</span>
       </a>
-      <a href="/etf" class="bottom-nav-item" aria-label="指数ETF">
+      <a href="/etf" class="bottom-nav-item" aria-label="Index ETF">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
         </span>
-        <span class="bottom-nav-label">指数ETF</span>
+        <span class="bottom-nav-label">Index ETF</span>
       </a>
-      <a href="/sector" class="bottom-nav-item" aria-label="行业ETF">
+      <a href="/sector" class="bottom-nav-item" aria-label="Sector ETF">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
         </span>
-        <span class="bottom-nav-label">行业ETF</span>
+        <span class="bottom-nav-label">Sector ETF</span>
       </a>
-      <a href="/analysis" class="bottom-nav-item active" aria-label="可视化分析">
+      <a href="/analysis" class="bottom-nav-item active" aria-label="Analysis">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
         </span>
-        <span class="bottom-nav-label">分析</span>
+        <span class="bottom-nav-label">Analysis</span>
       </a>
     </div>
 
     <script>
     document.addEventListener('DOMContentLoaded', async function() {
+        window.__atmPageReady();
         try {
+        // Defer fetch one frame so skeleton paints first
+        await new Promise(function(r) { requestAnimationFrame(r); });
             var resp = await fetch('/api/investment-recommendation');
             var data = await resp.json();
 
@@ -247,9 +285,9 @@
 
             // ── Report header ──
             document.getElementById('strategy-name').textContent = data.strategy.name;
-            document.getElementById('data-date').textContent = '数据日期：' + data.date;
+            document.getElementById('data-date').textContent = 'Data Date: ' + data.date;
             document.getElementById('strategy-desc').textContent = data.strategy.description || '';
-            document.getElementById('holding-period').textContent = '持仓周期：' + (data.strategy.holding_period || '--');
+            document.getElementById('holding-period').textContent = 'Holding Period: ' + (data.strategy.holding_period || '--');
 
             // Badges
             var badges = document.getElementById('badges');
@@ -265,7 +303,7 @@
             }
             if (icirVal > 0) {
                 var icirCls = icirVal >= 0.3 ? 'badge-green' : (icirVal >= 0.15 ? 'badge-amber' : 'badge-red');
-                var icirLabel = icirVal >= 0.3 ? (icirVal >= 0.5 ? '强有效' : '有效') : (icirVal >= 0.15 ? '弱有效' : '随机');
+                var icirLabel = icirVal >= 0.3 ? (icirVal >= 0.5 ? 'Strongly Effective' : 'Effective') : (icirVal >= 0.15 ? 'Weakly Effective' : 'Random');
                 badges.innerHTML += '<span class="badge ' + icirCls + '">ICIR=' + icirVal.toFixed(2) + ' ' + icirLabel + '</span>';
             }
 
@@ -274,27 +312,27 @@
                 var tAdj = data.timing.adjustment || 0;
                 var tCls = tAdj > 0.05 ? 'badge-green' : (tAdj < -0.05 ? 'badge-red' : 'badge-neutral');
                 var tIcon = tAdj > 0.05 ? '&#x25B2;' : (tAdj < -0.05 ? '&#x25BC;' : '&#x25CF;');
-                badges.innerHTML += '<span class="badge ' + tCls + '">' + tIcon + ' 大盘' + (data.timing.regime || '中性') + ' (调' + (tAdj*100 >= 0 ? '+' : '') + Math.round(tAdj*100) + '%)</span>';
+                badges.innerHTML += '<span class="badge ' + tCls + '">' + tIcon + ' Market' + (data.timing.regime || 'Neutral') + ' (Adjust ' + (tAdj*100 >= 0 ? '+' : '') + Math.round(tAdj*100) + '%)</span>';
             }
 
             // Preset badge
-            badges.innerHTML += '<span class="badge badge-neutral"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:2px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg> 短期预设</span>';
+            badges.innerHTML += '<span class="badge badge-neutral"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:2px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Short-term Preset</span>';
 
             // ── KPI row ──
             var kpiRow = document.getElementById('kpi-row');
             var kpis = [
-                { label: 'IC均值', value: data.ic_mean !== null && data.ic_mean !== undefined ? data.ic_mean.toFixed(4) : '-', sub: '因子预测力' },
-                { label: 'ICIR', value: data.icir !== null && data.icir !== undefined ? data.icir.toFixed(2) : '-', sub: '稳定度' },
-                { label: '因子胜率', value: data.ic_win_rate !== null ? (data.ic_win_rate * 100).toFixed(1) + '%' : '-', sub: '方向准确率' },
+                { label: 'IC Mean', value: data.ic_mean !== null && data.ic_mean !== undefined ? data.ic_mean.toFixed(4) : '-', sub: 'Factor Predictive Power' },
+                { label: 'ICIR', value: data.icir !== null && data.icir !== undefined ? data.icir.toFixed(2) : '-', sub: 'Stability' },
+                { label: 'Factor Win Rate', value: data.ic_win_rate !== null ? (data.ic_win_rate * 100).toFixed(1) + '%' : '-', sub: 'Direction Accuracy' },
             ];
             if (data.timing) {
-                kpis.push({ label: '大盘择时', value: (data.timing.score || 0).toFixed(2), sub: data.timing.regime || '-' });
+                kpis.push({ label: 'Market Timing', value: (data.timing.score || 0).toFixed(2), sub: data.timing.regime || '-' });
             }
             if (data.risk_warning && data.risk_warning.length > 0) {
                 var hasDanger = data.risk_warning.some(function(w) { return w.indexOf('\u26A0') >= 0; });
-                kpis.push({ label: '风险等级', value: hasDanger ? '偏高' : '正常', sub: hasDanger ? '注意风控' : '可操作' });
+                kpis.push({ label: 'Risk Level', value: hasDanger ? 'High' : 'Normal', sub: hasDanger ? 'Watch Risk' : 'Actionable' });
             }
-            kpis.push({ label: '推荐ETF', value: data.recommendations ? data.recommendations.length + '只' : '0', sub: 'Q1+Q2象限' });
+            kpis.push({ label: 'Recommended ETFs', value: data.recommendations ? data.recommendations.length + ' ETFs' : '0', sub: 'Q1+Q2 Quadrants' });
 
             kpiRow.innerHTML = kpis.map(function(k) {
                 return '<div class="kpi-card"><div class="kpi-label">' + k.label + '</div><div class="kpi-value">' + k.value + '</div><div class="kpi-sub">' + k.sub + '</div></div>';
@@ -315,14 +353,14 @@
 
                     var quad = r.quadrant || (r.strategy.indexOf('Q1') >= 0 ? 1 : 2);
                     var quadCls = 'quad-' + quad;
-                    var quadLabel = quad === 1 ? '强势' : '潜伏';
+                    var quadLabel = quad === 1 ? 'Strong' : 'Lurk';
 
                     var pct = parseFloat(r.position_ratio);
                     var barPct = maxPos > 0 ? Math.round(pct / maxPos * 100) : 0;
                     var barCls = quad === 1 ? 'q1' : 'q2';
 
-                    var confLabel = r.confidence || (quad === 1 ? '高' : '中');
-                    var confCls = confLabel === '高' ? 'conf-high' : 'conf-mid';
+                    var confLabel = r.confidence || (quad === 1 ? 'High' : 'Mid');
+                    var confCls = confLabel === 'High' ? 'conf-high' : 'conf-mid';
 
                     // V4: Financial quality score for display
                     var zq = r.z_quality;
@@ -330,17 +368,17 @@
                     var qDisplay = (typeof zq === 'number' && zq !== 0) ? (zq > 0 ? '+' : '') + zq.toFixed(2) + '\u03C3' : '--';
 
                     return '<tr>' +
-                        '<td><span class="rank-num ' + rank + '">' + rankText + '</span></td>' +
-                        '<td><strong>' + r.name + '</strong><br><span style="font-size:11px;color:var(--c-text-muted);font-family:var(--font-mono);">' + r.code + '</span></td>' +
-                        '<td><span class="quad-tag ' + quadCls + '">' + quadLabel + '</span></td>' +
-                        '<td style="font-family:var(--font-mono);font-size:13px;font-weight:600;">' + (r.factor_score !== undefined ? r.factor_score.toFixed(3) : '--') + '</td>' +
-                        '<td><span style="font-size:10px;color:' + qColor + ';font-weight:600;">财务质量: ' + qDisplay + '</span><br><span style="font-size:11px;color:var(--c-text-secondary);line-height:1.3;display:block;">' + (r.strategy_desc || r.strategy || '') + '</span></td>' +
-                        '<td><div class="pos-bar-wrap"><div class="pos-bar"><div class="pos-bar-fill ' + barCls + '" style="width:' + barPct + '%;"></div></div><span class="pos-text">' + pct.toFixed(1) + '%</span></div>' +
-                        '<td style="text-align:center;"><span class="conf-dot ' + confCls + '" title="置信度:' + confLabel + '"></span></td>' +
+                        '<td data-label="Rank"><span class="rank-num ' + rank + '">' + rankText + '</span></td>' +
+                        '<td data-label="ETF"><strong>' + r.name + '</strong><br><span style="font-size:11px;color:var(--c-text-muted);font-family:var(--font-mono);">' + r.code + '</span></td>' +
+                        '<td data-label="Quadrant"><span class="quad-tag ' + quadCls + '">' + quadLabel + '</span></td>' +
+                        '<td data-label="Score" style="font-family:var(--font-mono);font-size:13px;font-weight:600;">' + (r.factor_score !== undefined ? r.factor_score.toFixed(3) : '--') + '</td>' +
+                        '<td data-label="Strategy"><span style="font-size:10px;color:' + qColor + ';font-weight:600;">Financial Quality: ' + qDisplay + '</span><br><span style="font-size:11px;color:var(--c-text-secondary);line-height:1.3;display:block;">' + (r.strategy_desc || r.strategy || '') + '</span></td>' +
+                        '<td data-label="Position"><div class="pos-bar-wrap"><div class="pos-bar"><div class="pos-bar-fill ' + barCls + '" style="width:' + barPct + '%;"></div></div><span class="pos-text">' + pct.toFixed(1) + '%</span></div>' +
+                        '<td data-label="Confidence" style="text-align:center;"><span class="conf-dot ' + confCls + '" title="Confidence: ' + confLabel + '"></span></td>' +
                         '</tr>';
                 }).join('');
             } else {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--c-text-tertiary);padding:30px;">暂无推荐ETF</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--c-text-tertiary);padding:30px;">No recommended ETFs</td></tr>';
             }
 
             // ── Risk warnings ──
@@ -359,39 +397,39 @@
                     return '<li class="risk-item"><span class="risk-icon" style="color:' + cls + ';">' + icon + '</span><span>' + w + '</span></li>';
                 }).join('');
             } else {
-                riskList.innerHTML = '<li class="risk-item" style="color:var(--c-text-tertiary);">无风险警告</li>';
+                riskList.innerHTML = '<li class="risk-item" style="color:var(--c-text-tertiary);">No risk warnings</li>';
             }
 
             // ── Historical stats ──
             var statsGrid = document.getElementById('stats-grid');
             if (data.stats) {
                 var statHtml = '';
-                var quadMap = { q1: 'Q1 强势策略', q2: 'Q2 潜伏策略' };
+                var quadMap = { q1: 'Q1 Strong Strategy', q2: 'Q2 Lurk Strategy' };
                 Object.keys(quadMap).forEach(function(key) {
                     var s = data.stats[key];
                     if (!s) return;
                     var qNum = key === 'q1' ? 'q1' : 'q2';
                     var metrics = '';
                     if (s.win_rate !== undefined) {
-                        metrics += '<div class="stat-metric"><div class="stat-metric-label">胜率</div><div class="stat-metric-value">' + s.win_rate + '%</div></div>';
+                        metrics += '<div class="stat-metric"><div class="stat-metric-label">Win Rate</div><div class="stat-metric-value">' + s.win_rate + '%</div></div>';
                     }
                     if (s.avg_return !== undefined) {
-                        metrics += '<div class="stat-metric"><div class="stat-metric-label">平均收益</div><div class="stat-metric-value" style="color:' + (s.avg_return > 0 ? 'var(--c-up)' : 'var(--c-down)') + ';">' + s.avg_return + '%</div></div>';
+                        metrics += '<div class="stat-metric"><div class="stat-metric-label">Avg Return</div><div class="stat-metric-value" style="color:' + (s.avg_return > 0 ? 'var(--c-up)' : 'var(--c-down)') + ';">' + s.avg_return + '%</div></div>';
                     }
                     if (s.samples !== undefined) {
-                        metrics += '<div class="stat-metric"><div class="stat-metric-label">样本数</div><div class="stat-metric-value">' + s.samples + '</div></div>';
+                        metrics += '<div class="stat-metric"><div class="stat-metric-label">Samples</div><div class="stat-metric-value">' + s.samples + '</div></div>';
                     }
                     if (s.sharpe_ratio !== undefined) {
-                        metrics += '<div class="stat-metric"><div class="stat-metric-label">夏普比</div><div class="stat-metric-value">' + s.sharpe_ratio + '</div></div>';
+                        metrics += '<div class="stat-metric"><div class="stat-metric-label">Sharpe Ratio</div><div class="stat-metric-value">' + s.sharpe_ratio + '</div></div>';
                     }
                     if (s.max_loss !== undefined) {
-                        metrics += '<div class="stat-metric"><div class="stat-metric-label">最大回撤</div><div class="stat-metric-value" style="color:var(--c-down);">' + s.max_loss + '%</div></div>';
+                        metrics += '<div class="stat-metric"><div class="stat-metric-label">Max Drawdown</div><div class="stat-metric-value" style="color:var(--c-down);">' + s.max_loss + '%</div></div>';
                     }
                     statHtml += '<div class="stat-card ' + qNum + '"><div class="stat-title">' + quadMap[key] + '</div><div class="stat-metrics">' + metrics + '</div></div>';
                 });
-                statsGrid.innerHTML = statHtml || '<p style="font-size:13px;color:var(--c-text-tertiary);">暂无历史统计数据</p>';
+                statsGrid.innerHTML = statHtml || '<p style="font-size:13px;color:var(--c-text-tertiary);">No historical statistics</p>';
             } else {
-                statsGrid.innerHTML = '<p style="font-size:13px;color:var(--c-text-tertiary);">暂无历史统计数据</p>';
+                statsGrid.innerHTML = '<p style="font-size:13px;color:var(--c-text-tertiary);">No historical statistics</p>';
             }
 
             // ── Reasons ──
@@ -401,15 +439,15 @@
                     return '<li class="reason-item"><span class="reason-bullet">\u25B8</span><span>' + r + '</span></li>';
                 }).join('');
             } else {
-                reasonsList.innerHTML = '<li class="reason-item" style="color:var(--c-text-tertiary);">无策略依据</li>';
+                reasonsList.innerHTML = '<li class="reason-item" style="color:var(--c-text-tertiary);">No strategy basis</li>';
             }
 
         } catch(e) {
-            console.error('加载失败:', e);
+            console.error('Load failed:', e);
             document.getElementById('loading').style.display = 'none';
             var es = document.getElementById('error-state');
             es.style.display = 'block';
-            document.getElementById('error-msg').textContent = '加载投资建议失败，请刷新重试';
+            document.getElementById('error-msg').textContent = 'Failed to load investment advice, please refresh';
         }
     });
     </script>

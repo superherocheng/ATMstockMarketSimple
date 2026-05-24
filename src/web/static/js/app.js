@@ -82,13 +82,13 @@
       'border-bottom:1px solid #ffc107;' +
       'display:flex;align-items:center;justify-content:center;gap:12px;';
     banner.innerHTML =
-      '<span>⚠️ 页面部分功能加载异常，请' +
+      '<span>⚠️ Some features failed to load, please ' +
       '<a href="javascript:location.reload()" ' +
-      'style="color:#856404;text-decoration:underline;font-weight:bold;margin:0 4px;">刷新重试</a></span>' +
+      'style="color:#856404;text-decoration:underline;font-weight:bold;margin:0 4px;">Refresh</a></span>' +
       '<button onclick="this.parentElement.remove()" ' +
       'style="background:none;border:none;cursor:pointer;font-size:18px;' +
       'color:#856404;line-height:1;padding:0 4px;" ' +
-      'title="关闭" aria-label="关闭警告">×</button>';
+      'title="Close" aria-label="Close warning">×</button>';
     nav.insertAdjacentElement('afterend', banner);
   }
 
@@ -117,27 +117,18 @@
     var bar = document.getElementById('freshness-bar');
     if (!bar) return;
     fetch('/api/market-timing').then(function(r) { return r.json(); }).then(function(d) {
-        if (d.error) { bar.innerHTML = '📅 数据日期: ' + (d.date || '--'); return; }
+        if (d.error) { bar.innerHTML = '📅 Data date: ' + (d.date || '--'); return; }
         var adj = (d.adjustment || 0) * 100;
         var icon = adj > 5 ? '📈' : (adj < -5 ? '📉' : '➡️');
-        bar.innerHTML = '📅 数据截至 ' + (d.date || '--') +
-            ' &nbsp;|&nbsp; ' + icon + ' 大盘择时: ' + (d.regime_cn || '中性') +
-            ' <span style="opacity:0.6">(调' + (adj >= 0 ? '+' : '') + Math.round(adj) + '%)</span>';
+        bar.innerHTML = '📅 Data as of ' + (d.date || '--') +
+            ' &nbsp;|&nbsp; ' + icon + ' Market timing: ' + (d.regime_cn || 'Neutral') +
+            ' <span style="opacity:0.6">(Adj. ' + (adj >= 0 ? '+' : '') + Math.round(adj) + '%)</span>';
     }).catch(function() {
-        bar.innerHTML = '📅 数据加载中...';
+        bar.innerHTML = '📅 Loading data...';
     });
 })();
 
-/* ── Skeleton shimmer keyframes (injected once) ── */
-(function() {
-    if (document.getElementById('atm-shimmer-style')) return;
-    var style = document.createElement('style');
-    style.id = 'atm-shimmer-style';
-    style.textContent =
-        '@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }' +
-        '.skeleton-shimmer { background: linear-gradient(90deg, var(--c-skeleton,#EDEBE6) 25%, var(--c-skeleton-shine,#F7F6F3) 50%, var(--c-skeleton,#EDEBE6) 75%); background-size: 200% 100%; animation: shimmer 1.5s ease-in-out infinite; border-radius: var(--radius-sm); }';
-    document.head.appendChild(style);
-})();
+/* ── Skeleton system replaced by hard-skeleton CSS class ── */
 
 /* ── Anonymous telemetry beacon ── */
 (function() {
@@ -194,7 +185,7 @@ ATM.pctText = function(v) {
 ATM.formatNum = function(v, decimals) {
     if (decimals === undefined) decimals = 2;
     if (v === null || v === undefined || v === '') return '--';
-    return parseFloat(v).toLocaleString('zh-CN', {
+    return parseFloat(v).toLocaleString('en-US', {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals
     });
@@ -203,17 +194,17 @@ ATM.formatNum = function(v, decimals) {
 ATM.formatAmount = function(val) {
     if (!val) return '--';
     var v = parseFloat(val);
-    if (Math.abs(v) >= 100000000) return (v / 100000000).toFixed(2) + '亿';
-    if (Math.abs(v) >= 10000) return (v / 10000).toFixed(0) + '万';
+    if (Math.abs(v) >= 100000000) return (v / 100000000).toFixed(2) + 'B';
+    if (Math.abs(v) >= 10000) return (v / 10000).toFixed(0) + 'K';
     return v.toFixed(0);
 };
 
 ATM.formatVol = function(val) {
     if (!val) return '--';
     var v = parseFloat(val);
-    if (v >= 100000000) return (v / 100000000).toFixed(2) + '亿手';
-    if (v >= 10000) return (v / 10000).toFixed(0) + '万手';
-    return v.toFixed(0) + '手';
+    if (v >= 100000000) return (v / 100000000).toFixed(2) + 'B lots';
+    if (v >= 10000) return (v / 10000).toFixed(0) + 'K lots';
+    return v.toFixed(0) + ' lots';
 };
 
 ATM.fmtDate = function(s) {
@@ -229,9 +220,9 @@ ATM.fmtDateDash = function(s) {
 ATM.fmtMV = function(v) {
     if (!v) return '--';
     v = parseFloat(v);
-    if (v >= 10000) return (v / 10000).toFixed(1) + '万亿';
-    if (v >= 100) return (v / 100).toFixed(1) + '百亿';
-    return v.toFixed(0) + '亿';
+    if (v >= 10000) return (v / 10000).toFixed(1) + 'T';
+    if (v >= 100) return v.toFixed(0) + 'B';
+    return v.toFixed(0) + 'B';
 };
 
 ATM.rankBadge = function(i) {
@@ -240,16 +231,16 @@ ATM.rankBadge = function(i) {
 };
 
 ATM.dataStatus = function(d) {
-    if (!d.exists || d.count === 0) return { tag: '空', color: 'var(--c-up)', need: true };
-    if (!d.max_date) return { tag: '有数据', color: 'var(--c-gold)', need: false };
+    if (!d.exists || d.count === 0) return { tag: 'Empty', color: 'var(--c-up)', need: true };
+    if (!d.max_date) return { tag: 'Has data', color: 'var(--c-gold)', need: false };
     var maxD = ATM._parseDate(d.max_date);
     var now = new Date();
     var tradingToday = ATM._lastTradingDate(now);
     var diffTrading = ATM._tradingDaysBetween(maxD, tradingToday);
-    if (diffTrading === 0) return { tag: '最新', color: 'var(--c-down)', need: false };
-    if (diffTrading <= 1) return { tag: '最新', color: 'var(--c-down)', need: false };
-    if (diffTrading <= 5) return { tag: '滞后' + diffTrading + '个交易日', color: 'var(--c-gold)', need: true };
-    return { tag: '过期', color: 'var(--c-up)', need: true };
+    if (diffTrading === 0) return { tag: 'Latest', color: 'var(--c-down)', need: false };
+    if (diffTrading <= 1) return { tag: 'Latest', color: 'var(--c-down)', need: false };
+    if (diffTrading <= 5) return { tag: 'Behind by ' + diffTrading + ' trading days', color: 'var(--c-gold)', need: true };
+    return { tag: 'Outdated', color: 'var(--c-up)', need: true };
 };
 
 ATM._parseDate = function(s) {
@@ -331,46 +322,47 @@ ATM.getChartTheme = function() {
     return {
         backgroundColor: 'transparent',
         textStyle: {
-            color: '#5C5A55',
-            fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+            color: '#111111',
+            fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
         },
         title: {
             textStyle: {
-                color: '#1A1C19',
+                color: '#000000',
                 fontWeight: 700
             }
         },
         legend: {
             textStyle: {
-                color: '#5C5A55',
+                color: '#444444',
                 fontSize: 12
             },
-            icon: 'roundRect',
+            icon: 'rect',
             itemWidth: 14,
             itemHeight: 8
         },
         tooltip: {
-            backgroundColor: 'rgba(42, 45, 40, 0.94)',
-            borderColor: 'rgba(58, 61, 53, 0.5)',
+            backgroundColor: '#FFFFFF',
+            borderColor: '#000000',
             borderWidth: 1,
             textStyle: {
-                color: '#E8E6E1',
-                fontSize: 12
+                color: '#000000',
+                fontSize: 12,
+                fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
             },
-            extraCssText: 'box-shadow:0 4px 16px rgba(26,28,25,0.15);border-radius:12px;'
+            extraCssText: 'box-shadow:none;border-radius:0;'
         },
-        splitLineColor: 'rgba(226, 224, 216, 0.7)',
-        axisLabelColor: '#94928A',
-        axisLineColor: 'rgba(226, 224, 216, 0.5)',
-        upColor: '#dd3333',
-        upColor0: 'rgba(221, 51, 51, 0.12)',
-        downColor: '#00af00',
-        downColor0: 'rgba(0, 175, 0, 0.12)',
-        accentColor: '#6B8F71',
-        accentLight: 'rgba(107, 143, 113, 0.15)',
+        splitLineColor: '#E5E5E5',
+        axisLabelColor: '#777777',
+        axisLineColor: '#000000',
+        upColor: '#DC2626',
+        upColor0: 'rgba(220, 38, 38, 0.15)',
+        downColor: '#16A34A',
+        downColor0: 'rgba(22, 163, 74, 0.15)',
+        accentColor: '#2563EB',
+        accentLight: 'rgba(37, 99, 235, 0.15)',
         seriesColors: [
-            '#6B8F71', '#8FBF97', '#4A7050', '#94928A',
-            '#dd3333', '#00af00', '#D97735', '#B5B3AC'
+            '#000000', '#2563EB', '#777777', '#BBBBBB',
+            '#DC2626', '#16A34A', '#D97735', '#444444'
         ]
     };
 };
@@ -423,10 +415,10 @@ ATMTheme._updateIcon = function(theme) {
     if (!btn) return;
     if (theme === 'dark') {
         btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>';
-        btn.setAttribute('title', '切换到亮色模式');
+        btn.setAttribute('title', 'Switch to light mode');
     } else {
         btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>';
-        btn.setAttribute('title', '切换到暗色模式');
+        btn.setAttribute('title', 'Switch to dark mode');
     }
 };
 
@@ -521,58 +513,43 @@ ATMCache.api = function(url, options) {
 window.ATMRouter = window.ATMRouter || {};
 
 ATMRouter._initialized = false;
+ATMRouter._navigating = false;
 ATMRouter._isMobile = function() {
-    return window.innerWidth < 768;
+    return window.innerWidth < 640;
 };
 
 ATMRouter.init = function() {
     if (ATMRouter._initialized) return;
     ATMRouter._initialized = true;
-    
-    if (ATMRouter._isMobile()) {
-        ATMRouter._setupPrefetch();
-    }
-    
-    ATMRouter._setupPageTransition();
+
+    ATMRouter._setupNavigationCapture();
 };
 
-ATMRouter._setupPrefetch = function() {
-    var navLinks = document.querySelectorAll('.nav-link');
-    navLinks.forEach(function(link) {
-        link.addEventListener('touchstart', function(e) {
-            var href = this.getAttribute('href');
-            if (href && !href.startsWith('#')) {
-                ATMRouter._prefetch(href);
-            }
-        }, { passive: true });
-        
-        link.addEventListener('mouseenter', function(e) {
-            var href = this.getAttribute('href');
-            if (href && !href.startsWith('#')) {
-                ATMRouter._prefetch(href);
-            }
-        });
+ATMRouter._setupNavigationCapture = function() {
+    document.addEventListener('click', function(e) {
+        var link = e.target.closest('a[href]');
+        if (!link) return;
+        var href = link.getAttribute('href');
+        if (!href || href.startsWith('#') || href.startsWith('javascript') || href.startsWith('http') || href.startsWith('//')) return;
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+        e.preventDefault();
+        ATMRouter.navigate(href);
     });
 };
 
-ATMRouter._prefetch = function(url) {
-    var cacheKey = 'prefetch_' + url.replace(/[^a-zA-Z0-9]/g, '_');
-    if (ATMCache.get(cacheKey)) return;
-    
-    ATMCache.set(cacheKey, true, 60000);
-    
-    if (url.startsWith('/api/')) {
-        ATMCache.api(url, { ttl: 60000 });
-    }
+ATMRouter.navigate = function(url) {
+    if (ATMRouter._navigating) return;
+    if (url === window.location.pathname) return;
+    ATMRouter._navigating = true;
+
+    // Hard snap — zero latency, no overlay, no delay
+    window.location.href = url;
 };
 
-ATMRouter._setupPageTransition = function() {
-    document.body.classList.add('page-ready');
-    
-    if (ATMRouter._isMobile()) {
-        document.body.classList.add('page-transition');
-    }
-};
+window.addEventListener('pageshow', function() {
+    ATMRouter._navigating = false;
+});
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', ATMRouter.init);
@@ -914,11 +891,11 @@ document.addEventListener('DOMContentLoaded', function() {
 window.ATMMobile = window.ATMMobile || {};
 
 ATMMobile.isMobile = function() {
-    return window.innerWidth < 768;
+    return window.innerWidth < 640;
 };
 
 ATMMobile.isTablet = function() {
-    return window.innerWidth >= 768 && window.innerWidth < 1024;
+    return window.innerWidth >= 640 && window.innerWidth < 1024;
 };
 
 ATMMobile.isDesktop = function() {
@@ -962,7 +939,7 @@ ATMMobile.createMobileFilter = function(containerId, options) {
     var filterHtml = '<div class="mobile-filter-container">';
     filterHtml += '<button class="mobile-filter-toggle" onclick="ATMMobile.toggleFilter(\'' + containerId + '\')">';
     filterHtml += '<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>';
-    filterHtml += '<span>筛选</span>';
+    filterHtml += '<span>Filter</span>';
     filterHtml += '</button>';
     filterHtml += '<div class="mobile-filter-content" id="' + containerId + '-filter-content">';
     
@@ -986,8 +963,8 @@ ATMMobile.createMobileFilter = function(containerId, options) {
     });
     
     filterHtml += '<div class="mobile-filter-actions">';
-    filterHtml += '<button class="btn btn-secondary" onclick="ATMMobile.resetFilter(\'' + containerId + '\')">重置</button>';
-    filterHtml += '<button class="btn btn-primary" onclick="ATMMobile.applyFilter(\'' + containerId + '\')">应用</button>';
+    filterHtml += '<button class="btn btn-secondary" onclick="ATMMobile.resetFilter(\'' + containerId + '\')">Reset</button>';
+    filterHtml += '<button class="btn btn-primary" onclick="ATMMobile.applyFilter(\'' + containerId + '\')">Apply</button>';
     filterHtml += '</div>';
     filterHtml += '</div>';
     filterHtml += '</div>';
@@ -1096,7 +1073,7 @@ ATMChart.load = function() {
         return ATMChart._loaded;
     }
     ATMChart._loaded = Promise.reject(
-        new Error('ATMstockMarket: ECharts 未加载，请确认 vendor.js 已正确引入')
+        new Error('ATMstockMarket: ECharts not loaded, please verify vendor.js is properly included')
     );
     return ATMChart._loaded;
 };
@@ -1182,6 +1159,13 @@ ATMChart.initPage = function() {
     this.setupThemeHandler();
     this.setupVisibilityHandler();
 
+    /* Resize charts when a collapsed <details> is opened (e.g. chart groups) */
+    document.addEventListener('toggle', function(e) {
+        if (e.target && e.target.nodeName === 'DETAILS' && e.target.open) {
+            setTimeout(function() { ATMChart.resizeAll(); }, 50);
+        }
+    }, true);
+
     window.addEventListener('beforeunload', function() {
         ATMChart.disposeAll();
     });
@@ -1191,18 +1175,18 @@ ATMChart.getChartTheme = function() {
     return {
         backgroundColor: 'transparent',
         textStyle: {
-            fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif",
+            fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif",
             fontSize: 12,
-            color: '#5C5A55'
+            color: '#111111'
         },
         title: {
             textStyle: {
-                color: '#1A1C19',
-                fontWeight: 600,
-                fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+                color: '#000000',
+                fontWeight: 700,
+                fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
             },
             subtextStyle: {
-                color: '#94928A'
+                color: '#777777'
             }
         },
         line: {
@@ -1210,129 +1194,122 @@ ATMChart.getChartTheme = function() {
                 borderWidth: 2
             },
             lineStyle: {
-                width: 2,
-                shadowColor: 'rgba(26, 28, 25, 0.08)',
-                shadowBlur: 4,
-                shadowOffsetY: 2
+                width: 2
             },
-            symbolSize: 6,
-            symbol: 'circle',
-            smooth: true
+            symbolSize: 4,
+            symbol: 'rect',
+            smooth: false
         },
         bar: {
             itemStyle: {
-                barBorderRadius: [6, 6, 0, 0],
-                shadowColor: 'rgba(26, 28, 25, 0.06)',
-                shadowBlur: 4,
-                shadowOffsetY: 2
+                barBorderRadius: [0, 0, 0, 0]
             }
         },
         pie: {
             itemStyle: {
-                borderRadius: 6,
-                borderColor: '#F7F6F3',
+                borderRadius: 0,
+                borderColor: '#FFFFFF',
                 borderWidth: 2
             }
         },
         categoryAxis: {
             axisLine: {
                 lineStyle: {
-                    color: 'rgba(204, 201, 191, 0.5)'
+                    color: '#000000',
+                    width: 1
                 }
             },
             axisTick: {
                 lineStyle: {
-                    color: 'rgba(204, 201, 191, 0.3)'
+                    color: '#000000'
                 }
             },
             axisLabel: {
-                color: '#94928A',
-                fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+                color: '#777777',
+                fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
             },
             splitLine: {
                 lineStyle: {
-                    color: 'rgba(226, 224, 216, 0.4)'
+                    color: '#E5E5E5',
+                    type: 'solid'
                 }
             },
             splitArea: {
-                areaStyle: {
-                    color: ['rgba(107, 143, 113, 0.03)', 'rgba(143, 191, 151, 0.03)']
-                }
+                show: false
             }
         },
         valueAxis: {
             axisLine: {
                 lineStyle: {
-                    color: 'rgba(204, 201, 191, 0.5)'
+                    color: '#000000',
+                    width: 1
                 }
             },
             axisTick: {
                 lineStyle: {
-                    color: 'rgba(204, 201, 191, 0.3)'
+                    color: '#000000'
                 }
             },
             axisLabel: {
-                color: '#94928A',
-                fontFamily: "'JetBrains Mono', monospace"
+                color: '#777777',
+                fontFamily: "'IBM Plex Mono', 'JetBrains Mono', monospace"
             },
             splitLine: {
                 lineStyle: {
-                    color: 'rgba(226, 224, 216, 0.4)',
-                    type: 'dashed'
+                    color: '#E5E5E5',
+                    type: 'solid'
                 }
             },
             splitArea: {
-                areaStyle: {
-                    color: ['rgba(107, 143, 113, 0.02)', 'rgba(143, 191, 151, 0.02)']
-                }
+                show: false
             }
         },
         tooltip: {
-            backgroundColor: 'rgba(42, 45, 40, 0.94)',
-            borderColor: 'rgba(58, 61, 53, 0.5)',
+            backgroundColor: '#FFFFFF',
+            borderColor: '#000000',
             borderWidth: 1,
             textStyle: {
-                color: '#E8E6E1',
-                fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+                color: '#000000',
+                fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
             },
-            extraCssText: 'border-radius: 12px; box-shadow: 0 4px 12px rgba(26, 28, 25, 0.12);'
+            extraCssText: 'border-radius:0;box-shadow:none;'
         },
         legend: {
             textStyle: {
-                color: '#5C5A55',
-                fontFamily: "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+                color: '#444444',
+                fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
             },
             pageTextStyle: {
-                color: '#94928A'
+                color: '#777777'
             }
         },
         color: [
-            '#6B8F71',
-            '#8FBF97',
-            '#4A7050',
+            '#000000',
+            '#2563EB',
+            '#777777',
+            '#BBBBBB',
+            '#DC2626',
+            '#16A34A',
             '#D97735',
-            '#B5B3AC',
-            '#94928A',
-            '#D4A574',
-            '#7BA882',
-            '#E5C9A8',
-            '#CCC9BF'
+            '#444444',
+            '#999999',
+            '#CCCCCC'
         ],
         watercolorColors: {
-            blue: '#6B8F71',
-            blueLight: '#8FBF97',
-            green: '#4A7050',
-            greenLight: '#7BA882',
+            blue: '#000000',
+            blueLight: '#444444',
+            green: '#2563EB',
+            greenLight: '#3B82F6',
             terracotta: '#D97735',
-            terracottaLight: '#E5C9A8',
-            lavender: '#B5B3AC',
-            lavenderLight: '#CCC9BF',
-            peach: '#D4A574',
-            peachLight: '#E5C9A8',
-            up: '#dd3333',
-            upLight: '#E8A09A',
-            down: '#00af00',
-            downLight: '#9DC9A8'
+            terracottaLight: '#E8A075',
+            lavender: '#777777',
+            lavenderLight: '#999999',
+            peach: '#DC2626',
+            peachLight: '#EF4444',
+            up: '#DC2626',
+            upLight: '#EF4444',
+            down: '#16A34A',
+            downLight: '#22C55E'
         }
     };
 };
@@ -1345,7 +1322,7 @@ ATMChart.getResponsiveHeight = function(baseHeight) {
     
     if (width < 480) {
         return Math.min(baseHeight * 0.7, 280);
-    } else if (width < 768) {
+    } else if (width < 640) {
         return Math.min(baseHeight * 0.85, 350);
     } else if (width < 1024) {
         return Math.min(baseHeight * 0.9, 400);
@@ -1358,7 +1335,7 @@ ATMChart.getResponsiveFontSize = function(baseSize) {
     
     if (width < 480) {
         return Math.max(baseSize * 0.85, 10);
-    } else if (width < 768) {
+    } else if (width < 640) {
         return Math.max(baseSize * 0.9, 11);
     }
     return baseSize;
@@ -1366,7 +1343,7 @@ ATMChart.getResponsiveFontSize = function(baseSize) {
 
 ATMChart.getResponsiveOption = function(option, containerId) {
     var width = window.innerWidth;
-    var isMobile = width < 768;
+    var isMobile = width < 640;
     var isSmallMobile = width < 480;
     
     var responsiveOption = JSON.parse(JSON.stringify(option));

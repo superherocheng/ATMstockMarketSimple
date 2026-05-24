@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>指数ETF分析 - ATMstockMarket</title>
+    <title>Index ETF - ATM</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="/static/css/app.css">
     <script defer src="/static/js/vendor.js"></script>
@@ -19,31 +19,43 @@
     <style>
         @media (max-width: 640px) {
             .etf-info-grid { flex-direction: column; gap: 0.75rem; }
-            .etf-stats { flex-wrap: wrap; gap: 0.75rem !important; }
+            .etf-stats { flex-wrap: wrap; gap: 0.5rem !important; }
+            .etf-stats > div { flex: 1 1 45%; }
         }
     </style>
 </head>
 <body class="min-h-screen">
-    <nav>
-      <div class="nav-container">
-        <a href="/" class="nav-logo">
-          <span class="nav-logo-icon">AM</span>
-          ATMstockMarket
-        </a>
-        <div class="nav-links" id="nav-links">
-          <a href="/" class="nav-link">首页</a>
-          <a href="/etf" class="nav-link active">指数ETF</a>
-          <a href="/sector" class="nav-link">行业ETF</a>
-          <a href="/analysis" class="nav-link">可视化分析</a>
-          
-        </div>
-        <button class="mobile-menu-btn" onclick="document.getElementById('nav-links').classList.toggle('open')" aria-label="菜单">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M0 3h20v2H0V3zm0 6h20v2H0V9zm0 6h20v2H0v-2z"/></svg>
-        </button>
-      </div>
-    </nav>
 
-    <div id="freshness-bar" class="freshness-bar"></div>
+    <div class="tablet-topbar">
+        <div class="tablet-topbar-logo"><a href="/">ATMstockMarket</a></div>
+        <nav class="tablet-topbar-nav">
+            <a href="/">Home</a>
+            <a href="/etf" class="active">Index ETF</a>
+            <a href="/sector">Sector ETF</a>
+            <a href="/analysis">Analysis</a>
+        </nav>
+    </div>
+
+    <div class="page-layout">
+    <aside class="sidebar-nav">
+        <div class="sidebar-logo">
+            <a href="/">ATMstockMarket</a>
+            <div class="sidebar-logo-sub">A-Share Market Analysis</div>
+        </div>
+        <div class="sidebar-nav-section">
+            <div class="sidebar-nav-label">Navigation</div>
+            <nav class="sidebar-nav-links">
+                <a href="/" class="sidebar-nav-link">Home</a>
+                <a href="/etf" class="sidebar-nav-link active">Index ETF</a>
+                <a href="/sector" class="sidebar-nav-link">Sector ETF</a>
+                <a href="/analysis" class="sidebar-nav-link">Analysis</a>
+            </nav>
+        </div>
+        <div class="sidebar-nav-footer">
+            <p>Data Source</p>
+            <span>Tushare · AKShare</span>
+        </div>
+    </aside>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 stagger-children">
 
@@ -61,105 +73,102 @@
                     data-code="588000.SH" onclick="switchETF(this)">科创50ETF</button>
         </div>
 
-        <div id="etf-info" class="glass rounded-xl p-4 sm:p-6">
+        <div id="etf-info" class="glass p-4 sm:p-6">
             <div class="flex items-center justify-between etf-info-grid">
                 <div>
                     <span id="etf-name" class="text-xl font-bold">沪深300ETF</span>
                     <span id="etf-code" class="text-sm ml-2" style="color:var(--c-text-tertiary);">510300.SH</span>
                 </div>
                 <div class="flex gap-4 sm:gap-6 text-sm etf-stats">
-                    <div><span style="color:var(--c-text-tertiary);">最新价(元)</span> <span id="etf-price" class="text-xl font-bold ml-1 num-mono font-mono">--</span></div>
-                    <div><span style="color:var(--c-text-tertiary);">涨跌幅</span> <span id="etf-pct" class="text-xl font-bold ml-1 num-mono font-mono">--</span></div>
-                    <div><span style="color:var(--c-text-tertiary);">成交额(万)</span> <span id="etf-vol" class="text-xl font-bold ml-1 num-mono font-mono">--</span></div>
+                    <div><span style="color:var(--c-text-tertiary);">Latest Price (CNY)</span> <span id="etf-price" class="text-xl font-bold ml-1 num-mono font-mono">--</span></div>
+                    <div><span style="color:var(--c-text-tertiary);">Change %</span> <span id="etf-pct" class="text-xl font-bold ml-1 num-mono font-mono">--</span></div>
+                    <div><span style="color:var(--c-text-tertiary);">Turnover (10K)</span> <span id="etf-vol" class="text-xl font-bold ml-1 num-mono font-mono">--</span></div>
                 </div>
             </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="glass rounded-xl p-4 sm:p-6">
-                <div class="flex items-center justify-between mb-4">
+            <div class="glass p-4 sm:p-6">
+                <div class="flex items-center justify-between mb-4 border-b border-black pb-3">
                     <h3 class="flex items-center gap-3 text-base font-semibold">
-                        <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                        K线走势
-                        <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">红色标记 = 异常涨跌幅</span>
+                        K-Line Trend
+                        <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">Red markers = Abnormal price changes</span>
                     </h3>
                     <div class="flex gap-1.5">
-                        <button class="range-btn active" data-days="60" onclick="setDateRange(this, 60)">3月</button>
-                        <button class="range-btn" data-days="120" onclick="setDateRange(this, 120)">6月</button>
-                        <button class="range-btn" data-days="250" onclick="setDateRange(this, 250)">1年</button>
-                        <button class="range-btn" data-days="0" onclick="setDateRange(this, 0)">全部</button>
+                        <button class="range-btn active" data-days="60" onclick="setDateRange(this, 60)">3M</button>
+                        <button class="range-btn" data-days="120" onclick="setDateRange(this, 120)">6M</button>
+                        <button class="range-btn" data-days="250" onclick="setDateRange(this, 250)">1Y</button>
+                        <button class="range-btn" data-days="0" onclick="setDateRange(this, 0)">All</button>
                     </div>
                 </div>
-                <div id="kline-chart" class="chart-main" style="height: 380px;">
-                    <div class="skeleton skeleton-chart"></div>
+                <div id="kline-chart" class="chart-main">
+                    <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                 </div>
             </div>
 
-            <div class="glass rounded-xl p-4 sm:p-6">
-                <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
-                    <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                    份额实际值
-                    <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">折线：120日绝对值 &nbsp; 柱状：每日变化ZSCORE</span>
+            <div class="glass p-4 sm:p-6">
+                <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
+                    Share Value
+                    <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">Line: 120-day absolute value &nbsp; Bar: Daily Z-Score</span>
                 </h3>
-                <div id="share-value-chart" class="chart-sub" style="height: 380px;">
-                    <div class="skeleton skeleton-chart"></div>
+                <div id="share-value-chart" class="chart-sub">
+                    <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                 </div>
             </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="glass rounded-xl p-4 sm:p-6">
-                <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
-                    <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                    份额异常事件
-                    <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">超过2倍标准差</span>
+            <div class="glass p-4 sm:p-6">
+                <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
+                    Share Anomaly Events
+                    <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">Exceeds 2x standard deviation</span>
                 </h3>
                 <div id="share-anomalies" class="space-y-2 text-sm">
-                    <div class="skeleton skeleton-text"><span class="spinner inline-block mr-2"></span></div>
+                    <div class="hard-skeleton hard-skeleton-sm"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                 </div>
             </div>
 
-            <div class="glass rounded-xl p-4 sm:p-6">
-                <h3 class="flex items-center gap-3 text-base font-semibold mb-4">
-                    <span class="w-1 h-5 rounded" style="background:var(--c-accent);"></span>
-                    近10日份额变化标准差
-                    <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">统计近10个交易日</span>
+            <div class="glass p-4 sm:p-6">
+                <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
+                    10-Day Share Change Std Dev
+                    <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">Last 10 trading days</span>
                 </h3>
                 <div id="share-std-card" class="space-y-3">
-                    <div class="skeleton skeleton-text"><span class="spinner inline-block mr-2"></span></div>
+                    <div class="hard-skeleton hard-skeleton-sm"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                 </div>
             </div>
         </div>
     </main>
+    </div><!-- /page-layout -->
 
     <footer>
-        <p>ATMstockMarket — 数据来源: Tushare / AKShare | 仅供学习研究，不构成投资建议</p>
+        <p>ATMstockMarket — Data Source: Tushare / AKShare | For educational purposes only, not investment advice</p>
     </footer>
 
-    <div class="bottom-nav" role="navigation" aria-label="主导航">
-      <a href="/" class="bottom-nav-item" aria-label="首页">
+    <div class="bottom-nav" role="navigation" aria-label="Main navigation">
+      <a href="/" class="bottom-nav-item" aria-label="Home">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
         </span>
-        <span class="bottom-nav-label">首页</span>
+        <span class="bottom-nav-label">Home</span>
       </a>
-      <a href="/etf" class="bottom-nav-item active" aria-label="指数ETF">
+      <a href="/etf" class="bottom-nav-item active" aria-label="Index ETF">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
         </span>
-        <span class="bottom-nav-label">指数ETF</span>
+        <span class="bottom-nav-label">Index ETF</span>
       </a>
-      <a href="/sector" class="bottom-nav-item" aria-label="行业ETF">
+      <a href="/sector" class="bottom-nav-item" aria-label="Sector ETF">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
         </span>
-        <span class="bottom-nav-label">行业ETF</span>
+        <span class="bottom-nav-label">Sector ETF</span>
       </a>
-      <a href="/analysis" class="bottom-nav-item" aria-label="可视化分析">
+      <a href="/analysis" class="bottom-nav-item" aria-label="Analysis">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
         </span>
-        <span class="bottom-nav-label">分析</span>
+        <span class="bottom-nav-label">Analysis</span>
       </a>
     </div>
 
@@ -200,7 +209,7 @@
             renderAnomalies(data);
             loadShareStd(code);
         } catch(e) {
-            console.error('加载失败:', e);
+            console.error('Loading failed:', e);
         }
     }
 
@@ -210,8 +219,8 @@
             var data = await resp.json();
             renderShareStd(data);
         } catch(e) {
-            console.error('加载份额标准差失败:', e);
-            document.getElementById('share-std-card').innerHTML = '<div style="color:var(--c-text-tertiary);">加载失败</div>';
+            console.error('Loading share std dev failed:', e);
+            document.getElementById('share-std-card').innerHTML = '<div style="color:var(--c-text-tertiary);">Loading failed</div>';
         }
     }
 
@@ -226,7 +235,7 @@
             var pctEl = document.getElementById('etf-pct');
             pctEl.textContent = ATM.pctText(pct);
             pctEl.style.color = ATM.pctColor(pct);
-            document.getElementById('etf-vol').textContent = ATM.formatNum((parseFloat(last.amount || 0) / 10000).toFixed(0), 0) + '万';
+            document.getElementById('etf-vol').textContent = ATM.formatNum((parseFloat(last.amount || 0) / 10000).toFixed(0), 0) + '0K';
         } else {
             document.getElementById('etf-price').textContent = '--';
             document.getElementById('etf-pct').textContent = '--';
@@ -245,9 +254,11 @@
             kline = kline.slice(-_dateRangeDays);
         }
         if (kline.length === 0) {
-            el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--c-text-tertiary);">暂无K线数据</div>';
+            el.innerHTML = '<div class="hard-skeleton"><span class="hard-skeleton-text">[ NO K-LINE DATA ]</span></div>';
             return;
         }
+        // Defer heavy ECharts init to next frame
+        requestAnimationFrame(function() {
         klineChart = echarts.init(el);
 
         var th = ATM.getChartTheme();
@@ -277,7 +288,7 @@
             backgroundColor: 'transparent',
             textStyle: th.textStyle,
             title: {
-                text: 'K线走势',
+                text: 'K-Line Trend',
                 left: '3%',
                 top: '2%',
                 textStyle: {
@@ -296,7 +307,7 @@
                     params.forEach(function(p) {
                         var val = p.value;
                         if (Array.isArray(val)) {
-                            result += p.marker + ' 开盘: ' + val[1].toFixed(2) + ', 收盘: ' + val[2].toFixed(2) + ', 最低: ' + val[3].toFixed(2) + ', 最高: ' + val[4].toFixed(2) + '<br/>';
+                            result += p.marker + ' Open: ' + val[1].toFixed(2) + ', Close: ' + val[2].toFixed(2) + ', Low: ' + val[3].toFixed(2) + ', High: ' + val[4].toFixed(2) + '<br/>';
                         } else {
                             result += p.marker + ' ' + p.seriesName + ': ' + val + '%<br/>';
                         }
@@ -305,7 +316,7 @@
                 }
             },
             legend: { 
-                data: ['K线', '成交量百分位'], 
+                data: ['K-Line', 'Volume Percentile'],
                 textStyle: th.legend.textStyle,
                 top: '2%',
                 right: '3%',
@@ -329,12 +340,12 @@
             ],
             series: [
                 {
-                    name: 'K线', type: 'candlestick', data: ohlc, xAxisIndex: 0, yAxisIndex: 0,
+                    name: 'K-Line', type: 'candlestick', data: ohlc, xAxisIndex: 0, yAxisIndex: 0,
                     itemStyle: { color: th.upColor, color0: th.downColor, borderColor: th.upColor, borderColor0: th.downColor },
                     markPoint: { data: markPoints, symbol: 'pin', symbolSize: 30, label: { show: false } }
                 },
                 {
-                    name: '成交量百分位', type: 'bar',
+                    name: 'Volume Percentile', type: 'bar',
                     data: volPercentiles.map(function(pct, i) {
                         return {
                             value: pct,
@@ -346,6 +357,7 @@
                 }
             ]
         }, true);
+        }); // end requestAnimationFrame
     }
 
     // 份额实际值图表：过去120天折线(绝对值) + 每日变化ZSCORE柱状
@@ -354,6 +366,8 @@
         if (shareDetailChart && !shareDetailChart.isDisposed()) shareDetailChart.dispose();
         el.innerHTML = '';
         if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
+        // Defer heavy ECharts init to next frame
+        requestAnimationFrame(function() {
         shareDetailChart = echarts.init(el);
         var th = ATM.getChartTheme();
 
@@ -361,7 +375,7 @@
         if (shares.length === 0) {
             shareDetailChart.setOption({
                 backgroundColor: 'transparent',
-                title: { text: '暂无份额数据', left: 'center', top: 'center', textStyle: { color: th.axisLabelColor, fontSize: 14, fontWeight: 'normal' } }
+                title: { text: 'No share data available', left: 'center', top: 'center', textStyle: { color: th.axisLabelColor, fontSize: 14, fontWeight: 'normal' } }
             }, true);
             return;
         }
@@ -416,14 +430,14 @@
                             var zcolor = zv > 0 ? th.upColor : zv < 0 ? th.downColor : '#888';
                             tip += p.marker + ' ' + p.seriesName + ': <span style="color:' + zcolor + ';font-weight:bold;">' + (zv > 0 ? '+' : '') + zv.toFixed(2) + 'σ</span><br/>';
                         } else {
-                            tip += p.marker + ' ' + p.seriesName + ': ' + p.value.toFixed(2) + ' 亿份<br/>';
+                            tip += p.marker + ' ' + p.seriesName + ': ' + p.value.toFixed(2) + ' 100M shares<br/>';
                         }
                     });
                     return tip;
                 }
             },
             legend: {
-                data: ['份额绝对值(120日)', '份额变化ZSCORE'],
+                data: ['Share Value (120-day)', 'Share Change Z-Score'],
                 textStyle: th.legend.textStyle
             },
             grid: { left: '10%', right: '8%', top: '15%', bottom: '15%' },
@@ -436,7 +450,7 @@
             yAxis: [
                 {
                     type: 'value',
-                    name: '亿份',
+                    name: '100M shares',
                     nameTextStyle: { color: th.axisLabelColor, fontSize: 10 },
                     axisLabel: { color: th.axisLabelColor, formatter: '{value}' },
                     splitLine: { lineStyle: { color: th.splitLineColor } }
@@ -456,26 +470,17 @@
             ],
             series: [
                 {
-                    name: '份额绝对值(120日)',
+                    name: 'Share Value (120-day)',
                     type: 'line',
                     yAxisIndex: 0,
                     data: values,
-                    smooth: true,
+                    smooth: false,
                     showSymbol: false,
-                    lineStyle: { width: 2, color: '#6B8F71' },
-                    areaStyle: {
-                        color: {
-                            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-                            colorStops: [
-                                { offset: 0, color: '#6B8F7144' },
-                                { offset: 1, color: '#6B8F7108' }
-                            ]
-                        }
-                    },
+                    lineStyle: { width: 2, color: '#000000' },
                     z: 1
                 },
                 {
-                    name: '份额变化ZSCORE',
+                    name: 'Share Change Z-Score',
                     type: 'bar',
                     yAxisIndex: 1,
                     data: zscores.map(function(z) {
@@ -493,6 +498,7 @@
                 }
             ]
         }, true);
+        }); // end requestAnimationFrame
     }
 
     function renderAnomalies(data) {
@@ -500,18 +506,18 @@
         var shareAnom = (data.anomalies && data.anomalies.share) || [];
 
         if (shareAnom.length === 0) {
-            shareEl.innerHTML = '<div style="color:var(--c-text-tertiary);">暂无份额异常事件</div>';
+            shareEl.innerHTML = '<div style="color:var(--c-text-tertiary);">No share anomalies</div>';
         } else {
             shareEl.innerHTML = shareAnom.slice(-10).reverse().map(function(a) {
                 var chgPct = parseFloat(a.chg_pct || 0);
                 var zScore = parseFloat(a.z_score || 0);
                 var clr = chgPct >= 0 ? 'var(--c-up)' : 'var(--c-down)';
                 var sign = chgPct >= 0 ? '+' : '';
-                return '<div class="flex items-center justify-between glass rounded px-3 py-2">' +
+                return '<div class="flex items-center justify-between glass px-3 py-2">' +
                     '<span><span class="pulse-dot"></span> ' + a.trade_date + '</span>' +
                     '<div class="flex items-center gap-3">' +
                         '<span class="font-bold num-mono font-mono" style="color:' + clr + '">' + sign + chgPct.toFixed(2) + '%</span>' +
-                        '<span class="text-xs num-mono font-mono px-1.5 py-0.5 rounded" style="background:var(--c-accent-bg);color:var(--c-accent);">' + zScore.toFixed(1) + 'σ</span>' +
+                        '<span class="text-xs num-mono font-mono px-1.5 py-0.5" style="background:var(--c-accent-bg);color:var(--c-accent);border:1px solid var(--c-accent);">' + zScore.toFixed(1) + 'σ</span>' +
                     '</div></div>';
             }).join('');
         }
@@ -526,7 +532,7 @@
         var el = document.getElementById('share-std-card');
         
         if (data.error) {
-            el.innerHTML = '<div style="color:var(--c-text-tertiary);">数据不足</div>';
+            el.innerHTML = '<div style="color:var(--c-text-tertiary);">Insufficient data</div>';
             return;
         }
 
@@ -538,79 +544,78 @@
         var negativeDays = data.negative_days;
 
         var zScoreColor = '#888';
-        var zScoreLabel = '正常';
+        var zScoreLabel = 'Normal';
         if (Math.abs(zScore) >= 2) {
             zScoreColor = zScore > 0 ? 'var(--c-up)' : 'var(--c-down)';
-            zScoreLabel = zScore > 0 ? '显著增加' : '显著减少';
+            zScoreLabel = zScore > 0 ? 'Significant Increase' : 'Significant Decrease';
         } else if (Math.abs(zScore) >= 1) {
             zScoreColor = zScore > 0 ? '#10b981' : '#f59e0b';
-            zScoreLabel = zScore > 0 ? '小幅增加' : '小幅减少';
+            zScoreLabel = zScore > 0 ? 'Slight Increase' : 'Slight Decrease';
         }
 
         var latestChangeColor = latestChange >= 0 ? 'var(--c-up)' : 'var(--c-down)';
         var totalChangeColor = totalChange >= 0 ? 'var(--c-up)' : 'var(--c-down)';
         
-        var direction = latestChange >= 0 ? '↑ 流入' : '↓ 流出';
+        var direction = latestChange >= 0 ? '↑ Inflow' : '↓ Outflow';
         var directionColor = latestChange >= 0 ? 'var(--c-up)' : 'var(--c-down)';
 
         var zScoreInterpretation = '';
         if (zScore > 1.5) {
-            zScoreInterpretation = '变化显著偏大';
+            zScoreInterpretation = 'Change significantly high';
         } else if (zScore < -1.5) {
-            zScoreInterpretation = '变化显著偏小';
+            zScoreInterpretation = 'Change significantly low';
         } else if (zScore > 0.5) {
-            zScoreInterpretation = '变化偏大';
+            zScoreInterpretation = 'Change above normal';
         } else if (zScore < -0.5) {
-            zScoreInterpretation = '变化偏小';
+            zScoreInterpretation = 'Change below normal';
         } else {
-            zScoreInterpretation = '变化正常';
+            zScoreInterpretation = 'Change normal';
         }
 
-        el.innerHTML = 
-            '<div class="space-y-3">' +
-                '<div class="p-3 rounded text-center" style="background:' + (latestChange >= 0 ? '#ecfdf5' : '#fef2f2') + ';">' +
-                    '<div class="text-xs" style="color:var(--c-text-tertiary);">最新份额变化 <span class="font-mono">(' + fmtDate(data.latest_date) + ')</span></div>' +
-                    '<div class="flex items-center justify-center gap-2 mt-1">' +
+        el.innerHTML =
+            '<div class="space-y-0">' +
+                '<div class="p-3 border-b border-black text-center">' +
+                    '<div class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--c-text-tertiary);">Latest Share Change <span class="font-mono">' + fmtDate(data.latest_date) + '</span></div>' +
+                    '<div class="flex items-center justify-center gap-3 mt-1">' +
                         '<span class="text-2xl font-bold num-mono font-mono" style="color:' + directionColor + '">' +
                             (latestChange >= 0 ? '+' : '') + latestChange.toFixed(4) + '%' +
                         '</span>' +
-                        '<span class="text-sm font-medium px-2 py-1 rounded" style="background:' + directionColor + '22;color:' + directionColor + ';">' +
+                        '<span class="text-xs font-bold px-2 py-1 border" style="color:' + directionColor + ';border-color:' + directionColor + ';">' +
                             direction +
                         '</span>' +
                     '</div>' +
-                    '<div class="text-xs mt-2" style="color:var(--c-text-tertiary);">Z-Score: <span style="color:' + zScoreColor + ';font-weight:bold;">' + (zScore >= 0 ? '+' : '') + zScore.toFixed(2) + 'σ</span> (' + zScoreInterpretation + ')</div>' +
+                    '<div class="text-[10px] mt-2 font-mono" style="color:var(--c-text-tertiary);">Z-Score: <span style="color:' + zScoreColor + ';font-weight:bold;">' + (zScore >= 0 ? '+' : '') + zScore.toFixed(2) + 'σ</span> · ' + zScoreInterpretation + '</div>' +
                 '</div>' +
-                '<div class="flex items-center justify-between p-3 rounded" style="background:#f9fafb;">' +
+                '<div class="flex items-center justify-between p-3 border-b border-black">' +
                     '<div>' +
-                        '<div class="text-xs" style="color:var(--c-text-tertiary);">Z-Score</div>' +
+                        '<div class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--c-text-tertiary);">Z-Score</div>' +
                         '<div class="text-lg font-bold num-mono font-mono" style="color:' + zScoreColor + '">' +
                             (zScore >= 0 ? '+' : '') + zScore.toFixed(2) + 'σ' +
                         '</div>' +
-                        '<div class="text-xs mt-1" style="color:' + zScoreColor + ';">' + zScoreInterpretation + '</div>' +
                     '</div>' +
                     '<div class="text-right">' +
-                        '<div class="text-xs" style="color:var(--c-text-tertiary);">10日累计变化</div>' +
+                        '<div class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--c-text-tertiary);">10-Day Cumulative</div>' +
                         '<div class="text-lg font-bold num-mono font-mono" style="color:' + totalChangeColor + '">' +
                             (totalChange >= 0 ? '+' : '') + totalChange.toFixed(4) + '%' +
                         '</div>' +
                     '</div>' +
                 '</div>' +
-                '<div class="grid grid-cols-2 gap-2 text-xs">' +
-                    '<div class="p-2 rounded" style="background:#ecfdf5;">' +
-                        '<div style="color:#6b7280;">增加天数</div>' +
-                        '<div class="font-bold" style="color:#059669;">' + positiveDays + ' 天</div>' +
+                '<div class="grid grid-cols-2 text-xs">' +
+                    '<div class="p-2 border-b border-r border-black">' +
+                        '<div class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--c-text-tertiary);">Increase Days</div>' +
+                        '<div class="font-bold" style="color:var(--c-down);">' + positiveDays + ' days</div>' +
                     '</div>' +
-                    '<div class="p-2 rounded" style="background:#fef3c7;">' +
-                        '<div style="color:#6b7280;">减少天数</div>' +
-                        '<div class="font-bold" style="color:#d97706;">' + negativeDays + ' 天</div>' +
+                    '<div class="p-2 border-b border-black">' +
+                        '<div class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--c-text-tertiary);">Decrease Days</div>' +
+                        '<div class="font-bold" style="color:var(--c-up);">' + negativeDays + ' days</div>' +
                     '</div>' +
-                    '<div class="p-2 rounded" style="background:#f0f9ff;">' +
-                        '<div style="color:#6b7280;">最大增幅</div>' +
-                        '<div class="font-bold" style="color:#0284c7;">' + (data.max_change >= 0 ? '+' : '') + data.max_change.toFixed(4) + '%</div>' +
+                    '<div class="p-2 border-r border-black">' +
+                        '<div class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--c-text-tertiary);">Max Increase</div>' +
+                        '<div class="font-bold" style="color:var(--c-down);">' + (data.max_change >= 0 ? '+' : '') + data.max_change.toFixed(4) + '%</div>' +
                     '</div>' +
-                    '<div class="p-2 rounded" style="background:#fef2f2;">' +
-                        '<div style="color:#6b7280;">最大降幅</div>' +
-                        '<div class="font-bold" style="color:#dc2626;">' + (data.min_change >= 0 ? '+' : '') + data.min_change.toFixed(4) + '%</div>' +
+                    '<div class="p-2">' +
+                        '<div class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--c-text-tertiary);">Max Decrease</div>' +
+                        '<div class="font-bold" style="color:var(--c-up);">' + (data.min_change >= 0 ? '+' : '') + data.min_change.toFixed(4) + '%</div>' +
                     '</div>' +
                 '</div>' +
             '</div>';
@@ -640,7 +645,10 @@
         if (shareDetailChart && !shareDetailChart.isDisposed()) shareDetailChart.dispose();
     });
 
-    loadData(currentCode);
+    // Defer data fetch one frame so skeleton paints first
+    requestAnimationFrame(function() {
+        loadData(currentCode);
+    });
     window.__atmPageReady();
     
     // Expose for inline onclick attributes

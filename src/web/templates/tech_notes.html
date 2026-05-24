@@ -1,20 +1,20 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>技术说明 - ATMstockMarket</title>
+    <title>Tech Notes - ATM</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="/static/css/app.css">
     <script defer src="/static/js/vendor.js"></script>
     <script defer src="/static/js/app.js"></script>
     <style>
-    .tech-section { background:var(--c-card); border-radius:var(--radius-md); padding:20px 24px; margin-bottom:16px; border:1px solid var(--c-border-light); }
+    .tech-section { background:var(--c-card); border-radius:var(--radius-md); padding:20px 24px; margin-bottom:16px; border:1px solid var(--c-border); }
     .tech-section h3 { font-size:15px; font-weight:700; color:var(--c-accent-dark); margin:0 0 12px; display:flex; align-items:center; gap:8px; }
     .tech-section h3 .icon { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:6px; font-size:14px; }
     .tech-section p, .tech-section li { font-size:13px; line-height:1.8; color:var(--c-text-secondary); }
@@ -29,184 +29,220 @@
     </script>
 </head>
 <body class="min-h-screen">
-    <nav>
-      <div class="nav-container">
-        <a href="/" class="nav-logo">
-          <span class="nav-logo-icon">AM</span>
-          ATMstockMarket
-        </a>
-        <div class="nav-links" id="nav-links">
-          <a href="/" class="nav-link">首页</a>
-          <a href="/etf" class="nav-link">指数ETF</a>
-          <a href="/sector" class="nav-link">行业ETF</a>
-          <a href="/analysis" class="nav-link active">可视化分析</a>
-          
-        </div>
-        <button class="mobile-menu-btn" onclick="document.getElementById('nav-links').classList.toggle('open')" aria-label="菜单">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M0 3h20v2H0V3zm0 6h20v2H0V9zm0 6h20v2H0v-2z"/></svg>
-        </button>
-      </div>
-    </nav>
 
-    <div id="freshness-bar" class="freshness-bar"></div>
+    <div class="tablet-topbar">
+        <div class="tablet-topbar-logo"><a href="/">ATMstockMarket</a></div>
+        <nav class="tablet-topbar-nav">
+            <a href="/">Home</a>
+            <a href="/etf">Index ETF</a>
+            <a href="/sector">Sector ETF</a>
+            <a href="/analysis" class="active">Analysis</a>
+        </nav>
+    </div>
+
+    <div class="page-layout">
+    <aside class="sidebar-nav">
+        <div class="sidebar-logo">
+            <a href="/">ATMstockMarket</a>
+            <div class="sidebar-logo-sub">A-Share Market Analysis</div>
+        </div>
+        <div class="sidebar-nav-section">
+            <div class="sidebar-nav-label">Navigation</div>
+            <nav class="sidebar-nav-links">
+                <a href="/" class="sidebar-nav-link">Home</a>
+                <a href="/etf" class="sidebar-nav-link">Index ETF</a>
+                <a href="/sector" class="sidebar-nav-link">Sector ETF</a>
+                <a href="/analysis" class="sidebar-nav-link active">Analysis</a>
+            </nav>
+        </div>
+        <div class="sidebar-nav-footer">
+            <p>Data Source</p>
+            <span>Tushare · AKShare</span>
+        </div>
+    </aside>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-8">
 
-        <a href="/analysis" class="back-link">&larr; 返回可视化分析</a>
+        <a href="/analysis" class="back-link">&larr; Back to Analysis</a>
 
-        <h2 style="font-size:20px;font-weight:700;color:#5a6f5a;margin-bottom:20px;">可视化分析 &mdash; 技术说明</h2>
+        <h2 style="font-size:20px;font-weight:700;color:#5a6f5a;margin-bottom:20px;">Analysis &mdash; Technical Notes</h2>
 
         <!-- Factor Construction -->
         <div class="tech-section">
-            <h3><span class="icon" style="background:#e8f5e8;">&#9881;</span> 因子构建方法</h3>
-            <p>本系统采用<strong>五因子四象限模型</strong>（V5升级），对行业ETF进行截面分析。将RSRS阻力支撑强度、资金流向（Flow）、价格动量（Momentum）、财务质量（F_Quality）和日内效率（IntEff）五个维度标准化后，加权组合为复合因子。</p>
+            <h3><span class="icon" style="background:#e8f5e8;">&#9881;</span> Factor Construction Method</h3>
+            <p>This system uses a <strong>Five-Factor Quadrant Model</strong> (V5 upgrade) for cross-sectional analysis of sector ETFs. It standardizes five dimensions — RSRS resistance/support strength, capital flow (Flow), price momentum (Momentum), financial quality (F_Quality), and intraday efficiency (IntEff) — then combines them into a composite factor using weighted averaging.</p>
             <ul>
-                <li><strong>RSRS因子 (Resistance Support Relative Strength)</strong>：对ETF每日高点和低点做OLS回归（β &times; R²），衡量支撑/阻力结构稳定度。正值表示趋势结构稳定，负值表示结构不稳定。</li>
-                <li><strong>资金流因子 (Flow)</strong>：对ETF份额数据做EWMA加权回归斜率（半衰期3天），然后用tanh压缩到[-1,1]。正值为资金流入，负值为流出。</li>
-                <li><strong>动量因子 (Momentum)</strong>：计算过去M日价格收益率，除以同期波动率（60日）进行风险调整。</li>
-                <li><strong>财务质量因子 (F_Quality)</strong>：综合行业成分股的ROE、PB估值分位（反向）、盈利增速三个基本面维度，流通市值加权合成。详见下方财务质量因子说明。</li>
-                <li><strong>日内效率因子 (IntEff)</strong>：基于OHLC代理的日内价格方向性指标，衡量趋势流畅度。高IntEff=单边趋势强、噪音低；低IntEff=震荡折返多。详见下方日内效率因子说明。</li>
+                <li><strong>RSRS Factor (Resistance Support Relative Strength)</strong>: OLS regression of daily highs and lows (&beta; &times; R&sup2;), measuring support/resistance structural stability. Positive values indicate stable trend structure; negative values indicate unstable structure.</li>
+                <li><strong>Flow Factor</strong>: EWMA-weighted regression slope on ETF share data (half-life 3 days), then cross-sectional Rank standardization. Positive = capital inflow; negative = outflow.</li>
+                <li><strong>Momentum Factor</strong>: Price return over the past M days, divided by the same-period volatility (60-day) for risk adjustment.</li>
+                <li><strong>Financial Quality Factor (F_Quality)</strong>: Combines three fundamental dimensions — ROE, PB valuation percentile (inverted), and earnings growth — of industry constituent stocks, using circulating market-cap weighted synthesis. See financial quality factor section below.</li>
+                <li><strong>Intraday Efficiency Factor (IntEff)</strong>: Calculates daily price efficiency from OHLC proxy (Eff = net daily change / intraday path length), then takes the long-short EWMA difference on the 5-day SMA of Eff. Measures <strong>momentum changes in efficiency levels</strong>: positive values indicate improving efficiency (trend strengthening), negative values indicate declining efficiency (trend weakening / transitioning to oscillation). See intraday efficiency factor section below.</li>
             </ul>
             <div class="tech-formula">
-                RSRS = &beta; &times; R&sup2; (High ~ Low, OLS回归, N日窗口)<br>
-                Flow = tanh(EWMA_Slope(份额, N日) &times; 3)<br>
-                Mom = Return(M日) / Std(日收益率, 60日)<br>
-                IntEff = EWMA_short(Eff_5) - EWMA_long(Eff_20)<br>
+                RSRS = &beta; &times; R&sup2; (High ~ Low, OLS regression, N-day window)<br>
+                Flow = EWMA_Slope(shares, N days) &rarr; Rank standardization<br>
+                Mom = Return(M days) / Std(daily returns, 60 days)<br>
+                Eff = |Close(t)-Close(t-1)| / [(High-Low) + |Close-Open|] (OHLC proxy)<br>
+                IntEff = EWMA_short(SMA_5(Eff)) - EWMA_long(SMA_5(Eff))<br>
                 <br>
-                复合因子 = 0.20&times;Z(RSRS) + 0.20&times;Z(Flow) + 0.20&times;Z(Mom) + 0.20&times;Z(F_Quality) + 0.20&times;Z(IntEff)
+                Composite Factor = w_rsrs&times;Z_rank(RSRS) + w_flow&times;Z_rank(Flow) + w_mom&times;Z_rank(Mom)<br>
+                &emsp;&emsp;&emsp;&emsp;+ w_quality&times;Z_rank(F_Quality) + w_efficiency&times;Z_rank(IntEff)<br>
+                <br>
+                Z_rank(x) = Z-score(Rank(x)) &mdash; Rank first, then standardize
             </div>
-            <p>截面Z-Score标准化经过<strong>Winsorize 10%</strong>（截断极端值）处理，适应小样本（17只ETF）场景。</p>
-            <p style="margin-top:10px;"><strong>五因子权重</strong>：各预设使用等权配置（RSRS 0.20 / Flow 0.20 / Mom 0.20 / Quality 0.20 / Efficiency 0.20）。所有因子经日内效率（IntEff）横截面Z-Score后合成。RSRS与动量<strong>极低共线性（Pearson &lt; 0.23）</strong>，提供完全独立的信息增量。</p>
+            <p>Weights w_* vary by preset (see Preset Parameters below), and the financial quality weight floats between 0.10 and 0.40 based on market timing signals.</p>
+            <p>All factors are processed via <strong>Rank standardization</strong> (standard score ranking), which is better suited for the small sample cross-section of 17 ETFs compared to conventional Winsorize + Z-Score: it avoids statistical distortion from truncating 1-2 tail samples and is naturally robust to outliers.</p>
+            <p style="margin-top:10px;">RSRS and momentum have <strong>very low collinearity (Pearson &lt; 0.23)</strong>, providing completely independent informational value.</p>
         </div>
 
         <!-- V4: Financial Quality Factor -->
         <div class="tech-section">
-            <h3><span class="icon" style="background:#d4edda;">&#9733;</span> 财务质量因子 (F_Quality) — V4新增</h3>
-            <p>V4引入了第四个因子维度——<strong>财务质量因子 (F_Quality)</strong>，从上市公司财务基本面角度提供横截面筛选能力。该因子由三个子因子等权合成：</p>
+            <h3><span class="icon" style="background:#d4edda;">&#9733;</span> Financial Quality Factor (F_Quality) — Added in V4</h3>
+            <p>V4 introduced a fourth factor dimension — <strong>Financial Quality Factor (F_Quality)</strong> — providing cross-sectional screening capability from the perspective of listed company financial fundamentals. This factor is synthesized from three sub-factors with equal weighting:</p>
             <ul>
-                <li><strong>预期ROE (F_ROE)</strong>：行业成分股最新季度ROE的流通市值加权平均值。衡量行业整体盈利能力。</li>
-                <li><strong>PB估值分位 (F_PB_Pct)</strong>：行业成分股最新PB_TTM在5年历史中的估值分位，取反向指标（1-分位数）。低估值（低PB历史分位）得高分。</li>
-                <li><strong>盈利加速度 (F_Earnings_YoY)</strong>：成分股单季度归母净利润同比增长率的行业均值，再做截面Z-Score。反映行业盈利增长动能。</li>
+                <li><strong>Latest ROE (F_ROE)</strong>: Circulating market-cap weighted average of the latest quarterly ROE of industry constituent stocks. Measures overall industry profitability.</li>
+                <li><strong>PB Valuation Percentile (F_PB_Pct)</strong>: The percentile rank of the latest PB_TTM among industry constituent stocks within their 5-year history, taken as an inverse indicator (1 - percentile). Lower valuation (lower PB historical percentile) scores higher.</li>
+                <li><strong>Earnings Acceleration (F_Earnings_YoY)</strong>: Industry average of constituent stocks' single-quarter net profit YoY growth rate, then cross-sectional Z-Score. Reflects industry earnings growth momentum.</li>
             </ul>
             <div class="tech-formula">
-                F_Quality = (Z(F_ROE) + Z(F_PB_Pct) + Z(F_Earnings_YoY)) / 3<br>
-                综合因子 = 0.25×Z(RSRS) + 0.25×Z(Flow) + 0.25×Z(Mom) + 0.25×Z(F_Quality)
+                F_Quality = (Z(F_ROE) + Z(F_PB_Pct) + Z(F_Earnings_YoY)) / 3
             </div>
-            <p><strong>行业成分股映射</strong>：每只行业ETF使用10只代表性成分股作为代理组合，优先使用流通市值加权，数据不足时降级为等权。有效成分股少于3只时该行业因子设为NaN（用截面中位数填充）。</p>
-            <p><strong>数据源</strong>：ROE及净利润增速来自 Tushare fina_indicator；PB及流通市值来自 stock_daily_basic。</p>
-            <p><strong>商品类ETF处理</strong>：石油ETF等商品类ETF不计算财务因子，其F_Quality赋值为截面中位数。</p>
-            <p><strong>容错机制</strong>：某只成分股数据缺失则从该期计算中剔除；整个行业有效数据不足3只则用截面中位数填充。</p>
+            <p>(Note: In the V4 stage, the composite factor used equal-weighted four factors; V5 added IntEff and switched to differentiated weights across five factors.)</p>
+            <p><strong>Industry Constituent Stock Mapping</strong>: Each sector ETF uses 10 representative constituent stocks as a proxy portfolio, prioritizing circulating market-cap weighting, downgrading to equal weighting when data is insufficient. When fewer than 3 valid constituents are available, the industry factor is assigned the cross-sectional median.</p>
+            <p><strong>Data Source</strong>: ROE and net profit growth from Tushare fina_indicator; PB and circulating market cap from stock_daily_basic.</p>
+            <p><strong>Commodity ETF Handling</strong>: Commodity ETFs such as oil ETF and gold ETF do not calculate financial factors. The underlying code implements <strong>asset masking + weight redistribution</strong>: during composite factor synthesis, the F_Quality weight of commodity ETFs is proportionally redistributed to the four technical factors RSRS/Flow/Mom/IntEff (de-weighting formula: <code>factor = technical weighted sum / (1 - w_quality)</code>), ensuring fair cross-sectional scoring under the same dimensions.</p>
+            <p><strong>Fault Tolerance</strong>: If a constituent stock has missing data, it is excluded from that period's calculation; if an entire industry has fewer than 3 valid data points, the industry factor is assigned the cross-sectional median.</p>
+        </div>
+
+        <!-- V5: Intraday Efficiency Factor -->
+        <div class="tech-section">
+            <h3><span class="icon" style="background:#f0e6ff;">&#8644;</span> Intraday Efficiency Factor (IntEff) — Added in V5</h3>
+            <p>V5 introduced a fifth factor dimension — <strong>Intraday Efficiency Factor (IntEff)</strong> — measuring trend smoothness from the perspective of price movement structure. Rather than using the absolute efficiency value directly, this factor captures the direction of efficiency changes through <strong>efficiency indicator MACD</strong> (long-short EWMA difference).</p>
+            <ul>
+                <li><strong>Underlying Efficiency (Eff)</strong>: Daily OHLC proxy indicator, calculating the ratio of net daily change (|Close(t)-Close(t-1)|) to total intraday path ((High-Low)+|Close-Open|). High Eff = strong one-sided trend with low noise; Low Eff = frequent intraday reversals.</li>
+                <li><strong>Signal Smoothing</strong>: Optional SMA smoothing on Eff (short-term preset sma=0 skips this step to reduce lag; medium/long-term presets sma=5 for 5-day moving average), eliminating single-day anomalies.</li>
+                <li><strong>Momentum Quantification</strong>: Two EWMAs (half-life 5 days and 20 days) are applied to the smoothed series; the difference is IntEff. Positive = efficiency improving (trend strengthening); negative = efficiency declining (trend weakening / transitioning to oscillation).</li>
+            </ul>
+            <div class="tech-formula">
+                Eff(t) = |Close(t)-Close(t-1)| / [(High(t)-Low(t)) + |Close(t)-Open(t)|]<br>
+                Eff_5 = SMA_5(Eff)<br>
+                IntEff = EWMA(Eff_5, &lambda;=5d) - EWMA(Eff_5, &lambda;=20d)
+            </div>
+            <p>IntEff participates in composite factor synthesis after cross-sectional Rank standardization. The core value of this factor lies in identifying inflection points in trend structure: when IntEff turns from negative to positive, it signals declining noise and potential trend acceleration; when it turns from positive to negative, it signals trend exhaustion risk.</p>
         </div>
 
         <!-- Quadrant Model -->
         <div class="tech-section">
-            <h3><span class="icon" style="background:#fef3c7;">&#9632;</span> 四象限分类模型</h3>
-            <p>根据Z_Flow和Z_Mom的正负号，将ETF分为四个象限：</p>
+            <h3><span class="icon" style="background:#fef3c7;">&#9632;</span> Quadrant Classification Model</h3>
+            <p>Based on the sign of Z_Flow and Z_Mom, ETFs are classified into four quadrants:</p>
             <ul>
-                <li><span class="tech-tag tag-green">Q1 强势</span> Z_Flow &ge; 0, Z_Mom &ge; 0 &mdash; 资金流入+价格上涨，趋势共振。适合持仓或加仓。</li>
-                <li><span class="tech-tag tag-amber">Q2 潜伏</span> Z_Flow &ge; 0, Z_Mom &lt; 0 &mdash; 资金流入但价格下跌。左侧布局机会。</li>
-                <li><span class="tech-tag tag-amber">Q3 撤离</span> Z_Flow &lt; 0, Z_Mom &lt; 0 &mdash; 资金流出+价格下跌。风险最高，建议回避。</li>
-                <li><span class="tech-tag tag-red">Q4 风险</span> Z_Flow &lt; 0, Z_Mom &ge; 0 &mdash; 资金流出但价格仍涨。警惕诱多陷阱。</li>
+                <li><span class="tech-tag tag-green">Q1 Strong</span> Z_Flow &ge; 0, Z_Mom &ge; 0 &mdash; Capital inflow + price rising, trend resonance. Suitable for holding or adding positions.</li>
+                <li><span class="tech-tag tag-amber">Q2 Lurk</span> Z_Flow &ge; 0, Z_Mom &lt; 0 &mdash; Capital inflow but price declining. Left-side positioning opportunity.</li>
+                <li><span class="tech-tag tag-amber">Q3 Exit</span> Z_Flow &lt; 0, Z_Mom &lt; 0 &mdash; Capital outflow + price declining. Highest risk, avoid.</li>
+                <li><span class="tech-tag tag-red">Q4 Risk</span> Z_Flow &lt; 0, Z_Mom &ge; 0 &mdash; Capital outflow but price still rising. Beware of bull traps.</li>
             </ul>
-            <p><strong>投资含义</strong>：投资建议引擎仅从Q1（60%预算）和Q2（40%预算）中筛选候选标的，Q3/Q4始终排除。</p>
+            <p><strong>Investment Implications</strong>: The investment recommendation engine prioritizes screening candidates from Q1 (60% budget) and Q2 (40% budget). In Q3, instruments with RSRS factor &gt; 0.3 and composite factor &gt; 0 are included as candidates based on signal strength (RSRS override mechanism); Q4 is always excluded.</p>
         </div>
 
         <!-- IC Analysis -->
         <div class="tech-section">
-            <h3><span class="icon" style="background:#e0f0ff;">&#9679;</span> IC (Information Coefficient) 分析</h3>
-            <p>IC衡量因子对未来收益的预测能力。使用<strong>Spearman秩相关系数</strong>（Rank IC）：</p>
-            <div class="tech-formula">IC = Spearman_Rank_Correlation(T日因子值, T+1到T+1+H日收益率)</div>
-            <p><strong>前视偏差控制</strong>：因子在T日收盘后才可计算（需要T日收盘价和T日份额数据），因此IC分析中用T日因子预测T+1日起的收益，确保无前视偏差。</p>
-            <p>关键统计量：</p>
+            <h3><span class="icon" style="background:#e0f0ff;">&#9679;</span> IC Analysis</h3>
+            <p>IC measures a factor's predictive power for future returns. Uses <strong>Spearman rank correlation coefficient</strong> (Rank IC):</p>
+            <div class="tech-formula">IC = Spearman_Rank_Correlation(T-day factor value, T+1 to T+1+H day returns)</div>
+            <p><strong>Look-Ahead Bias Control</strong>: Factors can only be calculated after T-day close (requiring T-day closing price and T-day share data), so IC analysis uses T-day factors to predict returns starting from T+1, ensuring no look-ahead bias.</p>
+            <p>Key statistics:</p>
             <ul>
-                <li><strong>IC均值</strong>：所有日IC的平均值。<span class="tech-tag tag-green">|IC均值| &gt; 0.03 为显著</span>，表示因子有预测力。</li>
-                <li><strong>ICIR</strong>：IC均值 / IC标准差。<span class="tech-tag tag-green">|ICIR| &gt; 0.5 为稳定</span>，&gt; 2为非常稳定。</li>
-                <li><strong>IC胜率</strong>：IC &gt; 0的交易日占比。<span class="tech-tag tag-green">&gt; 50% 表示因子方向正确</span>，&gt; 60%为优秀。</li>
+                <li><strong>IC Mean</strong>: Average of all daily IC values. <span class="tech-tag tag-green">|IC Mean| &gt; 0.03 is significant</span>, indicating factor predictive power.</li>
+                <li><strong>ICIR</strong>: IC Mean / IC Standard Deviation. <span class="tech-tag tag-green">|ICIR| &gt; 0.05 is weakly effective</span>, &gt; 0.10 is usable, &gt; 0.20 is good. Note: cross-sectional ICIR within industries is typically much lower than in stock selection; |ICIR| consistently &gt; 0.05 in daily rolling windows has practical value.</li>
+                <li><strong>IC Win Rate</strong>: Proportion of trading days with IC &gt; 0. <span class="tech-tag tag-green">&gt; 50% indicates correct factor direction</span>, &gt; 60% is excellent.</li>
             </ul>
         </div>
 
         <!-- Charts Guide -->
         <div class="tech-section">
-            <h3><span class="icon" style="background:#fce4e4;">&#9879;</span> 图表解读指南</h3>
+            <h3><span class="icon" style="background:#fce4e4;">&#9879;</span> Chart Reading Guide</h3>
 
-            <p><strong>1. 因子分布直方图</strong></p>
-            <p>最新一期所有ETF的复合因子分布。正偏表示多数板块偏强，负偏表示偏弱。</p>
+            <p><strong>1. Factor Distribution Histogram</strong></p>
+            <p>Composite factor distribution of all ETFs for the latest period. Positive skew indicates most sectors are strong; negative skew indicates weakness.</p>
 
-            <p style="margin-top:16px;"><strong>2. 四象限收益热力图</strong></p>
-            <p>四个象限在最新日期的平均远期收益（%）。理想状态：Q1 &gt; Q2 &gt; Q3 &gt; Q4。</p>
+            <p style="margin-top:16px;"><strong>2. Quadrant Return Heatmap</strong></p>
+            <p>Average forward returns (%) for the four quadrants on the latest date. Ideal state: Q1 &gt; Q2 &gt; Q3 &gt; Q4.</p>
 
-            <p style="margin-top:16px;"><strong>3. IC序列曲线</strong></p>
-            <p>每日IC值的时序变化，含IC均值线和&plusmn;2&sigma;波动带。IC持续为正表示因子预测力稳定。</p>
+            <p style="margin-top:16px;"><strong>3. IC Time Series Curve</strong></p>
+            <p>Daily IC values over time, including IC mean line and &plusmn;2&sigma; volatility band. Sustained positive IC indicates stable factor predictive power.</p>
 
-            <p style="margin-top:16px;"><strong>4. 最新因子排名</strong></p>
-            <p>所有ETF按复合因子降序排列，含象限标签。可直观看到当前最强势和最弱势的板块。</p>
+            <p style="margin-top:16px;"><strong>4. Latest Factor Rankings</strong></p>
+            <p>All ETFs ranked by composite factor in descending order, with quadrant labels. Provides an intuitive view of the strongest and weakest sectors.</p>
 
-            <p style="margin-top:16px;"><strong>5. 分组累计收益曲线</strong></p>
-            <p>四个象限的累计收益率随时间变化。Q1与Q3差距越大，因子区分度越好。</p>
+            <p style="margin-top:16px;"><strong>5. Group Cumulative Return Curves</strong></p>
+            <p>Cumulative returns of the four quadrants over time. The larger the gap between Q1 and Q3, the better the factor's discriminating power.</p>
 
-            <p style="margin-top:16px;"><strong>6. 因子滚动ICIR</strong></p>
-            <p>60日滚动窗口计算的ICIR。滚动ICIR &gt; 0.5表示因子在该时段表现稳定。</p>
+            <p style="margin-top:16px;"><strong>6. Rolling Factor ICIR</strong></p>
+            <p>ICIR calculated using a 60-day rolling window. Rolling ICIR consistently &gt; 0.05 indicates the factor has practical predictive power during that period.</p>
 
 
         </div>
 
         <!-- Preset Parameters -->
         <div class="tech-section">
-            <h3><span class="icon" style="background:#e8e0f4;">&#9881;</span> 预设参数说明</h3>
-            <p>每个预设定义了五因子参数和权重（V5等权）：</p>
+            <h3><span class="icon" style="background:#e8e0f4;">&#9881;</span> Preset Parameters</h3>
+            <p>Each preset defines five-factor parameters and differentiated weights:</p>
             <ul>
-                <li><strong>短期</strong>：RSRS=20, Flow=10, Mom=20, H=10。权重 RSRS 0.20 / Flow 0.20 / Mom 0.20 / Quality 0.20 / Efficiency 0.20。</li>
-                <li><strong>中期</strong>：RSRS=20, Flow=20, Mom=60, H=20。权重 RSRS 0.20 / Flow 0.20 / Mom 0.20 / Quality 0.20 / Efficiency 0.20。</li>
-                <li><strong>长期</strong>：RSRS=30, Flow=40, Mom=120, H=40。权重 RSRS 0.20 / Flow 0.20 / Mom 0.20 / Quality 0.20 / Efficiency 0.20。</li>
-                <li><strong>RSRS进取</strong>：RSRS=15, Flow=10, Mom=10, H=10。权重 RSRS 0.20 / Flow 0.20 / Mom 0.20 / Quality 0.20 / Efficiency 0.20。</li>
+                <li><strong>Short-term</strong>: RSRS=20, Flow=10, Mom=20, H=10. Weights: RSRS 0.28 / Flow 0.14 / Mom 0.28 / Quality 0.20 / Eff 0.10.</li>
+                <li><strong>Medium-term</strong>: RSRS=20, Flow=20, Mom=60, H=20. Weights: RSRS 0.21 / Flow 0.21 / Mom 0.28 / Quality 0.20 / Eff 0.10.</li>
+                <li><strong>Long-term</strong>: RSRS=30, Flow=40, Mom=120, H=40. Weights: RSRS 0.175 / Flow 0.175 / Mom 0.35 / Quality 0.20 / Eff 0.10.</li>
+                <li><strong>RSRS Aggressive</strong>: RSRS=15, Flow=10, Mom=10, H=10. Weights: RSRS 0.35 / Flow 0.14 / Mom 0.21 / Quality 0.20 / Eff 0.10.</li>
             </ul>
-            <p>RSRS=回归窗口天数, Flow=份额回溯天数, Mom=动量回溯天数, Quality=财务质量因子, Efficiency=日内效率因子, H=最优预测周期。</p>
+            <p style="margin-top:8px;"><strong>Dynamic Weight Adjustment</strong>: The financial quality weight floats between 0.10 and 0.40 based on market timing signals (when the market is weak, quality drops to 0.10, releasing more weight to technical factors; during oversold bounces, quality rises to 0.40 for enhanced defense).</p>
+            <p style="margin-top:8px;"><strong>Weak Market Reversal Mode</strong>: When the market timing signal is &lt; -0.3 (weak/overheated), the momentum (Mom) factor automatically switches to a <strong>short-period reversal signal</strong> (negative of 5-day returns), enabling the system to capture mean-reversion opportunities when trends fail. In weak markets, the four-quadrant definitions change to: Q1 = capital inflow + oversold price, Q2 = capital inflow + price rebound, Q3 = capital outflow + overbought price, Q4 = capital outflow + price decline.</p>
+            <p>RSRS = regression window days, Flow = share lookback days, Mom = momentum lookback days, Quality = financial quality factor, Efficiency = intraday efficiency factor, H = optimal prediction period.</p>
         </div>
 
         <!-- Disclaimers -->
         <div class="tech-section">
-            <h3><span class="icon" style="background:#f4f1e8;">&#9888;</span> 注意事项</h3>
+            <h3><span class="icon" style="background:#f4f1e8;">&#9888;</span> Disclaimers</h3>
             <ul>
-                <li>本分析仅供学习研究，<strong>不构成任何投资建议</strong>。</li>
-                <li>因子有效性会随市场风格变化而波动，历史IC不代表未来表现。</li>
-                <li>IC分析已采用T+1延迟消除前视偏差，但实际交易还需考虑滑点和冲击成本。</li>
-                <li>行业ETF数量有限（17只），截面IC统计的样本量较小，结论需谨慎对待。</li>
-                <li>资金流数据基于ETF份额变化，可能存在申赎套利导致的噪声。</li>
-                <li>财务质量因子基于行业代表性成分股计算，非ETF实际持仓，存在跟踪误差。成分股每季报后可更新。</li>
-                <li>财务数据天然滞后（季报披露延迟1-2个月），F_Quality为慢变量，适合中期配置参考。</li>
-                <li>建议结合基本面分析和市场环境综合判断。</li>
+                <li>This analysis is for educational and research purposes only and <strong>does not constitute investment advice</strong>.</li>
+                <li>Factor effectiveness fluctuates with changes in market style; historical IC does not guarantee future performance.</li>
+                <li>IC analysis uses T+1 delay to eliminate look-ahead bias, but actual trading must account for slippage and impact costs.</li>
+                <li>The number of sector ETFs is limited (17), so cross-sectional IC statistics have small sample sizes; conclusions should be treated with caution.</li>
+                <li>Capital flow data is based on ETF share changes and may contain noise from creation/redemption arbitrage.</li>
+                <li>The financial quality factor is calculated from representative industry constituent stocks, not actual ETF holdings, so tracking error exists. Constituent stocks can be updated after each quarterly report.</li>
+                <li>Financial data is inherently lagging (quarterly report disclosure delays 1-2 months); F_Quality is a slow-moving variable suitable for medium-term allocation reference.</li>
+                <li>It is recommended to combine fundamental analysis and market environment for comprehensive judgment.</li>
             </ul>
         </div>
     </main>
+    </div><!-- /page-layout -->
 
     <footer>
-        <p>ATMstockMarket — 数据来源: Tushare / AKShare | 仅供学习研究，不构成投资建议</p>
+        <p>ATMstockMarket — Data Source: Tushare / AKShare | For educational purposes only, not investment advice</p>
     </footer>
 
-    <div class="bottom-nav" role="navigation" aria-label="主导航">
-      <a href="/" class="bottom-nav-item" aria-label="首页">
+    <div class="bottom-nav" role="navigation" aria-label="Main Navigation">
+      <a href="/" class="bottom-nav-item" aria-label="Home">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
         </span>
-        <span class="bottom-nav-label">首页</span>
+        <span class="bottom-nav-label">Home</span>
       </a>
-      <a href="/etf" class="bottom-nav-item" aria-label="指数ETF">
+      <a href="/etf" class="bottom-nav-item" aria-label="Index ETF">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
         </span>
-        <span class="bottom-nav-label">指数ETF</span>
+        <span class="bottom-nav-label">Index ETF</span>
       </a>
-      <a href="/sector" class="bottom-nav-item" aria-label="行业ETF">
+      <a href="/sector" class="bottom-nav-item" aria-label="Sector ETF">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
         </span>
-        <span class="bottom-nav-label">行业ETF</span>
+        <span class="bottom-nav-label">Sector ETF</span>
       </a>
-      <a href="/analysis" class="bottom-nav-item active" aria-label="可视化分析">
+      <a href="/analysis" class="bottom-nav-item active" aria-label="Analysis">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
         </span>
-        <span class="bottom-nav-label">分析</span>
+        <span class="bottom-nav-label">Analysis</span>
       </a>
     </div>
 

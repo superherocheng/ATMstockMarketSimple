@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>可视化分析 - ATMstockMarket</title>
+    <title>Analysis - ATM</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="/static/css/app.css">
     <script defer src="/static/js/vendor.js"></script>
@@ -19,36 +19,47 @@
     </script>
 </head>
 <body class="min-h-screen">
-    <nav>
-      <div class="nav-container">
-        <a href="/" class="nav-logo">
-          <span class="nav-logo-icon">AM</span>
-          ATMstockMarket
-        </a>
-        <div class="nav-links" id="nav-links">
-          <a href="/" class="nav-link">首页</a>
-          <a href="/etf" class="nav-link">指数ETF</a>
-          <a href="/sector" class="nav-link">行业ETF</a>
-          <a href="/analysis" class="nav-link active">可视化分析</a>
-          
-        </div>
-        <button class="mobile-menu-btn" onclick="document.getElementById('nav-links').classList.toggle('open')" aria-label="菜单">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M0 3h20v2H0V3zm0 6h20v2H0V9zm0 6h20v2H0v-2z"/></svg>
-        </button>
-      </div>
-    </nav>
 
-    <div id="freshness-bar" class="freshness-bar"></div>
+    <div class="tablet-topbar">
+        <div class="tablet-topbar-logo"><a href="/">ATMstockMarket</a></div>
+        <nav class="tablet-topbar-nav">
+            <a href="/">Home</a>
+            <a href="/etf">Index ETF</a>
+            <a href="/sector">Sector ETF</a>
+            <a href="/analysis" class="active">Analysis</a>
+        </nav>
+    </div>
+
+    <div class="page-layout">
+    <aside class="sidebar-nav">
+        <div class="sidebar-logo">
+            <a href="/">ATMstockMarket</a>
+            <div class="sidebar-logo-sub">A-Share Market Analysis</div>
+        </div>
+        <div class="sidebar-nav-section">
+            <div class="sidebar-nav-label">Navigation</div>
+            <nav class="sidebar-nav-links">
+                <a href="/" class="sidebar-nav-link">Home</a>
+                <a href="/etf" class="sidebar-nav-link">Index ETF</a>
+                <a href="/sector" class="sidebar-nav-link">Sector ETF</a>
+                <a href="/analysis" class="sidebar-nav-link active">Analysis</a>
+            </nav>
+        </div>
+        <div class="sidebar-nav-footer">
+            <p>Data Source</p>
+            <span>Tushare · AKShare</span>
+        </div>
+    </aside>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-0">
 
     <!-- Preset selector bar -->
     <div class="preset-bar">
-        <button class="preset-btn active" onclick="switchPreset('short')" data-preset="short" title="N=10, M=20 — 适合短线因子验证">短期</button>
-        <button class="preset-btn" onclick="switchPreset('medium')" data-preset="medium" title="N=20, M=60 — 适合中线持仓参考">中期</button>
-        <button class="preset-btn" onclick="switchPreset('long')" data-preset="long" title="N=40, M=120 — 适合长周期趋势判断">长期</button>
-        <a href="/analysis/investment-recommendation" class="rec-btn">投资建议</a>
-        <a href="/analysis/tech-notes" class="tech-btn">技术说明</a>
+        <button class="preset-btn active" onclick="switchPreset('short')" data-preset="short" title="N=10, M=20 — suited for short-term factor validation">Short-term</button>
+        <button class="preset-btn" onclick="switchPreset('medium')" data-preset="medium" title="N=20, M=60 — suited for medium-term holding reference">Medium-term</button>
+        <button class="preset-btn" onclick="switchPreset('long')" data-preset="long" title="N=40, M=120 — suited for long-cycle trend judgment">Long-term</button>
+        <a href="/analysis/investment-recommendation" class="rec-btn">Investment Advice</a>
+        <a href="/analysis/tech-notes" class="tech-btn">Tech Notes</a>
         <span class="preset-freshness" id="freshness-label">--</span>
     </div>
 
@@ -57,13 +68,13 @@
         <div class="exec-summary-icon">
             <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         </div>
-        <div class="exec-summary-body" id="summary-text"><div class="skeleton" style="height:60px;border-radius:var(--radius-sm);"></div></div>
+        <div class="exec-summary-body" id="summary-text"><div class="hard-skeleton hard-skeleton-sm"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div></div>
     </div>
 
     <!-- KPI cards -->
     <div class="kpi-row">
         <div class="kpi-card">
-            <div class="kpi-label">IC均值</div>
+            <div class="kpi-label">IC Mean</div>
             <div class="kpi-value" id="kpi-ic-mean">--</div>
             <div class="kpi-sub" id="kpi-ic-mean-sub">&nbsp;</div>
         </div>
@@ -73,12 +84,12 @@
             <div class="kpi-sub" id="kpi-icir-sub">&nbsp;</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">IC胜率</div>
+            <div class="kpi-label">IC Win Rate</div>
             <div class="kpi-value" id="kpi-ic-win">--</div>
             <div class="kpi-sub" id="kpi-ic-win-sub">&nbsp;</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">强势ETF数</div>
+            <div class="kpi-label">Strong ETFs</div>
             <div class="kpi-value" id="kpi-strong">--</div>
             <div class="kpi-sub" id="kpi-strong-sub">&nbsp;</div>
         </div>
@@ -88,24 +99,24 @@
     <div class="chart-group">
         <details class="chart-group-details" open>
             <summary class="chart-group-summary">
-                <span class="chart-group-title">因子分布与象限分析</span>
+                <span class="chart-group-title">Factor Distribution & Quadrant Analysis</span>
                 <span class="chart-group-chevron"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></span>
             </summary>
             <div class="chart-grid">
                 <div class="chart-cell">
-                    <h3>因子分布直方图
-                        <span class="info-tip" title="所有ETF的最新复合因子分布。正偏→多数板块偏强，负偏→偏弱">ⓘ</span>
+                    <h3>Factor Distribution Histogram
+                        <span class="info-tip" title="Latest composite factor distribution for all ETFs. Positive skew → most sectors strong, negative → weak">ⓘ</span>
                     </h3>
                     <div id="chart-factor-dist" class="chart-container">
-                        <div class="skeleton" style="height:280px;border-radius:var(--radius-md);"></div>
+                        <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                     </div>
                 </div>
                 <div class="chart-cell">
-                    <h3>四象限收益热力图
-                        <span class="info-tip" title="四个象限平均远期收益。理想：Q1 > Q2 > Q3 > Q4">ⓘ</span>
+                    <h3>Quadrant Return Heatmap
+                        <span class="info-tip" title="Average forward returns by quadrant. Ideal: Q1 > Q2 > Q3 > Q4">ⓘ</span>
                     </h3>
                     <div id="chart-quadrant" class="chart-container">
-                        <div class="skeleton" style="height:280px;border-radius:var(--radius-md);"></div>
+                        <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                     </div>
                 </div>
             </div>
@@ -113,24 +124,24 @@
 
         <details class="chart-group-details" open>
             <summary class="chart-group-summary">
-                <span class="chart-group-title">IC 序列与因子排名</span>
+                <span class="chart-group-title">IC Series & Factor Ranking</span>
                 <span class="chart-group-chevron"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></span>
             </summary>
             <div class="chart-grid">
                 <div class="chart-cell">
-                    <h3>IC序列曲线
-                        <span class="info-tip" title="每日IC值时序。持续为正→因子预测力稳定">ⓘ</span>
+                    <h3>IC Series Chart
+                        <span class="info-tip" title="Daily IC time series. Sustained positive → stable factor predictive power">ⓘ</span>
                     </h3>
                     <div id="chart-ic-series" class="chart-container">
-                        <div class="skeleton" style="height:280px;border-radius:var(--radius-md);"></div>
+                        <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                     </div>
                 </div>
                 <div class="chart-cell">
-                    <h3>最新因子排名
-                        <span class="info-tip" title="按复合因子降序排列，含象限标签">ⓘ</span>
+                    <h3>Latest Factor Ranking
+                        <span class="info-tip" title="Sorted by composite factor descending, with quadrant labels">ⓘ</span>
                     </h3>
                     <div id="factor-ranking" class="chart-container" style="overflow-y:auto;">
-                        <div class="skeleton" style="height:280px;border-radius:var(--radius-md);"></div>
+                        <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                     </div>
                 </div>
             </div>
@@ -138,24 +149,24 @@
 
         <details class="chart-group-details" open>
             <summary class="chart-group-summary">
-                <span class="chart-group-title">收益曲线与滚动 ICIR</span>
+                <span class="chart-group-title">Return Curves & Rolling ICIR</span>
                 <span class="chart-group-chevron"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></span>
             </summary>
             <div class="chart-grid">
                 <div class="chart-cell">
-                    <h3>分组累计收益曲线
-                        <span class="info-tip" title="四象限累计收益率。Q1与Q3差距越大→因子区分度越好">ⓘ</span>
+                    <h3>Group Cumulative Returns
+                        <span class="info-tip" title="Cumulative returns by quadrant. Larger Q1-Q3 gap → better factor discrimination">ⓘ</span>
                     </h3>
                     <div id="chart-group-returns" class="chart-container">
-                        <div class="skeleton" style="height:280px;border-radius:var(--radius-md);"></div>
+                        <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                     </div>
                 </div>
                 <div class="chart-cell">
-                    <h3>因子滚动ICIR
-                        <span class="info-tip" title="60日滚动ICIR。>0.5表示因子表现稳定">ⓘ</span>
+                    <h3>Factor Rolling ICIR
+                        <span class="info-tip" title="60-day rolling ICIR. >0.5 indicates stable factor performance">ⓘ</span>
                     </h3>
                     <div id="chart-rolling-icir" class="chart-container">
-                        <div class="skeleton" style="height:280px;border-radius:var(--radius-md);"></div>
+                        <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                     </div>
                 </div>
             </div>
@@ -165,41 +176,42 @@
     <!-- Investment recommendation entry -->
     <div class="chart-full" style="margin-top:12px;">
         <div class="chart-cell" style="text-align:center;padding:20px;">
-            <a href="/analysis/investment-recommendation" class="rec-btn" style="padding:8px 24px;font-size:14px;display:inline-block;">查看完整投资建议 →</a>
-            <p style="margin-top:8px;font-size:12px;color:var(--c-text-tertiary);">基于因子评分 + 资金流向的 ETF 持仓建议</p>
+            <a href="/analysis/investment-recommendation" class="rec-btn" style="padding:8px 24px;font-size:14px;display:inline-block;">View Full Investment Advice →</a>
+            <p style="margin-top:8px;font-size:12px;color:var(--c-text-tertiary);">ETF allocation advice based on factor scores + fund flow</p>
         </div>
     </div>
 
     </main>
+    </div><!-- /page-layout -->
 
     <footer>
-        <p>ATMstockMarket — 数据来源: Tushare / AKShare | 仅供学习研究，不构成投资建议</p>
+        <p>ATMstockMarket — Data Source: Tushare / AKShare | For learning and research only, not investment advice</p>
     </footer>
 
-    <div class="bottom-nav" role="navigation" aria-label="主导航">
-      <a href="/" class="bottom-nav-item" aria-label="首页">
+    <div class="bottom-nav" role="navigation" aria-label="Main navigation">
+      <a href="/" class="bottom-nav-item" aria-label="Home">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
         </span>
-        <span class="bottom-nav-label">首页</span>
+        <span class="bottom-nav-label">Home</span>
       </a>
-      <a href="/etf" class="bottom-nav-item" aria-label="指数ETF">
+      <a href="/etf" class="bottom-nav-item" aria-label="Index ETF">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
         </span>
-        <span class="bottom-nav-label">指数ETF</span>
+        <span class="bottom-nav-label">Index ETF</span>
       </a>
-      <a href="/sector" class="bottom-nav-item" aria-label="行业ETF">
+      <a href="/sector" class="bottom-nav-item" aria-label="Sector ETF">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
         </span>
-        <span class="bottom-nav-label">行业ETF</span>
+        <span class="bottom-nav-label">Sector ETF</span>
       </a>
-      <a href="/analysis" class="bottom-nav-item active" aria-label="可视化分析">
+      <a href="/analysis" class="bottom-nav-item active" aria-label="Analysis">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
         </span>
-        <span class="bottom-nav-label">分析</span>
+        <span class="bottom-nav-label">Analysis</span>
       </a>
     </div>
 
@@ -230,7 +242,7 @@
     }
 
     function noDataHtml() {
-        return '<div class="no-data">暂无数据</div>';
+        return '<div class="hard-skeleton"><span class="hard-skeleton-text">[ NO DATA ]</span></div>';
     }
 
     async function loadAllData(presetId) {
@@ -262,7 +274,7 @@
 
             // Render freshness label
             if (summary && summary.date) {
-                document.getElementById('freshness-label').textContent = '数据日期: ' + summary.date;
+                document.getElementById('freshness-label').textContent = 'Data Date: ' + summary.date;
             }
 
             // Render ECharts charts
@@ -285,14 +297,17 @@
             if (el) el.innerHTML = noDataHtml();
             return;
         }
-        var chart = initChartInstance(key, elId);
-        if (!chart) return;
-        if (data.chart) {
-            chart.setOption(data.chart, true);
-        } else {
+        if (!data.chart) {
             var el = getChartEl(elId);
             if (el) el.innerHTML = noDataHtml();
+            return;
         }
+        // Defer heavy ECharts init to next frame — skeleton stays visible until browser is free
+        requestAnimationFrame(function() {
+            var chart = initChartInstance(key, elId);
+            if (!chart) return;
+            chart.setOption(data.chart, true);
+        });
     }
 
     function renderKPIs(summary) {
@@ -329,39 +344,39 @@
         }
 
         // Sub labels
-        document.getElementById('kpi-ic-mean-sub').textContent = icMean !== null ? (icMean > 0 ? '正向显著' : '负向') : '';
-        document.getElementById('kpi-icir-sub').textContent = icir !== null ? (Math.abs(icir) > 2 ? '强稳定' : Math.abs(icir) > 1 ? '稳定' : '不稳定') : '';
-        document.getElementById('kpi-ic-win-sub').textContent = icWin !== null ? (icWin > 0.5 ? '有效' : '偏弱') : '';
+        document.getElementById('kpi-ic-mean-sub').textContent = icMean !== null ? (icMean > 0 ? 'Significant Positive' : 'Negative') : '';
+        document.getElementById('kpi-icir-sub').textContent = icir !== null ? (Math.abs(icir) > 2 ? 'Strong Stability' : Math.abs(icir) > 1 ? 'Stable' : 'Unstable') : '';
+        document.getElementById('kpi-ic-win-sub').textContent = icWin !== null ? (icWin > 0.5 ? 'Effective' : 'Weak') : '';
         document.getElementById('kpi-strong-sub').textContent = summary.strong_buy ? summary.strong_buy : '';
     }
 
     function renderSummary(summary) {
         var el = document.getElementById('summary-text');
         if (!summary || summary.error === 'no_data') {
-            el.textContent = '暂无分析数据，请先运行数据采集和因子计算。';
+            el.textContent = 'No analysis data available. Please run data collection and factor calculation first.';
             return;
         }
 
         var lines = [];
 
         if (summary.factor_validity) {
-            lines.push('因子有效性: ' + summary.factor_validity);
+            lines.push('Factor Validity: ' + summary.factor_validity);
         }
         if (summary.sample_count) {
-            lines.push('IC样本数: ' + summary.sample_count);
+            lines.push('IC Samples: ' + summary.sample_count);
         }
         if (summary.strong_buy) {
-            lines.push('强势板块: ' + summary.strong_buy);
+            lines.push('Strong Sectors: ' + summary.strong_buy);
         }
         if (summary.contrarian) {
-            lines.push('逆向关注: ' + summary.contrarian);
+            lines.push('Contrarian Focus: ' + summary.contrarian);
         }
         if (summary.q1_count !== undefined) {
-            lines.push('Q1强势ETF数: ' + summary.q1_count + ' | Q2潜伏ETF数: ' + summary.q2_count);
+            lines.push('Q1 Strong ETFs: ' + summary.q1_count + ' | Q2 Lurking ETFs: ' + summary.q2_count);
         }
 
         if (lines.length === 0) {
-            lines.push('暂无详细分析内容。');
+            lines.push('No detailed analysis content.');
         }
 
         el.innerHTML = lines.join('<br>');
@@ -374,16 +389,16 @@
             return;
         }
 
-        var quadLabels = {1: 'Q1强势', 2: 'Q2潜伏', 3: 'Q3撤离', 4: 'Q4风险'};
+        var quadLabels = {1: 'Q1 Strong', 2: 'Q2 Lurk', 3: 'Q3 Exit', 4: 'Q4 Risk'};
         var quadColors = {1: '#4a7c4a', 2: '#8fbc8f', 3: '#cd853f', 4: '#cd5c5c'};
 
         var html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
-        html += '<thead><tr style="border-bottom:2px solid var(--c-border);">';
-        html += '<th style="text-align:left;padding:6px 4px;">排名</th>';
+        html += '<thead><tr style="border-bottom:1px solid var(--c-border);">';
+        html += '<th style="text-align:left;padding:6px 4px;">Rank</th>';
         html += '<th style="text-align:left;padding:6px 4px;">ETF</th>';
-        html += '<th style="text-align:right;padding:6px 4px;">因子</th>';
-        html += '<th style="text-align:center;padding:6px 4px;">象限</th>';
-        html += '<th style="text-align:right;padding:6px 4px;">建议仓位</th>';
+        html += '<th style="text-align:right;padding:6px 4px;">Factor</th>';
+        html += '<th style="text-align:center;padding:6px 4px;">Quadrant</th>';
+        html += '<th style="text-align:right;padding:6px 4px;">Suggested Position</th>';
         html += '</tr></thead><tbody>';
 
         summary.latest_factors.forEach(function(f, i) {
@@ -395,7 +410,7 @@
             html += '<td style="padding:5px 4px;">' + (i + 1) + '</td>';
             html += '<td style="padding:5px 4px;">' + (f.name || f.code) + '</td>';
             html += '<td style="padding:5px 4px;text-align:right;color:' + factorColor + ';">' + f.factor.toFixed(3) + '</td>';
-            html += '<td style="padding:5px 4px;text-align:center;"><span style="display:inline-block;padding:1px 6px;border-radius:3px;font-size:11px;color:#fff;background:' + qColor + ';">' + qLabel + '</span></td>';
+            html += '<td style="padding:5px 4px;text-align:center;"><span style="display:inline-block;padding:1px 6px;border-radius:0;font-size:11px;color:#fff;background:' + qColor + ';">' + qLabel + '</span></td>';
             html += '<td style="padding:5px 4px;text-align:right;">' + weightDisplay + '</td>';
             html += '</tr>';
         });
@@ -478,7 +493,10 @@
     });
 
     try { ATMChart.load(); } catch(e) { console.warn('ECharts load failed:', e); }
-    loadAllData('short');
+    // Defer data fetch one frame so skeleton paints first
+    requestAnimationFrame(function() {
+        loadAllData('short');
+    });
     window.__atmPageReady();
 
     } catch(e) { console.error('Analysis page init error:', e); }

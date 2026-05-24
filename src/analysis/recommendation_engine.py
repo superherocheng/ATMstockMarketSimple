@@ -50,7 +50,7 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
             SELECT MAX(trade_date) FROM factor_daily WHERE preset_id = :pid
         """), {"pid": preset_id}).fetchone()
         if not date_row or not date_row[0]:
-            return {"error": "暂无因子数据，请先运行因子计算", "recommendations": []}
+            return {"error": "No factor data available. Please run factor calculation first.", "recommendations": []}
         latest_date = date_row[0]
 
         # ── 2. Get all ETFs' latest factor values ──
@@ -176,7 +176,7 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
         conn.close()
 
     if not factor_rows:
-        return {"error": "暂无因子数据", "recommendations": []}
+        return {"error": "No factor data available", "recommendations": []}
 
     # ── Build data structures ──
     sector_names = dict(SECTOR_ETF)
@@ -260,7 +260,24 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
         timing = compute_market_timing()
     except Exception as exc:
         logger.warning(f"Market timing failed: {exc}")
-        timing = {"score": 0, "adjustment": 0, "regime_cn": "未知", "narrative": ""}
+        timing = {"score": 0, "adjustment": 0, "regime_cn": "Unknown", "narrative": ""}
+
+    # ── Data coverage stats (right after fetching factor data) ──
+    total_tracked_etfs = len(sector_names)
+    try:
+        conn_cov = _get_conn()
+        cov_row = conn_cov.execute(text("""
+            SELECT trade_date, COUNT(*) as cnt
+            FROM factor_daily
+            WHERE preset_id = :pid AND trade_date = (
+                SELECT MAX(trade_date) FROM factor_daily WHERE preset_id = :pid
+            )
+            GROUP BY trade_date
+        """), {"pid": preset_id}).fetchone()
+        latest_etf_count = cov_row[1] if cov_row else 0
+        conn_cov.close()
+    except Exception:
+        latest_etf_count = 0
 
     # ── Select and rank candidates ──
     # Standard: Q1 (strong) and Q2 (lurk) are always recommended.
@@ -269,6 +286,11 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
     #   because RSRS indicates structural support even when
     #   short-term flow/momentum are negative.
     # Q4 (risk) remains excluded — it's the highest-risk quadrant.
+    # Fallback: if fewer than MIN_RECOMMEND candidates pass strict
+    #   filtering, relax Q3/Q4 thresholds to ensure diversification.
+
+    MIN_RECOMMEND = 3
+
     candidates = []
     for e in etf_data.values():
         if e["code"] not in sector_names:
@@ -279,23 +301,41 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
             candidates.append(e)
     candidates.sort(key=lambda x: -x["factor"])
 
+    # ── Fallback: relax thresholds when strict candidates are too few ──
+    if len(candidates) < MIN_RECOMMEND:
+        existing_codes = {c["code"] for c in candidates}
+        for e in etf_data.values():
+            if e["code"] not in sector_names or e["code"] in existing_codes:
+                continue
+            # Relaxed Q3: any positive RSRS
+            if e["quadrant"] == 3 and e.get("z_rsrs", 0) > 0 and e["factor"] > 0:
+                candidates.append(e)
+            # Relaxed Q4: strong RSRS can compensate for risk quadrant
+            elif e["quadrant"] == 4 and e.get("z_rsrs", 0) > 0.3 and e["factor"] > 0:
+                candidates.append(e)
+        candidates.sort(key=lambda x: -x["factor"])
+
     if not candidates:
         return {
             "date": str(latest_date),
             "recommendations": [],
             "strategy": {
-                "name": f"ETF多因子轮动策略 ({preset['label']})",
-                "description": "当前无符合条件的ETF推荐",
+                "name": f"ETF Multi-Factor Rotation Strategy ({preset['label']})",
+                "description": "No ETFs currently meet the selection criteria",
                 "holding_period": "",
             },
-            "reasons": ["所有ETF均处于Q3/Q4象限且RSRS偏弱，建议持币观望"],
-            "risk_warning": ["市场无明显强势板块且无强支撑信号，暂停操作"],
+            "reasons": ["All ETFs are in Q3/Q4 quadrants with weak RSRS. Consider holding cash."],
+            "risk_warning": ["No strong sector momentum or support signals. Trading paused."],
         }
 
     # ── Phase 1: Initial scoring (no correlation penalty) ──
     initial_scored = []
     for c in candidates:
-        base_score = max(0, c["factor"])
+        # Q1/Q2 always get a minimum score to survive the final_score > 0 check
+        if c["quadrant"] in (1, 2):
+            base_score = max(0.05, c["factor"])
+        else:
+            base_score = max(0, c["factor"])
         quad_mult = 1.0 if c["quadrant"] == 1 else 0.7
         initial_scored.append((c, base_score * quad_mult))
 
@@ -357,7 +397,7 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
 
     total_final_score = sum(s for _, s in top)
     if total_final_score <= 0:
-        return {"error": "无有效因子信号", "recommendations": []}
+        return {"error": "No valid factor signals", "recommendations": []}
 
     # Per-ETF cap: 25% absolute
     max_single = 0.25
@@ -373,17 +413,17 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
 
         # Strategy label
         if c["quadrant"] == 1:
-            strategy_label = "Q1强势持有"
-            strategy_desc = "资金流入 + 价格上涨，趋势共振，持有或加仓"
+            strategy_label = "Q1 Strong Hold"
+            strategy_desc = "Capital inflow + price uptrend. Trend alignment. Hold or add."
             holding = preset["forward_periods"][0]
         elif c["quadrant"] == 2:
-            strategy_label = "Q2潜伏布局"
-            strategy_desc = "资金逆势流入，价格回调，分批建仓"
+            strategy_label = "Q2 Accumulate"
+            strategy_desc = "Contrarian capital inflow with price pullback. Scale in gradually."
             holding = preset["forward_periods"][0]
         else:
             # Q3 with RSRS override: structural support despite weak flow/momentum
-            strategy_label = "Q3支撑博弈"
-            strategy_desc = "RSRS支撑结构较强，资金与动量偏弱，试探性配置"
+            strategy_label = "Q3 RSRS Support"
+            strategy_desc = "Strong RSRS structural support despite weak flow/momentum. Exploratory allocation."
             holding = preset["forward_periods"][0]
 
         # Flow direction display (raw flow, scaled to readable %)
@@ -399,9 +439,9 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
             "momentum": momentum_str,
             "factor_score": round(c["factor"], 4),
             "quadrant": c["quadrant"],
-            "holding_days": f"{holding}个交易日",
+            "holding_days": f"{holding} trading days",
             "position_ratio": f"{round(weight * 100, 1)}%",
-            "confidence": "高" if c["quadrant"] == 1 else "中",
+            "confidence": "High" if c["quadrant"] == 1 else "Mid",
             "z_quality": round(c["z_quality"], 4),
             "f_quality_raw": round(c["f_quality_raw"], 4),
             "z_efficiency": round(c["z_efficiency"], 4),
@@ -415,43 +455,43 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
         icir_val = ic_summary[best_h]["icir"]
         if icir_val < 0.2:
             risk_warnings.append(
-                f"⚠️ 当前因子ICIR={icir_val:.2f}，接近随机水平，建议减仓至50%以下"
+                f"⚠️ Current factor ICIR={icir_val:.2f}, near random level. Consider reducing positions to under 50%."
             )
         elif icir_val < 0.3:
             risk_warnings.append(
-                f"⚠️ 当前因子ICIR={icir_val:.2f}，预测力偏弱，仓位不宜过重"
+                f"⚠️ Current factor ICIR={icir_val:.2f}, weak predictive power. Avoid heavy positioning."
             )
         elif icir_val < 0.5:
             risk_warnings.append(
-                f"✓ 因子ICIR={icir_val:.2f}，具备可用预测力，可按常规仓位操作"
+                f"✓ Factor ICIR={icir_val:.2f}, usable predictive power. Standard position sizing is appropriate."
             )
         else:
             risk_warnings.append(
-                f"✓ 因子ICIR={icir_val:.2f}，预测力强，可适当加大仓位"
+                f"✓ Factor ICIR={icir_val:.2f}, strong predictive power. May consider larger positions."
             )
 
     # ── Rolling ICIR decay warning ──
     if recent_icir is not None:
         if icir_decay_pct is not None and icir_decay_pct > 40:
             risk_warnings.append(
-                f"📉 近60日滚动ICIR={recent_icir:.2f}，较全样ICIR({best_icir:.2f})衰减"
-                f"{icir_decay_pct:.0f}%，因子预测力持续下降，建议谨慎操作"
+                f"📉 60-day rolling ICIR={recent_icir:.2f}, decayed {icir_decay_pct:.0f}% "
+                f"vs full-sample ({best_icir:.2f}). Factor predictive power declining. Exercise caution."
             )
         elif icir_decay_pct is not None and icir_decay_pct > 20:
             risk_warnings.append(
-                f"📉 近60日滚动ICIR={recent_icir:.2f}，较全样ICIR({best_icir:.2f})衰减"
-                f"{icir_decay_pct:.0f}%，因子信号质量有所下滑"
+                f"📉 60-day rolling ICIR={recent_icir:.2f}, decayed {icir_decay_pct:.0f}% "
+                f"vs full-sample ({best_icir:.2f}). Factor signal quality softening."
             )
 
     if timing_adj < -0.1:
         risk_warnings.append(
-            f"📉 大盘择时信号偏空（{timing.get('regime_cn','?')}），"
-            f"总仓位已下调{abs(timing_adj)*100:.0f}%"
+            f"📉 Market timing signal bearish ({timing.get('regime_cn','?')}). "
+            f"Total position reduced by {abs(timing_adj)*100:.0f}%."
         )
     elif timing_adj > 0.1:
         risk_warnings.append(
-            f"📈 大盘择时信号偏多（{timing.get('regime_cn','?')}），"
-            f"总仓位已上调{timing_adj*100:.0f}%"
+            f"📈 Market timing signal bullish ({timing.get('regime_cn','?')}). "
+            f"Total position increased by {timing_adj*100:.0f}%."
         )
 
     # Check pairwise correlations within the final top selection
@@ -470,36 +510,44 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
                             high_corr_pairs.append((ci, cj, cv))
         if max_pair_corr > 0.5:
             risk_warnings.append(
-                f"🔗 推荐ETF间相关性最高达{max_pair_corr:.2f}，"
-                f"已通过相关性惩罚控制集中度"
+                f"🔗 Max pairwise correlation among recommended ETFs is {max_pair_corr:.2f}. "
+                f"Concentration controlled via correlation penalty."
             )
+
+    # ── Data coverage warning ──
+    if latest_etf_count < total_tracked_etfs:
+        risk_warnings.append(
+            f"ℹ️ ETF data coverage: only {latest_etf_count}/{total_tracked_etfs} "
+            f"sector ETFs have latest factor data (remaining ETFs have delayed share data). "
+            f"Rankings are for reference only."
+        )
 
     # ── Reasons ──
     reasons = [
-        f"基于{preset['label']}预设（flow_lookback={preset['flow_lookback']}d, "
-        f"mom_lookback={preset['mom_lookback']}d）的四因子模型（RSRS+资金流+动量+财务质量）",
+        f"Based on {preset['label']} preset (flow_lookback={preset['flow_lookback']}d, "
+        f"mom_lookback={preset['mom_lookback']}d) five-factor model (RSRS + Capital Flow + Momentum + Financial Quality + Intraday Efficiency)",
     ]
     if best_h in ic_summary and ic_summary[best_h]["icir"] is not None:
         ic = ic_summary[best_h]
         reasons.append(
-            f"最优H={best_h}天: IC均值={ic['ic_mean']:.4f}, ICIR={ic['icir']:.2f}, "
-            f"近{ic['sample_count']}个交易日胜率{ic['ic_win_rate']:.1%}"
+            f"Optimal forward period H={best_h}d: IC mean={ic['ic_mean']:.4f}, ICIR={ic['icir']:.2f}, "
+            f"win rate over {ic['sample_count']} trading days: {ic['ic_win_rate']:.1%}"
         )
-    reasons.append("主要推荐Q1（强势）+ Q2（潜伏）象限ETF；Q3（撤离）中RSRS>0.3的品种按信号强度纳入候选")
+    reasons.append("Primary recommendations from Q1 (Strong) + Q2 (Lurk) quadrants; Q3 (Exit) ETFs with RSRS>0.3 included by signal strength.")
     reasons.append(
-        "V4新增财务质量因子（F_Quality）：综合预期ROE、PB估值分位（反向）、盈利加速度三个子因子，"
-        "基于行业成分股流通市值加权合成"
+        "V4 Financial Quality factor (F_Quality): combines expected ROE, PB valuation percentile (inverse), "
+        "and earnings acceleration sub-factors, weighted by sector constituent float market cap."
     )
     reasons.append(
-        "V5新增日内效率因子（IntEff）：基于OHLC代理的日内价格方向性指标，"
-        "衡量趋势流畅度。高IntEff=单边趋势强、噪音低；低IntEff=震荡折返多"
+        "V5 Intraday Efficiency factor (IntEff): OHLC-based intraday price directionality metric "
+        "measuring trend smoothness. High IntEff = strong unilateral trend, low noise; Low IntEff = choppy reversals."
     )
     reasons.append(
-        f"风险预算：单ETF≤{max_single*100:.0f}%，按因子分比例配仓"
+        f"Risk budget: single ETF ≤ {max_single*100:.0f}%, allocated by factor score proportion."
     )
     if abs(timing_adj) > 0.05:
-        reasons.append(f"大盘择时信号：{timing.get('narrative','')}")
-    reasons.append("建议设置止损：单ETF亏损达-5%或跌破20日均线时减仓")
+        reasons.append(f"Market timing signal: {timing.get('narrative','')}")
+    reasons.append("Stop-loss recommended: reduce position when single ETF loss reaches -5% or breaks below 20-day MA.")
 
     # ── Stats ──
     stats = {}
@@ -513,11 +561,11 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
             }
 
     # Strategy description
-    strategy_name = f"ETF多因子轮动策略 ({preset['label']})"
-    holding_period = f"{preset['forward_periods'][0]}个交易日中期持有"
+    strategy_name = f"ETF Multi-Factor Rotation Strategy ({preset['label']})"
+    holding_period = f"{preset['forward_periods'][0]}-day medium-term holding"
     strategy_desc = (
-        f"{preset['description']}。"
-        f"大盘信号：{timing.get('regime_cn','中性')}（择时调整{timing_adj*100:+.0f}%）。"
+        f"{preset['description']}. "
+        f"Market signal: {timing.get('regime_cn','Neutral')} (timing adjustment {timing_adj*100:+.0f}%)."
     )
 
     # Top-level IC stats from optimal period
@@ -540,6 +588,15 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
         "recommendations": recommendations,
         "risk_warning": risk_warnings,
         "stats": stats,
+        "etf_data_coverage": {
+            "with_data": latest_etf_count,
+            "tracked_total": total_tracked_etfs,
+            "pct": round(latest_etf_count / total_tracked_etfs * 100, 0) if total_tracked_etfs > 0 else 0,
+        },
+        "weight_allocation": {
+            "quality_active": has_quality,
+            "efficiency_active": True,
+        },
         "timing": {
             "score": timing.get("score", 0),
             "regime": timing.get("regime_cn", ""),

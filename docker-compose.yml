@@ -3,7 +3,7 @@ services:
     build: .
     container_name: atmstockmarket
     ports:
-      - "8000:8000"
+      - "5656:5656"
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:password@db:5432/atm_stock_market}
       - TUSHARE_TOKEN=${TUSHARE_TOKEN:-}

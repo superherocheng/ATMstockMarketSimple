@@ -89,25 +89,19 @@ async def api_ic_summary_all():
     from sqlalchemy import text
     from src.core.db_manager_postgresql import get_conn
 
-    # Build lookup with preset config (weights, description)
+    # Build lookup with preset config (label, description)
     preset_config = {}
     for pid, cfg in PRESETS.items():
-        w = cfg.get("factor_weights", {})
         preset_config[pid] = {
             "label": cfg.get("label", pid),
             "desc": cfg.get("description", ""),
-            "weights": {
-                "rsrs": w.get("rsrs", 0),
-                "flow": w.get("flow", 0),
-                "mom": w.get("mom", 0),
-            },
         }
 
     conn = get_conn()
     try:
         rows = conn.execute(text("""
             SELECT preset_id, forward_days,
-                   ic_mean, icir, ic_win_rate, sample_count
+                   ic_mean, ic_std, icir, ic_win_rate, sample_count
             FROM ic_summary ORDER BY preset_id, forward_days
         """)).fetchall()
     finally:
@@ -116,17 +110,16 @@ async def api_ic_summary_all():
     result = []
     for r in rows:
         rid = r[0]
-        config = preset_config.get(rid, {"label": rid, "desc": "", "weights": {}})
+        config = preset_config.get(rid, {"label": rid, "desc": ""})
         result.append({
             "preset_id": rid,
             "label": config["label"],
-            "desc": config["desc"],
-            "weights": config["weights"],
             "forward_days": r[1],
             "ic_mean": round(float(r[2]), 4) if r[2] is not None else None,
-            "icir": round(float(r[3]), 4) if r[3] is not None else None,
-            "ic_win_rate": round(float(r[4]) * 100, 2) if r[4] is not None else None,
-            "sample_count": r[5] if r[5] else 0,
+            "ic_std": round(float(r[3]), 4) if r[3] is not None else None,
+            "icir": round(float(r[4]), 4) if r[4] is not None else None,
+            "ic_win_rate": round(float(r[5]) * 100, 2) if r[5] is not None else None,
+            "sample_count": r[6] if r[6] else 0,
         })
 
     return {"presets": result, "count": len(result)}
@@ -188,7 +181,7 @@ async def api_recompute_financial():
 
     thread = threading.Thread(target=_run, daemon=True)
     thread.start()
-    return {"status": "started", "message": "财务因子计算已启动"}
+    return {"status": "started", "message": "Factor calculation started"}
 
 
 @router.post("/api/analysis/recompute")

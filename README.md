@@ -32,16 +32,16 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 - 📉 **K线图表展示** - 基于ECharts 5的专业K线图，支持多维度数据分析
 
 - 🔄 **一键更新+回测** - 更新ETF数据后自动运行因子计算+IC分析，一步到位
-- 🏠 **首页因子概览** - 首页新增IC汇总卡片，展示各预设的IC均值/ICIR/胜率及三因子权重
+- 🏠 **首页因子概览** - 首页IC汇总卡片，展示各预设的IC均值/ICIR/胜率及五因子权重
 
 ### 🔬 量化分析
-- 🔬 **三因子评分模型** - RSRS(阻力支撑) + 资金流(Flow) + 动量(Mom)因子线性组合，ICIR=0.50
+- 🔬 **五因子评分模型** - RSRS(阻力支撑) + 资金流(Flow) + 动量(Mom) + 财务质量(Quality) + 日内效率(Efficiency)，ICIR=0.38
 - 💪 **RSRS因子** - 基于高低点滚动OLS回归(β×R²)，衡量支撑/阻力结构强度，与动量极低共线性(Pearson<0.23)
 - ⚡ **向量化因子引擎** - 滑动窗口预计算RSRS/Flow/Mom，全量回测从~25s降至~5s，提速5-8x
 - 🔄 **并行预设计算+数据共享** - 4组预设并行计算，DB全表扫描仅执行一次，避免重复IO
 - 📈 **IC有效性检验** - Spearman Rank IC + ICIR + IC衰减曲线 + **滚动ICIR衰退检测**
 - 🎯 **四象限分类+RSRS覆盖** - Q1强势/Q2潜伏/Q3撤离/Q4风险；Q3中RSRS>0.3的品种按信号强度纳入候选
-- 🏆 **投资建议引擎** - 三因子得分 + RSRS象限覆盖 + IC置信度 + 两阶段相关性惩罚 + 大盘择时 + 滚动ICIR衰减检测 → 仓位配置
+- 🏆 **投资建议引擎** - 五因子得分 + RSRS象限覆盖 + IC置信度 + 两阶段相关性惩罚 + 大盘择时 + 滚动ICIR衰减检测 → 仓位配置
 - 📡 **大盘择时** - 基于中证500 RSI+动量+份额变化的市场状态判断
 - 🛡️ **数据覆盖回退** - 最新交易日数据不全时自动回退到最近完整日期
 
@@ -56,18 +56,21 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 ### 因子组合
 
 ```
-综合因子 = w_rsrs × z_rsrs(RSRS) + w_flow × z_flow(EWMA) + w_mom × z_mom(vol-adj)
+综合因子 = w_rsrs × z_rsrs + w_flow × z_flow + w_mom × z_mom
+         + w_quality × z_quality + w_efficiency × z_efficiency
 ```
 
 | 子因子 | 计算方式 | 说明 |
 |--------|----------|------|
 | **RSRS(阻力支撑)** | 高低点滚动OLS回归(β×R²)，N日窗口 | 支撑/阻力结构强度，与动量极低共线性(Pearson<0.23) |
-| **资金流(Flow)** | EWMA加权斜率 (半衰期3天) → Tanh压缩 | 份额变化趋势，近期敏感 |
+| **资金流(Flow)** | EWMA加权斜率 (半衰期3天) → Rank标准化 | 份额变化趋势，近期敏感 |
 | **动量(Mom)** | 累计收益率 / 60日波动率 | 风险调整后动量 |
+| **财务质量(Quality)** | ROE/毛利率/负债率/现金流质量综合评分 | 基本面防御力（V4新增） |
+| **日内效率(Efficiency)** | OHLC排列熵与趋势效率代理 | 交易结构稳定性（V5新增） |
 
 ### 权重配置
 
-各预设使用不同的三因子权重：
+各预设使用不同的五因子权重：
 
 | 预设 | RSRS | Flow | Mom | Quality | Efficiency | 适用场景 |
 |------|:----:|:----:|:---:|:-------:|:----------:|----------|
@@ -90,8 +93,8 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 
 ### 数据处理
 
-- **Winsorize 10%** — 截断极端值，消除小样本(17只)噪声
-- **Cross-sectional Z-score** — 横截面标准化
+- **Rank秩标准化** — 标准分排名替代Z-Score，更适应小样本(17只)截面
+- **横截面标准化** — 所有因子经Rank标准化后合成复合因子
 - **行业中性化** — 按行业分组去均值（预留）
 
 ### 投资建议引擎
@@ -138,7 +141,7 @@ ATMstockMarketSimple/
 │   │   └── services/
 │   │       └── cache.py             # Redis + 内存缓存
 │   ├── analysis/                    # 量化分析模块
-│   │   ├── factor_engine.py         # 三因子计算 (RSRS + EWMA Flow + Mom + Winsorize)
+│   │   ├── factor_engine.py         # 五因子计算 (RSRS + Flow + Mom + Quality + Efficiency)
 │   │   ├── ic_analyzer.py           # IC/ICIR分析 + 象限收益
 │   │   ├── chart_builder.py         # ECharts数据转换
 │   │   ├── market_timing.py         # 中证500大盘择时
@@ -329,6 +332,30 @@ uvicorn src.web.app:app --reload --port 8000
 | **Q4 风险** | z_flow < 0, z_mom ≥ 0 — 资金流出但价格上涨，警惕诱多 |
 | **IC** | 信息系数，衡量因子预测力（>0.03为有效） |
 | **ICIR** | IC均值/标准差，衡量因子稳定性（>0.3为可用） |
+
+## 📋 v16.0.0 更新日志
+
+### 📱 全端响应式重构
+
+| 模块 | 改动 |
+|------|------|
+| **断点统一** | 消除散乱的 400/480/600/640/720/768/1024 七个断点，统一为 640/1024 三阶布局 |
+| **导航系统** | bottom-nav 只在 <640px 显示，tablet-topbar 640–1023px，sidebar-nav ≥1024px，不再有导航重叠 |
+| **图表响应式** | K线图手机端高度从 400px 降至 280px，IC系列图降至 220px；canvas 溢出防护；`<details>` 折叠组展开时自动 resize |
+| **表格卡片降级** | 推荐表、行业排名表在 ≤640px 自动转为标签+值的卡片布局，隐藏低优先级列 |
+| **IC 汇总表** | ≤640px 只保留 4 个核心列（预设/周期/IC均值/ICIR），≤400px 精简至 3 列 |
+| **投资建议 KPI** | 6 列 → 3 列(≤640px) → 2 列(≤480px) |
+| **行业芯片网格** | 桌面 7 列 → 平板 4 列 → 手机 3 列 → 超小屏 2 列 |
+| **safe-area 适配** | tablet-topbar + bottom-nav 适配刘海屏/圆角屏安全区域 |
+| **页面标题** | 缩短为 `Analysis - ATM` / `Index ETF - ATM` 等，适配移动端浏览器 tab |
+| **`!important` 清理** | 移除 chart-container 移动端高度覆盖的 `!important` 依赖 |
+| **ECharts 触控** | 折叠图表组展开时自动 resize；orientation change 时 300ms 延迟重排 |
+
+### 📝 文档与项目文件
+- `AGENTS.md` — CodeGraph 索引知识图谱生成的全量项目地图（969 节点 / 878 边）
+- 版本号更新至 `16.0.0`
+
+---
 
 ## 📋 v15.0.0 更新日志
 

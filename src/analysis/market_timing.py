@@ -83,7 +83,7 @@ def compute_market_timing() -> dict:
         conn.close()
 
     if not price_rows or len(price_rows) < MIN_HISTORY:
-        return {"error": "中证500数据不足", "score": 0.0, "adjustment": 0.0}
+        return {"error": "Insufficient CSI 500 data", "score": 0.0, "adjustment": 0.0}
 
     # ── Build price series ──
     dates = [str(r[0]) for r in price_rows]
@@ -162,36 +162,36 @@ def compute_market_timing() -> dict:
 
     # ── Regime classification ──
     if overall_score > 0.3:
-        regime = "oversold_recovery"  # 超卖修复期
-        regime_cn = "超卖修复"
+        regime = "oversold_recovery"
+        regime_cn = "Oversold Recovery"
     elif overall_score > 0.1:
         regime = "slightly_bullish"
-        regime_cn = "温和看多"
+        regime_cn = "Slightly Bullish"
     elif overall_score < -0.2:
         regime = "overheated_caution"
-        regime_cn = "过热谨慎"
+        regime_cn = "Overheated Caution"
     else:
         regime = "neutral"
-        regime_cn = "中性"
+        regime_cn = "Neutral"
 
     # ── Narrative ──
     parts = []
     if current_rsi < 40:
-        parts.append(f"RSI={current_rsi:.0f} 处于超卖区域, 超跌反弹概率大")
+        parts.append(f"RSI={current_rsi:.0f} in oversold territory, high probability of rebound")
     elif current_rsi > 70:
-        parts.append(f"RSI={current_rsi:.0f} 偏高, 注意短期过热风险")
+        parts.append(f"RSI={current_rsi:.0f} elevated, watch for short-term overheating risk")
 
     if current_mom > 0.05:
-        parts.append(f"近20日涨幅{current_mom*100:.1f}%")
+        parts.append(f"20-day gain {current_mom*100:.1f}%")
     elif current_mom < -0.05:
-        parts.append(f"近20日跌幅{abs(current_mom)*100:.1f}%")
+        parts.append(f"20-day loss {abs(current_mom)*100:.1f}%")
 
     if current_share_flow > 5:
-        parts.append(f"中证500ETF份额近10日增长{current_share_flow:.1f}%, 资金流入显著")
+        parts.append(f"CSI 500 ETF shares grew {current_share_flow:.1f}% over 10 days, significant inflow")
     elif current_share_flow < -3:
-        parts.append(f"中证500ETF份额近10日缩减{abs(current_share_flow):.1f}%")
+        parts.append(f"CSI 500 ETF shares declined {abs(current_share_flow):.1f}% over 10 days")
 
-    narrative = "；".join(parts) if parts else "市场处于中性状态，无显著信号"
+    narrative = "; ".join(parts) if parts else "Market in neutral state, no significant signals"
 
     return {
         "date": latest_date,

@@ -1,49 +1,59 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="ATMstockMarket - A股市场分析平台">
-    <meta name="theme-color" content="#6B8F71">
-    <title>ATMstockMarket - A股市场分析</title>
+    <meta name="theme-color" content="#000000">
+    <title>ATMstockMarket</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="/static/css/app.css">
     <script defer src="/static/js/vendor.js"></script>
     <script defer src="/static/js/app.js"></script>
 </head>
 <body class="min-h-screen">
-    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg" style="background:var(--c-accent);color:white;">跳转到主要内容</a>
-    <nav>
-      <div class="nav-container">
-        <a href="/" class="nav-logo">
-          <span class="nav-logo-icon">AM</span>
-          ATMstockMarket
-        </a>
-        <div class="nav-links" id="nav-links">
-          <a href="/" class="nav-link active">首页</a>
-          <a href="/etf" class="nav-link">指数ETF</a>
-          <a href="/sector" class="nav-link">行业ETF</a>
-          <a href="/analysis" class="nav-link">可视化分析</a>
-          
-        </div>
-        <button class="mobile-menu-btn" onclick="document.getElementById('nav-links').classList.toggle('open')" aria-label="菜单">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M0 3h20v2H0V3zm0 6h20v2H0V9zm0 6h20v2H0v-2z"/></svg>
-        </button>
-      </div>
-    </nav>
 
-    <div id="freshness-bar" class="freshness-bar"></div>
+    <div class="tablet-topbar">
+        <div class="tablet-topbar-logo"><a href="/">ATMstockMarket</a></div>
+        <nav class="tablet-topbar-nav">
+            <a href="/" class="active">Home</a>
+            <a href="/etf">Index ETF</a>
+            <a href="/sector">Sector ETF</a>
+            <a href="/analysis">Analysis</a>
+        </nav>
+    </div>
+
+    <div class="page-layout">
+    <aside class="sidebar-nav">
+        <div class="sidebar-logo">
+            <a href="/">ATMstockMarket</a>
+            <div class="sidebar-logo-sub">A-Share Market Analysis</div>
+        </div>
+        <div class="sidebar-nav-section">
+            <div class="sidebar-nav-label">Navigation</div>
+            <nav class="sidebar-nav-links">
+                <a href="/" class="sidebar-nav-link active">Home</a>
+                <a href="/etf" class="sidebar-nav-link">Index ETF</a>
+                <a href="/sector" class="sidebar-nav-link">Sector ETF</a>
+                <a href="/analysis" class="sidebar-nav-link">Analysis</a>
+            </nav>
+        </div>
+        <div class="sidebar-nav-footer">
+            <p>Data Source</p>
+            <span>Tushare · AKShare</span>
+        </div>
+    </aside>
 
         <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-8">
 
         <!-- Market Timing Banner -->
         <div id="market-banner" class="market-banner mb-4">
-            <div class="skeleton" style="height:56px;border-radius:var(--radius-md);"></div>
+            <div class="hard-skeleton hard-skeleton-sm"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
         </div>
 
         <!-- Bento Grid -->
@@ -56,8 +66,8 @@
                         <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                     </div>
                     <div>
-                        <div class="home-card-title">因子分析</div>
-                        <div class="home-card-desc">ETF评分 · 象限分布 · IC检验</div>
+                        <div class="home-card-title">Factor Analysis</div>
+                        <div class="home-card-desc">ETF Scores · Quadrant Distribution · IC Testing</div>
                     </div>
                 </a>
             </div>
@@ -67,8 +77,8 @@
                         <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                     </div>
                     <div>
-                        <div class="home-card-title">行业轮动</div>
-                        <div class="home-card-desc">17行业 · 份额趋势 · 板块轮动</div>
+                        <div class="home-card-title">Sector Rotation</div>
+                        <div class="home-card-desc">17 Sectors · Share Trends · Sector Rotation</div>
                     </div>
                 </a>
             </div>
@@ -78,8 +88,8 @@
                         <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
                     <div>
-                        <div class="home-card-title">投资建议</div>
-                        <div class="home-card-desc">ETF配置 · 仓位分配 · 风险提示</div>
+                        <div class="home-card-title">Investment Advice</div>
+                        <div class="home-card-desc">ETF Allocation · Position Sizing · Risk Alerts</div>
                     </div>
                 </a>
             </div>
@@ -88,11 +98,11 @@
             <div class="home-card home-card-wide home-card--ic">
                 <div class="home-card-header">
                     <span class="home-card-bar accent"></span>
-                    <span class="home-card-heading">因子有效性概览</span>
-                    <span class="home-card-subtitle">五因子模型</span>
+                    <span class="home-card-heading">Factor Validity Overview</span>
+                    <span class="home-card-subtitle">Five-Factor Model</span>
                 </div>
                 <div id="ic-summary-table">
-                    <div class="skeleton" style="height:180px;border-radius:var(--radius-sm);"></div>
+                    <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                 </div>
             </div>
 
@@ -100,14 +110,14 @@
             <div class="home-card home-card-full home-card--data" id="data-section">
                 <div class="home-card-header">
                     <span class="home-card-bar neutral"></span>
-                    <span class="home-card-heading">数据管理</span>
+                    <span class="home-card-heading">Data Management</span>
                     <span class="home-card-subtitle" id="share-status" style="margin-left:auto;font-size:var(--text-xs);color:var(--c-text-tertiary);"></span>
                 </div>
                 <div id="data-status">
-                    <div class="skeleton" style="height:80px;border-radius:var(--radius-sm);"></div>
+                    <div class="hard-skeleton hard-skeleton-sm"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                 </div>
                 <div style="margin-top:var(--space-2);display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);">
-                    <button id="btn-update" class="btn btn-primary" onclick="oneClickUpdate()">一键更新+回测</button>
+                    <button id="btn-update" class="btn btn-primary" onclick="oneClickUpdate()">Update + Backtest</button>
                 </div>
                 <div id="fetch-progress" class="hidden" style="margin-top:var(--space-2);">
                     <div class="flex items-center justify-between text-sm">
@@ -116,7 +126,7 @@
                     </div>
                     <div class="progress-bar" style="margin-top:var(--space-1);"><div id="progress-fill" class="progress-bar-fill" style="width:0%;"></div></div>
                     <div id="backtest-done-bar" class="hidden flex items-center gap-2 text-xs font-semibold text-down" style="margin-top:var(--space-1);">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> 回测已完成
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Backtest completed
                     </div>
                     <div id="fetch-log" class="fetch-log" style="height:120px;overflow-y:auto;margin-top:var(--space-1);"></div>
                 </div>
@@ -128,52 +138,54 @@
         <div class="quick-strip mt-4">
             <a href="/analysis/investment-recommendation" class="quick-strip-link">
                 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                投资建议
+                Investment Advice
             </a>
             <a href="/sector" class="quick-strip-link">
                 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                行业轮动
+                Sector Rotation
             </a>
             <a href="/etf" class="quick-strip-link">
                 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                指数ETF
+                Index ETF
             </a>
             <a href="/analysis" class="quick-strip-link">
                 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                可视化分析
+                Analysis
             </a>
+            <span style="margin-left:auto;font-size:11px;color:var(--c-text-muted);font-family:var(--font-mono);letter-spacing:0.02em;padding:10px 16px;white-space:nowrap;user-select:none;">stock.gaodeqingchuda.icu</span>
         </div>
 
     </main>
+    </div><!-- /page-layout -->
 
     <footer>
-        <p>ATMstockMarket — 数据来源: Tushare / AKShare | 仅供学习研究，不构成投资建议</p>
+        <p>ATMstockMarket — Data Source: Tushare / AKShare | For educational purposes only, not investment advice</p>
     </footer>
 
-    <div class="bottom-nav" role="navigation" aria-label="主导航">
-      <a href="/" class="bottom-nav-item active" aria-label="首页">
+    <div class="bottom-nav" role="navigation" aria-label="Main Navigation">
+      <a href="/" class="bottom-nav-item active" aria-label="Home">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
         </span>
-        <span class="bottom-nav-label">首页</span>
+        <span class="bottom-nav-label">Home</span>
       </a>
-      <a href="/etf" class="bottom-nav-item" aria-label="指数ETF">
+      <a href="/etf" class="bottom-nav-item" aria-label="Index ETF">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
         </span>
-        <span class="bottom-nav-label">指数ETF</span>
+        <span class="bottom-nav-label">Index ETF</span>
       </a>
-      <a href="/sector" class="bottom-nav-item" aria-label="行业ETF">
+      <a href="/sector" class="bottom-nav-item" aria-label="Sector ETF">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
         </span>
-        <span class="bottom-nav-label">行业ETF</span>
+        <span class="bottom-nav-label">Sector ETF</span>
       </a>
-      <a href="/analysis" class="bottom-nav-item" aria-label="可视化分析">
+      <a href="/analysis" class="bottom-nav-item" aria-label="Analysis">
         <span class="bottom-nav-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
         </span>
-        <span class="bottom-nav-label">分析</span>
+        <span class="bottom-nav-label">Analysis</span>
       </a>
     </div>
 
@@ -189,7 +201,7 @@
             var info = await resp.json();
             renderDataStatus(info);
         } catch(e) {
-            document.getElementById('data-status').innerHTML = '<div class="error-message"><div class="error-message-content"><div class="error-message-title">数据加载失败</div><div class="error-message-detail">' + e.message + '</div></div></div>';
+            document.getElementById('data-status').innerHTML = '<div class="error-message"><div class="error-message-content"><div class="error-message-title">Data loading failed</div><div class="error-message-detail">' + e.message + '</div></div></div>';
         }
     }
 
@@ -198,8 +210,8 @@
             { group: 'ETF数据', items: ['index_etf_daily','sector_etf_daily','etf_share'] },
         ];
         var anyNeedUpdate = false;
-        var html = '<div class="overflow-x-auto" style="-webkit-overflow-scrolling:touch;overflow-x:auto;"><table class="w-full text-sm zebra-table" style="min-width:520px;">';
-        html += '<thead><tr><th class="px-3 py-2 text-left whitespace-nowrap">数据类型</th><th class="px-3 py-2 text-left whitespace-nowrap">数据表</th><th class="px-3 py-2 text-center whitespace-nowrap">记录数</th><th class="px-3 py-2 text-left hidden sm:table-cell whitespace-nowrap">日期范围</th><th class="px-3 py-2 text-center whitespace-nowrap">状态</th></tr></thead><tbody>';
+        var html = '<div class="table-scroll"><table class="w-full text-sm zebra-table">';
+        html += '<thead><tr><th class="px-3 py-2 text-left whitespace-nowrap">Data Type</th><th class="px-3 py-2 text-left whitespace-nowrap">Date Range</th></tr></thead><tbody>';
 
         rows.forEach(function(section) {
             section.items.forEach(function(key) {
@@ -207,14 +219,10 @@
                 if (!d) return;
                 var st = ATM.dataStatus(d);
                 if (st.need) anyNeedUpdate = true;
-                var cnt = d.count > 0 ? d.count.toLocaleString() : '-';
                 var range = (d.min_date && d.max_date) ? ATM.fmtDate(d.min_date) + ' ~ ' + ATM.fmtDate(d.max_date) : '-';
                 html += '<tr>';
-                html += '<td class="px-3 py-2 align-middle"><span class="font-semibold">' + section.group + '</span></td>';
-                html += '<td class="px-3 py-2 align-middle" style="color:var(--c-text-secondary);">' + d.display_name + '</td>';
-                html += '<td class="px-3 py-2 text-center align-middle font-mono" style="color:var(--c-text);">' + cnt + '</td>';
-                html += '<td class="px-3 py-2 text-xs font-mono hidden sm:table-cell align-middle" style="color:var(--c-text-tertiary);">' + range + '</td>';
-                html += '<td class="px-3 py-2 text-center align-middle"><span class="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full" style="background:' + st.color + '15;color:' + st.color + '"><span class="w-1.5 h-1.5 rounded-full" style="background:' + st.color + ';"></span>' + st.tag + '</span></td>';
+                html += '<td class="px-3 py-2 align-middle font-semibold">' + d.display_name + '</td>';
+                html += '<td class="px-3 py-2 align-middle font-mono text-xs" style="color:var(--c-text-tertiary);">' + range + '</td>';
                 html += '</tr>';
             });
         });
@@ -225,36 +233,36 @@
         var btn = document.getElementById('btn-update');
         if (btn && !btn.disabled) {
             if (Object.values(info).every(function(d) { return !d.exists || d.count === 0; })) {
-                btn.innerHTML = '首次获取ETF数据';
+                btn.innerHTML = 'Fetch ETF Data';
             } else if (anyNeedUpdate) {
-                btn.innerHTML = '一键更新+回测';
+                btn.innerHTML = 'Update + Backtest';
             } else {
-                btn.innerHTML = '数据已是最新';
+                btn.innerHTML = 'Data is up to date';
             }
         }
     }
 
     async function oneClickUpdate() {
         disableAllButtons();
-        setButtonLoading('btn-update', '启动中...');
+        setButtonLoading('btn-update', 'Starting...');
         try {
             var resp = await fetch('/api/fetch/all', { method: 'POST' });
             if (resp.status === 409) {
-                setButtonLoading('btn-update', '获取中...');
+                setButtonLoading('btn-update', 'Fetching...');
                 document.getElementById('fetch-progress').classList.remove('hidden');
                 if (!pollTimer) { pollTimer = setInterval(pollStatus, 1500); pollStatus(); }
                 return;
             }
             document.getElementById('fetch-progress').classList.remove('hidden');
-            document.getElementById('fetch-log').innerHTML = '<div style="color:#D97706;">正在启动全量数据获取 + 回测...</div>';
+            document.getElementById('fetch-log').innerHTML = '<div style="color:#D97706;">Starting full data fetch + backtest...</div>';
             updateProgressBar(0, 'running');
-            document.getElementById('fetch-status-text').textContent = '数据获取中...';
-            setButtonLoading('btn-update', '获取中...');
+            document.getElementById('fetch-status-text').textContent = 'Fetching data...';
+            setButtonLoading('btn-update', 'Fetching...');
             if (pollTimer) clearInterval(pollTimer);
             pollTimer = setInterval(pollStatus, 1500);
             setTimeout(pollStatus, 800);
         } catch(e) {
-            alert('启动失败: ' + e.message);
+            alert('Start failed: ' + e.message);
             enableAllButtons();
             resetButtonAll();
         }
@@ -279,7 +287,7 @@
         btn.innerHTML = '<span class="spinner spinner-sm"></span> ' + text;
     }
 
-    function resetButtonAll() { document.getElementById("btn-update").innerHTML = '一键更新+回测'; }
+    function resetButtonAll() { document.getElementById("btn-update").innerHTML = 'Update + Backtest'; }
 
     async function updateShareStatus() {
         try {
@@ -288,26 +296,26 @@
             var el = document.getElementById("share-status");
             if (!el) return;
             if (status.error) {
-                el.innerHTML = '<span class="status-dot status-dot-error"></span> 份额: 获取失败';
+                el.innerHTML = '<span class="status-dot status-dot-error"></span> Shares: fetch failed';
                 return;
             }
             var fresh = status.summary ? status.summary.fresh : 0;
             var total = status.summary ? status.summary.total : 0;
             var pct = total > 0 ? (fresh / total * 100) : 0;
             var colorClass = pct >= 100 ? 'status-dot-ok' : (fresh > 0 ? 'status-dot-warn' : 'status-dot-error');
-            var label = pct >= 100 ? '完整' : (fresh + '/' + total);
+            var label = pct >= 100 ? 'Complete' : (fresh + '/' + total);
             var freshnessNote = '';
             if (status.latest_trading_date) {
                 var d = String(status.latest_trading_date);
                 var lastDate = new Date(parseInt(d.slice(0,4)), parseInt(d.slice(4,6))-1, parseInt(d.slice(6,8)));
                 var today = new Date();
                 var daysAgo = Math.round((today - lastDate) / (1000*60*60*24));
-                if (daysAgo > 0) freshnessNote = ' (' + daysAgo + '天前)';
+                if (daysAgo > 0) freshnessNote = ' (' + daysAgo + ' days ago)';
             }
-            el.innerHTML = '<span class="status-dot ' + colorClass + '"></span> 份额: ' + label + freshnessNote;
+            el.innerHTML = '<span class="status-dot ' + colorClass + '"></span> Shares: ' + label + freshnessNote;
         } catch(e) {
             var el = document.getElementById("share-status");
-            if (el) el.innerHTML = '<span class="status-dot status-dot-error"></span> 份额: 错误';
+            if (el) el.innerHTML = '<span class="status-dot status-dot-error"></span> Shares: error';
         }
     }
     
@@ -339,19 +347,19 @@
             if (st.running) {
                 updateProgressBar(st.progress || 0, 'running');
                 if (isBacktestStep(st.current_step)) {
-                    document.getElementById('fetch-status-text').textContent = '回测中...';
+                    document.getElementById('fetch-status-text').textContent = 'Backtesting...';
                 } else {
-                    document.getElementById('fetch-status-text').textContent = '获取数据中...';
+                    document.getElementById('fetch-status-text').textContent = 'Fetching data...';
                 }
             } else if (st.finished_at) {
                 var hasError = st.log.some(function(l) { return l.startsWith('[ERROR]'); });
                 if (st.backtest_done) {
                     updateProgressBar(100, 'done');
-                    document.getElementById('fetch-status-text').textContent = '数据更新 + 回测完成 ✓';
+                    document.getElementById('fetch-status-text').textContent = 'Data update + backtest completed ✓';
                     document.getElementById('backtest-done-bar').classList.remove('hidden');
                 } else {
                     updateProgressBar(hasError ? st.progress : 100, hasError ? 'error' : 'done');
-                    document.getElementById('fetch-status-text').textContent = hasError ? '部分出错' : '已完成';
+                    document.getElementById('fetch-status-text').textContent = hasError ? 'Partial errors' : 'Completed';
                 }
                 document.getElementById('fetch-status-text').style.color = 'var(--c-down)';
                 if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
@@ -360,7 +368,7 @@
                 loadDataRange();
                 loadOverview();
             }
-        } catch(e) { console.error('轮询失败:', e); }
+        } catch(e) { console.error('Polling failed:', e); }
     }
 
     async function loadFetchStatus() {
@@ -385,70 +393,57 @@
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             var data = await resp.json();
             renderIcSummary(data);
-        } catch(e) { console.warn('IC概览加载失败:', e.message); }
+        } catch(e) { console.warn('IC overview load failed:', e.message); }
     }
 
     function renderIcSummary(data) {
         var el = document.getElementById('ic-summary-table');
         if (!data || !data.presets || data.presets.length === 0) {
-            el.innerHTML = '<div class="empty-state"><div class="empty-state-title">暂无数据</div><div class="empty-state-detail">运行「一键更新+回测」后生成</div></div>';
+            el.innerHTML = '<div class="empty-state"><div class="empty-state-title">No data</div><div class="empty-state-detail">Generated after running Update + Backtest</div></div>';
             return;
         }
-        var html = '<table class="w-full text-sm zebra-table" style="min-width:580px;">';
+        var html = '<div class="table-scroll"><table class="w-full text-sm zebra-table">';
         html += '<thead><tr>' +
-            '<th class="px-3 py-2 text-left whitespace-nowrap">预设</th>' +
-            '<th class="px-3 py-2 text-center whitespace-nowrap">三因子权重</th>' +
-            '<th class="px-3 py-2 text-center whitespace-nowrap">IC均值</th>' +
+            '<th class="px-3 py-2 text-left whitespace-nowrap">Preset</th>' +
+            '<th class="px-3 py-2 text-center whitespace-nowrap">H</th>' +
+            '<th class="px-3 py-2 text-center whitespace-nowrap">IC Mean</th>' +
+            '<th class="px-3 py-2 text-center whitespace-nowrap hidden sm:table-cell">IC Std</th>' +
             '<th class="px-3 py-2 text-center whitespace-nowrap">ICIR</th>' +
-            '<th class="px-3 py-2 text-center whitespace-nowrap hidden sm:table-cell">IC胜率</th>' +
-            '<th class="px-3 py-2 text-center whitespace-nowrap hidden sm:table-cell">样本</th>' +
+            '<th class="px-3 py-2 text-center whitespace-nowrap hidden sm:table-cell">Win Rate</th>' +
+            '<th class="px-3 py-2 text-center whitespace-nowrap hidden sm:table-cell">Samples</th>' +
             '</tr></thead><tbody>';
-
-        // Render time-horizon group header
-        html += '<tr style="background:var(--c-bg-secondary);"><td colspan="6" class="px-3 py-2 text-xs font-semibold" style="color:var(--c-text-tertiary);letter-spacing:0.5px;">▸ 时间周期预设</td></tr>';
 
         data.presets.forEach(function(p) {
             var icMean = p.ic_mean !== null ? p.ic_mean.toFixed(4) : '--';
+            var icStd = p.ic_std !== null ? p.ic_std.toFixed(4) : '--';
             var icir = p.icir !== null ? p.icir.toFixed(4) : '--';
             var winRate = p.ic_win_rate !== null ? p.ic_win_rate.toFixed(2) + '%' : '--';
             var samples = p.sample_count || '--';
 
-            // Weights display
-            var w = p.weights || {};
-            var wHtml = 'R:' + (w.rsrs || 0).toFixed(1) + ' F:' + (w.flow || 0).toFixed(1) + ' M:' + (w.mom || 0).toFixed(1);
-
             // Color coding
-            var meanColor = p.ic_mean !== null ? (Math.abs(p.ic_mean) > 0.03 ? 'var(--c-down)' : 'var(--c-text)') : '';
-            var icirColor = p.icir !== null ? (Math.abs(p.icir) > 0.5 ? 'var(--c-down)' : Math.abs(p.icir) > 0.2 ? '#D97706' : 'var(--c-text)') : '';
-            var winColor = p.ic_win_rate !== null ? (p.ic_win_rate > 60 ? 'var(--c-down)' : p.ic_win_rate > 50 ? '#D97706' : 'var(--c-text)') : '';
+            var meanColor = p.ic_mean !== null ? (Math.abs(p.ic_mean) > 0.03 ? 'var(--c-up)' : 'var(--c-text)') : '';
+            var icirColor = p.icir !== null ? (Math.abs(p.icir) > 0.3 ? 'var(--c-up)' : Math.abs(p.icir) > 0.15 ? '#D97706' : 'var(--c-text)') : '';
+            var winColor = p.ic_win_rate !== null ? (p.ic_win_rate > 60 ? 'var(--c-up)' : p.ic_win_rate > 50 ? '#D97706' : 'var(--c-text)') : '';
 
-            // Determine row style: rsrs_aggressive gets a subtle visual cue
-            var rowStyle = '';
-            var labelSuffix = '';
+            var labelSuffix = p.preset_id === 'rsrs_aggressive'
+                ? ' <span class="tech-tag tag-amber" style="font-size:10px;padding:1px 5px;">Experimental</span>'
+                : ' <span class="tech-tag tag-green" style="font-size:10px;padding:1px 5px;">Standard</span>';
 
-            if (p.preset_id === 'rsrs_aggressive') {
-                labelSuffix = ' <span class="tech-tag tag-amber" style="font-size:10px;padding:1px 5px;">实验</span>';
-            } else {
-                labelSuffix = ' <span class="tech-tag tag-green" style="font-size:10px;padding:1px 5px;">标准</span>';
-            }
-
-            html += '<tr' + rowStyle + '>' +
-                '<td class="px-3 py-2 align-middle"><span class="font-semibold">' + p.label + '</span>' + labelSuffix + '<br><span class="text-xs" style="color:var(--c-text-tertiary);">H=' + p.forward_days + '日</span></td>' +
-                '<td class="px-3 py-2 text-center align-middle font-mono text-xs" style="color:var(--c-text-secondary);">' + wHtml + '</td>' +
+            html += '<tr>' +
+                '<td class="px-3 py-2 align-middle"><span class="font-semibold">' + p.label + '</span>' + labelSuffix + '</td>' +
+                '<td class="px-3 py-2 text-center align-middle font-mono text-xs" style="color:var(--c-text-tertiary);">' + p.forward_days + '</td>' +
                 '<td class="px-3 py-2 text-center align-middle font-mono" style="color:' + meanColor + ';">' + icMean + '</td>' +
+                '<td class="px-3 py-2 text-center align-middle font-mono hidden sm:table-cell" style="color:var(--c-text-tertiary);">' + icStd + '</td>' +
                 '<td class="px-3 py-2 text-center align-middle font-mono" style="color:' + icirColor + ';">' + icir + '</td>' +
                 '<td class="px-3 py-2 text-center align-middle font-mono hidden sm:table-cell" style="color:' + winColor + ';">' + winRate + '</td>' +
                 '<td class="px-3 py-2 text-center align-middle font-mono hidden sm:table-cell" style="color:var(--c-text-tertiary);">' + samples + '</td>' +
                 '</tr>';
         });
 
-        // Render experimental group header after standard presets (rsrs_aggressive already rendered above)
-        // Actually, for simplicity, add a footnote explaining weights
-        html += '</tbody></table>';
+        html += '</tbody></table></div>';
         html += '<div class="mt-3 text-xs flex flex-wrap gap-3" style="color:var(--c-text-tertiary);">' +
-            '<span><b>R</b>=RSRS <b>F</b>=资金流 <b>M</b>=动量</span>' +
-            '<span><span class="tech-tag tag-green" style="font-size:10px;">标准</span> 三周期标准参数</span>' +
-            '<span><span class="tech-tag tag-amber" style="font-size:10px;">实验</span> RSRS主导权重(0.5)验证</span>' +
+            '<span><span class="tech-tag tag-green" style="font-size:10px;">Standard</span> Three-period standard params</span>' +
+            '<span><span class="tech-tag tag-amber" style="font-size:10px;">Experimental</span> RSRS-dominant weights</span>' +
             '</div>';
         el.innerHTML = html;
     }
@@ -461,7 +456,7 @@
             if (d.error) return;
             renderMarketBanner(d);
             renderMarketMiniCard(d);
-        } catch(e) { console.warn('大盘择时加载失败:', e.message); }
+        } catch(e) { console.warn('Market timing load failed:', e.message); }
     }
 
     function renderMarketBanner(d) {
@@ -472,10 +467,10 @@
         var sc = adj > 0 ? 'var(--c-up)' : (adj < 0 ? 'var(--c-down)' : 'var(--c-text-tertiary)');
         el.innerHTML = '<div style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);">' +
             '<span class="home-card-bar up" style="height:24px;"></span>' +
-            '<div><div style="font-weight:600;font-size:var(--text-sm);">大盘择时: <span style="color:' + sc + ';">' + (d.regime_cn || '中性') + '</span></div>' +
-            '<div style="font-size:var(--text-xs);color:var(--c-text-tertiary);">' + (d.narrative || '暂无信号') + '</div></div>' +
+            '<div><div style="font-weight:600;font-size:var(--text-sm);">Market Timing: <span style="color:' + sc + ';">' + (d.regime_cn || 'Neutral') + '</span></div>' +
+            '<div style="font-size:var(--text-xs);color:var(--c-text-tertiary);">' + (d.narrative || 'No signal') + '</div></div>' +
             '<div style="margin-left:auto;text-align:right;"><div style="font-weight:700;font-size:var(--text-lg);font-family:var(--font-mono);color:' + sc + ';">' + sign + adj.toFixed(1) + '%</div>' +
-            '<div style="font-size:10px;color:var(--c-text-tertiary);">仓位调整</div></div></div>';
+            '<div style="font-size:10px;color:var(--c-text-tertiary);">Position Adjustment</div></div></div>';
     }
 
     function renderMarketMiniCard(d) {
@@ -495,13 +490,13 @@
             }
             var data = await resp.json();
             renderHeatmap(data.sector_summary);
-        } catch(e) { console.warn('概览数据加载失败:', e.message); }
+        } catch(e) { console.warn('Overview data load failed:', e.message); }
     }
 
     function renderHeatmap(sectors) {
         var c = document.getElementById('heatmap');
         if (!sectors || sectors.length === 0) {
-            c.innerHTML = '<div class="col-span-2 sm:col-span-5 empty-state"><div class="empty-state-title">暂无板块数据</div></div>';
+            c.innerHTML = '<div class="col-span-2 sm:col-span-5 empty-state"><div class="empty-state-title">No sector data</div></div>';
             return;
         }
         var sortedSectors = sectors.slice().sort(function(a, b) {
@@ -510,10 +505,10 @@
         c.innerHTML = sortedSectors.map(function(s) {
             var pct = parseFloat(s.pct_chg || 0);
             var intensity = Math.min(Math.abs(pct) / 3, 1);
-            var bg = pct > 0 ? 'rgba(212, 114, 106, ' + (0.08 + intensity * 0.12) + ')'
-                    : pct < 0 ? 'rgba(106, 175, 124, ' + (0.08 + intensity * 0.12) + ')'
+            var bg = pct > 0 ? 'rgba(220, 38, 38, ' + (0.06 + intensity * 0.10) + ')'
+                    : pct < 0 ? 'rgba(22, 163, 74, ' + (0.06 + intensity * 0.10) + ')'
                     : 'var(--c-bg-tertiary)';
-            return '<div class="heat-cell rounded-lg p-2 sm:p-4 cursor-pointer" style="background:' + bg + '" onclick="location.href=\'/sector?code=' + s.ts_code + '\'" title="' + s.name + ': ' + ATM.pctText(pct) + '">' +
+            return '<div class="heat-cell p-2 sm:p-4 cursor-pointer" style="background:' + bg + '" onclick="location.href=\'/sector?code=' + s.ts_code + '\'" title="' + s.name + ': ' + ATM.pctText(pct) + '">' +
                 '<div class="font-medium text-xs sm:text-sm mb-0.5 sm:mb-1">' + s.name + '</div>' +
                 '<div class="text-base sm:text-lg font-bold font-mono" style="color:' + ATM.pctColor(pct) + '">' + ATM.pctText(pct) + '</div></div>';
         }).join('');
@@ -524,13 +519,16 @@
         function() { loadOverview(); }
     );
 
-    loadOverview();
+    // Defer data fetch one frame so skeleton paints first
+    requestAnimationFrame(function() {
+        loadOverview();
+    });
     window.__atmPageReady();
     
     // Expose handler functions for inline onclick attributes
     window.oneClickUpdate = oneClickUpdate;
     } catch(e) { console.error('Page init error:', e);
-        document.getElementById('data-status').innerHTML = '<div class="error-message"><div class="error-message-title">页面加载错误</div><div class="error-message-detail">' + e.message + '</div></div>';
+        document.getElementById('data-status').innerHTML = '<div class="error-message"><div class="error-message-title">Page load error</div><div class="error-message-detail">' + e.message + '</div></div>';
     }
     });
     </script>
