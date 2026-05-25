@@ -8,12 +8,8 @@ data/database/
 # 但排除其他位置的 CSV
 *.csv
 
-# Data - External (提交)
-# 允许 external_data 目录中的数据文件被 Git 跟踪
-!data/external/
-!data/external/*.csv
-!data/external/*.json
-!data/external/*.md
+# Data - External (不提交)
+data/external/
 
 # Python
 __pycache__/
@@ -63,6 +59,7 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+.trae/
 *.swp
 *.swo
 *~

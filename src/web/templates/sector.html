@@ -62,17 +62,16 @@
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 stagger-children">
 
-        <!-- Home link removed -->
-        <h2 class="flex items-center gap-3 text-base font-semibold border-b border-black pb-3">
-            Sector ETF Comparison &amp; Rotation
-        </h2>
-
-        <div id="sector-cards">
-            <div class="hard-skeleton hard-skeleton-sm"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
+        <div class="flex gap-2 flex-wrap">
+            <button class="tab-btn active" data-filter="all" onclick="setFilter(this)">ALL</button>
+            <button class="tab-btn" data-filter="top3" onclick="setFilter(this)">TOP-3</button>
+            <button class="tab-btn" data-filter="bottom3" onclick="setFilter(this)">BOTTOM-3</button>
+            <button class="tab-btn" data-filter="positive" onclick="setFilter(this)">POSITIVE</button>
+            <button class="tab-btn" data-filter="negative" onclick="setFilter(this)">NEGATIVE</button>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 stagger-children">
-            <div class="glass p-4 sm:p-6">
+            <div class="glass p-4 sm:p-6" style="display:flex;flex-direction:column;">
                 <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
                     Recent Change Comparison
                 </h3>
@@ -80,11 +79,11 @@
                     <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                 </div>
             </div>
-            <div class="glass p-4 sm:p-6">
+            <div class="glass p-4 sm:p-6" style="display:flex;flex-direction:column;">
                 <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
                     Share Change Trends
                 </h3>
-                <div id="share-compare-chart" class="chart-sub">
+                <div id="share-compare-chart" class="chart-main">
                     <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                 </div>
             </div>
@@ -92,17 +91,17 @@
 
         <div id="detail-section" class="hidden">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 stagger-children">
-                <div class="glass p-4 sm:p-6">
+                <div class="glass p-4 sm:p-6" style="display:flex;flex-direction:column;">
                     <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
                         <span id="detail-title">ETF Details</span>
                     </h3>
-                    <div id="detail-kline" class="chart-sub"></div>
+                    <div id="detail-kline" class="chart-main"></div>
                 </div>
-                <div class="glass p-4 sm:p-6">
+                <div class="glass p-4 sm:p-6" style="display:flex;flex-direction:column;">
                     <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
                         <span id="detail-share-title">Share Value</span>
                     </h3>
-                    <div id="detail-share-chart" class="chart-sub"></div>
+                    <div id="detail-share-chart" class="chart-main"></div>
                 </div>
             </div>
         </div>
@@ -156,6 +155,63 @@
 
     var allSectors = [];
     var selectedCode = null;
+    var filterMode = 'all';
+
+    function getFilteredSectors() {
+        if (filterMode === 'all') return allSectors;
+
+        // Find the latest trade date where ALL sectors have share data
+        var latestDates = allSectors.map(function(s) {
+            var shares = s.shares || [];
+            return shares.length > 0 ? shares[shares.length - 1].trade_date : null;
+        }).filter(function(d) { return d !== null; });
+        // Use the minimum of all latest dates — guarantees completeness
+        var commonDate = latestDates.length > 0
+            ? latestDates.reduce(function(m, d) { return d < m ? d : m; })
+            : null;
+
+        // Compute Z-score for each sector using the Share Change Trends method:
+        // (latest_share - mean_of_6) / std_of_6
+        var scored = allSectors.map(function(s) {
+            var shares = s.shares || [];
+            // Pick the 6 values ending at commonDate (or latest available)
+            var vals;
+            if (commonDate) {
+                var idx = -1;
+                for (var i = shares.length - 1; i >= 0; i--) {
+                    if (shares[i].trade_date <= commonDate) { idx = i; break; }
+                }
+                if (idx < 0) return { sector: s, score: 0 };
+                var slice = shares.slice(Math.max(0, idx - 5), idx + 1);
+                vals = slice.map(function(sh) { return parseFloat(sh.fd_share || 0); });
+            } else {
+                vals = shares.slice(-6).map(function(sh) { return parseFloat(sh.fd_share || 0); });
+            }
+            if (vals.length < 2) return { sector: s, score: 0 };
+            var mean = vals.reduce(function(a, b) { return a + b; }, 0) / vals.length;
+            var std = Math.sqrt(vals.reduce(function(a, b) { return a + Math.pow(b - mean, 2); }, 0) / vals.length) || 1;
+            var latestZ = (vals[vals.length - 1] - mean) / std;
+            return { sector: s, score: latestZ };
+        });
+
+        scored.sort(function(a, b) { return b.score - a.score; });
+
+        if (filterMode === 'top3') return scored.slice(0, 3).map(function(d) { return d.sector; });
+        if (filterMode === 'bottom3') return scored.slice(-3).reverse().map(function(d) { return d.sector; });
+        if (filterMode === 'positive') return scored.filter(function(d) { return d.score >= 0; }).map(function(d) { return d.sector; });
+        if (filterMode === 'negative') return scored.filter(function(d) { return d.score < 0; }).map(function(d) { return d.sector; });
+        return allSectors;
+    }
+
+    function setFilter(btn) {
+        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        filterMode = btn.getAttribute('data-filter');
+        renderCompareChart();
+        renderShareCompare();
+    }
+
+    window.setFilter = setFilter;
     var compareChart = null;
     var shareCompareChart = null;
     var detailChart = null;
@@ -168,7 +224,6 @@
             allSectors = allSectors.filter(function(s) {
                 return s.kline && s.kline.length > 0;
             });
-            renderSectorCards();
             try { await ATMChart.load(); } catch(e) { console.warn('ECharts load failed:', e); }
             // Wrap chart renders in try-catch — requestAnimationFrame
             // runs outside the outer try-catch scope, so any throw here
@@ -205,37 +260,8 @@
         risk:   { bg: 'rgba(255,93,0,0.1)', color: '#ff5d00', label: 'Risk' },
     };
 
-    function renderSectorCards() {
-        var container = document.getElementById('sector-cards');
-        // Sort by pct_chg descending (high to low)
-        var sorted = allSectors.slice().sort(function(a, b) {
-            var pa = a.kline && a.kline.length ? parseFloat(a.kline[a.kline.length-1].pct_chg || 0) : 0;
-            var pb = b.kline && b.kline.length ? parseFloat(b.kline[b.kline.length-1].pct_chg || 0) : 0;
-            return pb - pa;
-        });
-        // Chip-style layout — compact colored chips, clickable
-        container.innerHTML = '<div class="sector-chips">' +
-            sorted.map(function(s) {
-                var kline = s.kline || [];
-                var last = kline.length > 0 ? kline[kline.length - 1] : null;
-                var pct = last ? parseFloat(last.pct_chg || 0) : 0;
-                var isSelected = selectedCode === s.ts_code;
-                var sig = (s.signal && s.signal.tag !== 'none') ? SIGNAL_STYLE[s.signal.tag] : null;
-                // Background color: signal-based
-                var chipBg = sig ? sig.bg : 'var(--c-bg-tertiary)';
-                var chipBorder = sig ? sig.color : 'var(--c-border-light)';
-                var selClass = isSelected ? ' chip-selected' : '';
-                return '<div class="sector-chip' + selClass + '" style="background:' + chipBg + ';border-color:' + chipBorder + ';" onclick="selectSector(\'' + s.ts_code + '\')">' +
-                    '<span class="chip-name">' + s.name + '</span>' +
-                    '<span class="chip-pct" style="color:' + ATM.pctColor(pct) + '">' + ATM.pctText(pct) + '</span>' +
-                '</div>';
-            }).join('') +
-            '</div>';
-    }
-
     function selectSector(code) {
         selectedCode = code;
-        renderSectorCards();
         var sector = allSectors.find(function(s) { return s.ts_code === code; });
         if (sector) showDetail(sector);
     }
@@ -456,11 +482,13 @@
         if (compareChart && !compareChart.isDisposed()) compareChart.dispose();
         el.innerHTML = '';
         if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
+        var sectors = getFilteredSectors();
+        if (sectors.length === 0) { el.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--c-text-tertiary);">No matching ETFs</div>'; return; }
         requestAnimationFrame(function() {
         compareChart = echarts.init(el);
         var th = ATM.getChartTheme();
 
-        var with20d = allSectors.map(function(s) {
+        var with20d = sectors.map(function(s) {
             var kline = s.kline || [];
             var p20 = 0;
             if (kline.length >= 20) {
@@ -510,13 +538,15 @@
         if (shareCompareChart && !shareCompareChart.isDisposed()) shareCompareChart.dispose();
         el.innerHTML = '';
         if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
+        var sectors = getFilteredSectors();
+        if (sectors.length === 0) { el.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--c-text-tertiary);">No matching ETFs</div>'; return; }
         requestAnimationFrame(function() {
         shareCompareChart = echarts.init(el);
         var th = ATM.getChartTheme();
 
         // Build category dates from the first sector with data (last 6 trading days)
         var dates = [];
-        var firstSector = allSectors.find(function(s) { return s.shares && s.shares.length >= 6; });
+        var firstSector = sectors.find(function(s) { return s.shares && s.shares.length >= 6; });
         if (firstSector) {
             var sl = firstSector.shares.slice(-6);
             dates = sl.map(function(sh) {
@@ -525,7 +555,7 @@
             });
         }
 
-        var seriesList = allSectors.map(function(s) {
+        var seriesList = sectors.map(function(s) {
             var shares = (s.shares || []).slice(-6);
             var vals = shares.map(function(sh) { return parseFloat(sh.fd_share || 0); });
             var mean = vals.reduce(function(a, b) { return a + b; }, 0) / vals.length;
@@ -551,6 +581,16 @@
             backgroundColor: 'transparent',
             textStyle: th.textStyle,
             tooltip: { trigger: 'axis', backgroundColor: th.tooltip.backgroundColor, borderColor: th.tooltip.borderColor, textStyle: th.tooltip.textStyle,
+                confine: true,
+                position: function(point, params, dom, rect, size) {
+                    var x = point[0] + 15;
+                    var y = point[1] + 15;
+                    var boxW = size.contentSize[0];
+                    var boxH = size.contentSize[1];
+                    if (x + boxW > size.viewSize[0]) x = point[0] - boxW - 10;
+                    if (y + boxH > size.viewSize[1]) y = point[1] - boxH - 10;
+                    return [x, y];
+                },
                 formatter: function(params) {
                     var date = params[0] ? params[0].axisValueLabel : '';
                     var tip = date + '<br/>';
@@ -685,7 +725,7 @@
             var changeColor = d.latestChange > 0 ? 'var(--c-up)' : (d.latestChange < 0 ? 'var(--c-down)' : '#888');
             html += '<tr class="border-t" style="border-color:var(--c-border);">';
             html += '<td data-label="Rank" class="px-3 py-2 font-bold" style="color:var(--c-accent);">' + (i + 1) + '</td>';
-            html += '<td data-label="ETF" class="px-3 py-2">' + d.name + '</td>';
+            html += '<td data-label="ETF" class="px-3 py-2"><a href="#" onclick="selectSector(\'' + d.ts_code + '\');return false;" style="font-weight:600;color:var(--c-link);text-decoration:none;">' + d.name + '</a></td>';
             html += '<td data-label="Change" class="px-3 py-2 text-center font-mono" style="color:' + changeColor + ';">' + (d.latestChange > 0 ? '+' : '') + d.latestChange.toFixed(4) + '%</td>';
             html += '<td data-label="Std Dev" class="px-3 py-2 text-center font-mono" style="color:#888;">' + d.std.toFixed(4) + '%</td>';
             html += '<td data-label="Z-Score" class="px-3 py-2 text-center font-mono font-bold" style="color:' + zScoreColor + ';">' + (d.zScore > 0 ? '+' : '') + d.zScore.toFixed(2) + 'σ</td>';

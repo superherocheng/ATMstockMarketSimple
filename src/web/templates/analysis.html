@@ -63,6 +63,18 @@
         <span class="preset-freshness" id="freshness-label">--</span>
     </div>
 
+    <!-- ═══ SECTION 01: SIGNAL OVERVIEW ═══ -->
+    <div class="section-banner">
+        <div class="section-banner-num">01</div>
+        <div>
+            <div class="section-banner-title">Signal Overview</div>
+            <div class="section-banner-question">Is the factor model effective right now?</div>
+        </div>
+    </div>
+    <div class="section-desc">
+        Summary metrics for factor model validity. Hover the <b>ⓘ</b> markers on each KPI for interpretation thresholds.
+    </div>
+
     <!-- Executive Summary Banner -->
     <div class="exec-summary">
         <div class="exec-summary-icon">
@@ -74,28 +86,78 @@
     <!-- KPI cards -->
     <div class="kpi-row">
         <div class="kpi-card">
-            <div class="kpi-label">IC Mean</div>
+            <div class="kpi-label">IC Mean <span class="info-tip" title="Average Information Coefficient — correlation between factor rankings and forward returns. |IC| > 0.03 = meaningful, |IC| > 0.05 = strong.">ⓘ</span></div>
             <div class="kpi-value" id="kpi-ic-mean">--</div>
             <div class="kpi-sub" id="kpi-ic-mean-sub">&nbsp;</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">ICIR</div>
+            <div class="kpi-label">ICIR <span class="info-tip" title="Information Coefficient Information Ratio — IC Mean divided by IC Std Dev. Measures signal stability vs noise. |ICIR| > 0.3 = reliable, > 0.5 = strong.">ⓘ</span></div>
             <div class="kpi-value" id="kpi-icir">--</div>
             <div class="kpi-sub" id="kpi-icir-sub">&nbsp;</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">IC Win Rate</div>
+            <div class="kpi-label">IC Win Rate <span class="info-tip" title="Percentage of periods where IC has the correct sign. > 50% = effective factor, > 55% = strong.">ⓘ</span></div>
             <div class="kpi-value" id="kpi-ic-win">--</div>
             <div class="kpi-sub" id="kpi-ic-win-sub">&nbsp;</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Strong ETFs</div>
+            <div class="kpi-label">Strong ETFs <span class="info-tip" title="Count of ETFs in Q1 (Strong) quadrant — high factor score combined with positive fund flow. Current buy candidates.">ⓘ</span></div>
             <div class="kpi-value" id="kpi-strong">--</div>
             <div class="kpi-sub" id="kpi-strong-sub">&nbsp;</div>
         </div>
     </div>
 
-    <!-- Collapsible chart sections -->
+    <!-- ═══ SECTION 02: SIGNAL RELIABILITY ═══ -->
+    <div class="section-banner">
+        <div class="section-banner-num">02</div>
+        <div>
+            <div class="section-banner-title">Signal Reliability</div>
+            <div class="section-banner-question">Can I trust these signals over time?</div>
+        </div>
+    </div>
+    <div class="section-desc">
+        Time-series evidence of factor stability. <b>IC Series</b> tracks daily predictive correlation — sustained positive values confirm consistent signal. <b>Rolling ICIR</b> measures stability over a 60-day window — values above 0.5 indicate robust factor performance.
+    </div>
+
+    <div class="chart-group">
+        <details class="chart-group-details" open>
+            <summary class="chart-group-summary">
+                <span class="chart-group-title">IC Series & Rolling ICIR</span>
+                <span class="chart-group-chevron"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></span>
+            </summary>
+            <div class="chart-grid">
+                <div class="chart-cell">
+                    <h3>IC Series Chart
+                        <span class="info-tip" title="Daily IC time series. Sustained positive → stable factor predictive power">ⓘ</span>
+                    </h3>
+                    <div id="chart-ic-series" class="chart-container">
+                        <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
+                    </div>
+                </div>
+                <div class="chart-cell">
+                    <h3>Factor Rolling ICIR
+                        <span class="info-tip" title="60-day rolling ICIR. >0.5 indicates stable factor performance">ⓘ</span>
+                    </h3>
+                    <div id="chart-rolling-icir" class="chart-container">
+                        <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
+                    </div>
+                </div>
+            </div>
+        </details>
+    </div>
+
+    <!-- ═══ SECTION 03: MARKET STRUCTURE ═══ -->
+    <div class="section-banner">
+        <div class="section-banner-num">03</div>
+        <div>
+            <div class="section-banner-title">Market Structure</div>
+            <div class="section-banner-question">What is the current factor distribution?</div>
+        </div>
+    </div>
+    <div class="section-desc">
+        Cross-sectional view across all ETFs. <b>Histogram</b> reveals distribution skew — positive skew means most sectors show strength. <b>Quadrant Heatmap</b> maps momentum (Z_Mom) against fund flow (Z_Flow) to identify market regime.
+    </div>
+
     <div class="chart-group">
         <details class="chart-group-details" open>
             <summary class="chart-group-summary">
@@ -121,21 +183,27 @@
                 </div>
             </div>
         </details>
+    </div>
 
+    <!-- ═══ SECTION 04: ACTIONABLE SIGNALS ═══ -->
+    <div class="section-banner">
+        <div class="section-banner-num">04</div>
+        <div>
+            <div class="section-banner-title">Actionable Signals</div>
+            <div class="section-banner-question">Which ETFs should I focus on?</div>
+        </div>
+    </div>
+    <div class="section-desc">
+        Concrete rankings and performance validation. <b>Factor Ranking</b> sorts ETFs by composite score with quadrant labels. <b>Group Returns</b> confirms that Q1 (Strong) consistently outperforms Q4 (Risk) — validating the model's discrimination power.
+    </div>
+
+    <div class="chart-group">
         <details class="chart-group-details" open>
             <summary class="chart-group-summary">
-                <span class="chart-group-title">IC Series & Factor Ranking</span>
+                <span class="chart-group-title">Factor Ranking & Group Returns</span>
                 <span class="chart-group-chevron"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></span>
             </summary>
             <div class="chart-grid">
-                <div class="chart-cell">
-                    <h3>IC Series Chart
-                        <span class="info-tip" title="Daily IC time series. Sustained positive → stable factor predictive power">ⓘ</span>
-                    </h3>
-                    <div id="chart-ic-series" class="chart-container">
-                        <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
-                    </div>
-                </div>
                 <div class="chart-cell">
                     <h3>Latest Factor Ranking
                         <span class="info-tip" title="Sorted by composite factor descending, with quadrant labels">ⓘ</span>
@@ -144,28 +212,11 @@
                         <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                     </div>
                 </div>
-            </div>
-        </details>
-
-        <details class="chart-group-details" open>
-            <summary class="chart-group-summary">
-                <span class="chart-group-title">Return Curves & Rolling ICIR</span>
-                <span class="chart-group-chevron"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></span>
-            </summary>
-            <div class="chart-grid">
                 <div class="chart-cell">
                     <h3>Group Cumulative Returns
                         <span class="info-tip" title="Cumulative returns by quadrant. Larger Q1-Q3 gap → better factor discrimination">ⓘ</span>
                     </h3>
                     <div id="chart-group-returns" class="chart-container">
-                        <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
-                    </div>
-                </div>
-                <div class="chart-cell">
-                    <h3>Factor Rolling ICIR
-                        <span class="info-tip" title="60-day rolling ICIR. >0.5 indicates stable factor performance">ⓘ</span>
-                    </h3>
-                    <div id="chart-rolling-icir" class="chart-container">
                         <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                     </div>
                 </div>

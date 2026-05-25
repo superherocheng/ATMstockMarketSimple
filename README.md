@@ -126,7 +126,7 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 ATMstockMarketSimple/
 ├── src/
 │   ├── web/                         # FastAPI Web应用
-│   │   ├── app.py                   # 应用入口 (端口 8000)
+│   │   ├── app.py                   # 应用入口 (端口 5656)
 │   │   ├── routers/                 # API路由模块
 │   │   │   ├── analysis.py          # 因子分析 + 投资建议 + 市场择时端点
 │   │   │   ├── etf.py               # ETF详情、行业ETF（含信号标签对齐）
@@ -193,7 +193,7 @@ docker exec atmstockmarket python3 -u /app/src/data_fetchers/tushare_fetcher.py 
 # 6. 重启应用
 docker restart atmstockmarket
 
-# 访问 http://localhost:8000
+# 访问 http://localhost:5656
 ```
 
 ### 本地开发
@@ -223,7 +223,7 @@ ic_analyzer.compute_all_ic()
 "
 
 # 启动服务
-uvicorn src.web.app:app --reload --port 8000
+uvicorn src.web.app:app --reload --port 5656
 ```
 
 ## 📊 路由 & 页面
@@ -332,6 +332,30 @@ uvicorn src.web.app:app --reload --port 8000
 | **Q4 风险** | z_flow < 0, z_mom ≥ 0 — 资金流出但价格上涨，警惕诱多 |
 | **IC** | 信息系数，衡量因子预测力（>0.03为有效） |
 | **ICIR** | IC均值/标准差，衡量因子稳定性（>0.3为可用） |
+
+## 📋 v17.0.0 更新日志
+
+### 🎨 Brutalism设计系统重构
+
+| 模块 | 改动 |
+|------|------|
+| **导航优化** | 桌面端仅保留侧边栏导航，移除顶部导航栏；侧边栏边框从3px黑线改为1px灰色，hover/active状态改为灰底+蓝色下划线 |
+| **ETF页10日份额卡** | 10-Day Share Change卡片重设计：最大化空间利用、放大排版、玻璃态边框（3px→1px） |
+| **行业ETF页重构** | 删除17个ETF芯片卡片，改为排名表ETF名称可点击直达K线+份额详情；新增5个筛选按钮(ALL/TOP-3/BOTTOM-3/POSITIVE/NEGATIVE)，基于份额Z-Score筛选；修复K线3M/6M/1Y/ALL按钮无效问题 |
+| **分析页信息架构** | 重构为4段问题驱动叙事流：因子有效性→信号预测力→因子分布→策略收益；新增Section Banner、KPI标签Tooltip |
+| **投资建议可视化** | 新增4个ECharts图表：雷达图(因子得分)、散点图(Risk vs Return)、环形图(仓位分配)、置信度条；优化表格列宽与排版 |
+| **全局样式统一** | 所有卡片边框从`3px solid #000`统一为`1px solid var(--c-border)`；Section Banner从纯黑底改为`var(--c-bg-tertiary)`灰底 |
+| **图表尺寸统一** | 所有ECharts图表固定高度300px(桌面)/220px(手机)/160px(超小屏)，消除flex与固定高度冲突 |
+| **字体可读性** | `@font-face` + `unicode-range: U+0026` 技术为Playfair Display的&符号提供可读性覆盖(400/700/900三个字重) |
+| **Tooltip溢出修复** | ECharts tooltip添加`confine:true`+自定义`position`函数，防止行业页tooltip超出视口 |
+
+### 📝 文档与配置
+- 版本号更新至 `17.0.0`
+- 删除 `.github/workflows/`（CI配置）
+- 删除 `.trae/documents/`（旧设计文档）
+- 删除 `data/external/`（外部数据文件）
+
+---
 
 ## 📋 v16.0.0 更新日志
 

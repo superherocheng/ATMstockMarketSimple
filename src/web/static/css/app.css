@@ -203,6 +203,31 @@
     --focus-ring: var(--c-input-focus-ring);
 }
 
+/* ─── Ampersand Readability Override ─────────────────────────────── */
+/* Playfair Display's decorative ampersand is illegible at a glance.
+   Override U+0026 (&) only, swapping in Inter's clean blocky glyph. */
+@font-face {
+    font-family: 'Playfair Display';
+    src: local('Inter'), local('Helvetica Neue'), local('Arial');
+    unicode-range: U+0026;
+    font-weight: 400;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Playfair Display';
+    src: local('Inter'), local('Helvetica Neue'), local('Arial');
+    unicode-range: U+0026;
+    font-weight: 700;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Playfair Display';
+    src: local('Inter'), local('Helvetica Neue'), local('Arial');
+    unicode-range: U+0026;
+    font-weight: 900;
+    font-style: normal;
+}
+
 /* ══════════════════════════════════════════════════
    深色模式 — Brutalist Dark
    ══════════════════════════════════════════════════ */
@@ -323,7 +348,7 @@ body {
     display: none;
     flex-direction: column;
     width: 220px;
-    border-right: 1px solid var(--c-border-light);
+    border-right: 1px solid var(--c-border);
     background: #fff;
     height: 100vh;
     position: sticky;
@@ -335,9 +360,11 @@ body {
 @media (min-width: 1024px) {
     .sidebar-nav {
         display: flex;
+        width: 260px;
     }
     .page-layout {
         display: flex;
+        min-height: 100vh;
     }
     .page-layout > main,
     .page-layout > .main-content {
@@ -347,16 +374,17 @@ body {
 }
 
 .sidebar-logo {
-    padding: 24px 20px 0 20px;
+    padding: 28px 24px 0 24px;
 }
 
 .sidebar-logo a {
     font-family: var(--font-serif);
-    font-size: 1.25rem;
+    font-size: 1.35rem;
     font-weight: 900;
     color: var(--c-text);
     text-decoration: none;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
 }
 
 .sidebar-logo a:hover {
@@ -366,43 +394,47 @@ body {
 
 .sidebar-logo-sub {
     font-size: 11px;
-    color: var(--c-text-tertiary);
-    margin-top: 2px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--c-text-muted);
+    margin-top: 4px;
 }
 
 .sidebar-nav-section {
-    padding: 24px 20px;
+    padding: 28px 24px;
 }
 
 .sidebar-nav-label {
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.25em;
     color: var(--c-text-muted);
-    margin-bottom: 12px;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--c-border);
 }
 
 .sidebar-nav-links {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
 }
 
 .sidebar-nav-link {
     display: block;
     width: 100%;
     text-align: left;
-    padding: 6px 4px;
+    padding: 10px 8px;
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--c-text-secondary);
     text-decoration: none;
     transition: all 0.12s ease;
     border: none;
     background: none;
     cursor: pointer;
-    border-bottom: 2px solid transparent;
 }
 
 .sidebar-nav-link:hover {
@@ -413,14 +445,15 @@ body {
 
 .sidebar-nav-link.active {
     color: var(--c-link);
-    font-weight: 700;
-    border-bottom-color: var(--c-link);
+    font-weight: 900;
+    background: none;
+    border-bottom: 2px solid var(--c-link);
 }
 
 .sidebar-nav-footer {
-    padding: 20px;
+    padding: 24px;
     margin-top: auto;
-    border-top: 1px solid var(--c-border-light);
+    border-top: 1px solid var(--c-border);
 }
 
 .sidebar-nav-footer p {
@@ -1252,18 +1285,18 @@ footer {
 /* Prevent ECharts canvas from overflowing its parent container */
 canvas { max-width: 100% !important; }
 
-.chart-main { min-height: 280px; width: 100%; }
-.chart-sub { min-height: 200px; width: 100%; }
+.chart-main { height: 300px; width: 100%; }
+.chart-sub { height: 300px; width: 100%; }
 
 @media (max-width: 640px) {
-    .chart-main { min-height: 220px; }
-    .chart-sub { min-height: 180px; }
+    .chart-main { height: 220px; }
+    .chart-sub { height: 220px; }
     .chart-container { height: 220px; }
 }
 
 @media (max-width: 400px) {
-    .chart-main { min-height: 160px; }
-    .chart-sub { min-height: 140px; }
+    .chart-main { height: 160px; }
+    .chart-sub { height: 160px; }
     .chart-container { height: 160px; }
 }
 
@@ -2098,61 +2131,6 @@ blockquote p {
 
 /* ─── 行业卡片 (Sector Card) ─────────────────────────────── */
 /* ─── Sector ETF Chip layout ── */
-.sector-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0;
-    justify-content: stretch;
-}
-.sector-chips .sector-chip {
-    flex: 1 1 calc(100% / 7);
-    min-width: 0;
-    justify-content: center;
-    text-align: center;
-}
-
-@media (max-width: 640px) {
-    .sector-chips .sector-chip {
-        flex: 1 1 calc(100% / 3);
-    }
-}
-
-@media (max-width: 400px) {
-    .sector-chips .sector-chip {
-        flex: 1 1 calc(100% / 2);
-    }
-}
-.sector-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 0;
-    border: 1px solid var(--c-border);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    white-space: nowrap;
-    font-size: var(--text-xs);
-}
-.sector-chip:hover {
-    background: var(--c-bg-tertiary);
-    color: var(--c-text);
-}
-.sector-chip.chip-selected {
-    background: var(--c-bg-tertiary);
-    color: var(--c-text);
-    font-weight: 700;
-    border-color: var(--c-border);
-}
-.chip-name {
-    font-weight: 500;
-    color: inherit;
-}
-.chip-pct {
-    font-weight: 700;
-    font-family: var(--font-mono);
-}
-
 /* Old card style kept for reference */
 .sector-card {
     background: var(--c-card);
@@ -3012,6 +2990,60 @@ blockquote p {
     .chart-container { height: 160px; }
 }
 
+/* ─── Section Banners (Analysis Page) ── */
+.section-banner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--c-bg-tertiary);
+    color: var(--c-text);
+    border-bottom: 1px solid var(--c-border);
+    padding: 14px 20px;
+    margin-top: 24px;
+}
+.section-banner:first-of-type { margin-top: 0; }
+.section-banner-num {
+    font-family: var(--font-mono);
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--c-text-muted);
+    line-height: 1;
+    flex-shrink: 0;
+}
+.section-banner-title {
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--c-text);
+}
+.section-banner-question {
+    font-size: 11px;
+    font-weight: 400;
+    font-style: italic;
+    color: var(--c-text-tertiary);
+    margin-top: 2px;
+}
+.section-desc {
+    border-left: 3px solid var(--c-border);
+    padding: 10px 16px;
+    font-size: 11px;
+    color: var(--c-text-secondary);
+    line-height: 1.7;
+    margin-bottom: 12px;
+}
+.section-desc b {
+    color: var(--c-text);
+    font-weight: 700;
+}
+@media (max-width: 640px) {
+    .section-banner { padding: 12px 16px; gap: 12px; }
+    .section-banner-num { font-size: 20px; }
+    .section-banner-title { font-size: 11px; letter-spacing: 0.15em; }
+    .section-banner-question { font-size: 10px; }
+    .section-desc { padding: 8px 12px; font-size: 10px; }
+}
+
 /* ─── Executive Summary Banner ── */
 .exec-summary {
     display: flex;
@@ -3067,7 +3099,7 @@ blockquote p {
     transition: background var(--transition-fast);
     border-bottom: 1px solid var(--c-border);
 }
-.chart-group-summary:hover { background: var(--c-black); color: var(--c-white); }
+.chart-group-summary:hover { background: var(--c-bg-tertiary); }
 .chart-group-summary::-webkit-details-marker { display: none; }
 .chart-group-title {
     font-weight: 700;

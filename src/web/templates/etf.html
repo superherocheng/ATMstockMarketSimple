@@ -128,13 +128,13 @@
                 </div>
             </div>
 
-            <div class="glass p-4 sm:p-6">
-                <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
-                    10-Day Share Change Std Dev
-                    <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">Last 10 trading days</span>
+            <div class="glass" style="padding:0;overflow:hidden;">
+                <h3 style="font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:0.2em;padding:12px 20px;border-bottom:1px solid var(--c-border);margin:0;display:flex;align-items:center;gap:12px;">
+                    10-Day Share Change
+                    <span style="font-size:10px;font-weight:600;letter-spacing:0.15em;color:var(--c-text-muted);text-transform:none;">Last 10 trading days</span>
                 </h3>
-                <div id="share-std-card" class="space-y-3">
-                    <div class="hard-skeleton hard-skeleton-sm"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
+                <div id="share-std-card">
+                    <div class="hard-skeleton hard-skeleton-sm" style="padding:16px 20px;"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                 </div>
             </div>
         </div>
@@ -530,9 +530,9 @@
 
     function renderShareStd(data) {
         var el = document.getElementById('share-std-card');
-        
+
         if (data.error) {
-            el.innerHTML = '<div style="color:var(--c-text-tertiary);">Insufficient data</div>';
+            el.innerHTML = '<div style="padding:20px;color:var(--c-text-tertiary);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;">Insufficient data</div>';
             return;
         }
 
@@ -543,80 +543,72 @@
         var positiveDays = data.positive_days;
         var negativeDays = data.negative_days;
 
+        var INC = '#16A34A';
+        var DEC = '#DC2626';
+        var INC_BG = 'rgba(22,163,74,0.07)';
+        var DEC_BG = 'rgba(220,38,38,0.07)';
+
         var zScoreColor = '#888';
         var zScoreLabel = 'Normal';
         if (Math.abs(zScore) >= 2) {
-            zScoreColor = zScore > 0 ? 'var(--c-up)' : 'var(--c-down)';
+            zScoreColor = zScore > 0 ? DEC : INC;
             zScoreLabel = zScore > 0 ? 'Significant Increase' : 'Significant Decrease';
         } else if (Math.abs(zScore) >= 1) {
             zScoreColor = zScore > 0 ? '#10b981' : '#f59e0b';
             zScoreLabel = zScore > 0 ? 'Slight Increase' : 'Slight Decrease';
         }
 
-        var latestChangeColor = latestChange >= 0 ? 'var(--c-up)' : 'var(--c-down)';
-        var totalChangeColor = totalChange >= 0 ? 'var(--c-up)' : 'var(--c-down)';
-        
-        var direction = latestChange >= 0 ? '↑ Inflow' : '↓ Outflow';
-        var directionColor = latestChange >= 0 ? 'var(--c-up)' : 'var(--c-down)';
+        var latestColor = latestChange >= 0 ? DEC : INC;
+        var totalColor = totalChange >= 0 ? DEC : INC;
+        var direction = latestChange >= 0 ? '↑ INFLOW' : '↓ OUTFLOW';
+        var dirColor = latestChange >= 0 ? DEC : INC;
 
-        var zScoreInterpretation = '';
-        if (zScore > 1.5) {
-            zScoreInterpretation = 'Change significantly high';
-        } else if (zScore < -1.5) {
-            zScoreInterpretation = 'Change significantly low';
-        } else if (zScore > 0.5) {
-            zScoreInterpretation = 'Change above normal';
-        } else if (zScore < -0.5) {
-            zScoreInterpretation = 'Change below normal';
-        } else {
-            zScoreInterpretation = 'Change normal';
-        }
+        var zInterp = '';
+        if (zScore > 1.5) zInterp = 'Significantly high';
+        else if (zScore < -1.5) zInterp = 'Significantly low';
+        else if (zScore > 0.5) zInterp = 'Above normal';
+        else if (zScore < -0.5) zInterp = 'Below normal';
+        else zInterp = 'Normal';
 
         el.innerHTML =
-            '<div class="space-y-0">' +
-                '<div class="p-3 border-b border-black text-center">' +
-                    '<div class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--c-text-tertiary);">Latest Share Change <span class="font-mono">' + fmtDate(data.latest_date) + '</span></div>' +
-                    '<div class="flex items-center justify-center gap-3 mt-1">' +
-                        '<span class="text-2xl font-bold num-mono font-mono" style="color:' + directionColor + '">' +
-                            (latestChange >= 0 ? '+' : '') + latestChange.toFixed(4) + '%' +
-                        '</span>' +
-                        '<span class="text-xs font-bold px-2 py-1 border" style="color:' + directionColor + ';border-color:' + directionColor + ';">' +
-                            direction +
-                        '</span>' +
-                    '</div>' +
-                    '<div class="text-[10px] mt-2 font-mono" style="color:var(--c-text-tertiary);">Z-Score: <span style="color:' + zScoreColor + ';font-weight:bold;">' + (zScore >= 0 ? '+' : '') + zScore.toFixed(2) + 'σ</span> · ' + zScoreInterpretation + '</div>' +
-                '</div>' +
-                '<div class="flex items-center justify-between p-3 border-b border-black">' +
+            '<div style="border-bottom:1px solid var(--c-border);">' +
+                '<div style="display:flex;align-items:baseline;justify-content:space-between;padding:14px 20px;gap:12px;flex-wrap:wrap;">' +
                     '<div>' +
-                        '<div class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--c-text-tertiary);">Z-Score</div>' +
-                        '<div class="text-lg font-bold num-mono font-mono" style="color:' + zScoreColor + '">' +
-                            (zScore >= 0 ? '+' : '') + zScore.toFixed(2) + 'σ' +
+                        '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.2em;color:var(--c-text-muted);">Latest · ' + fmtDate(data.latest_date) + '</div>' +
+                        '<div style="display:flex;align-items:baseline;gap:10px;margin-top:6px;">' +
+                            '<span style="font-size:26px;font-weight:900;font-family:var(--font-mono);color:' + latestColor + ';line-height:1;">' +
+                                (latestChange >= 0 ? '+' : '') + latestChange.toFixed(4) + '%' +
+                            '</span>' +
+                            '<span style="font-size:10px;font-weight:900;letter-spacing:0.08em;padding:3px 8px;border:2px solid ' + dirColor + ';color:' + dirColor + ';">' + direction + '</span>' +
                         '</div>' +
                     '</div>' +
-                    '<div class="text-right">' +
-                        '<div class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--c-text-tertiary);">10-Day Cumulative</div>' +
-                        '<div class="text-lg font-bold num-mono font-mono" style="color:' + totalChangeColor + '">' +
+                    '<div style="text-align:right;">' +
+                        '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.2em;color:var(--c-text-muted);">10D Cumulative</div>' +
+                        '<div style="font-size:26px;font-weight:900;font-family:var(--font-mono);color:' + totalColor + ';line-height:1;margin-top:6px;">' +
                             (totalChange >= 0 ? '+' : '') + totalChange.toFixed(4) + '%' +
                         '</div>' +
                     '</div>' +
                 '</div>' +
-                '<div class="grid grid-cols-2 text-xs">' +
-                    '<div class="p-2 border-b border-r border-black">' +
-                        '<div class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--c-text-tertiary);">Increase Days</div>' +
-                        '<div class="font-bold" style="color:var(--c-down);">' + positiveDays + ' days</div>' +
-                    '</div>' +
-                    '<div class="p-2 border-b border-black">' +
-                        '<div class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--c-text-tertiary);">Decrease Days</div>' +
-                        '<div class="font-bold" style="color:var(--c-up);">' + negativeDays + ' days</div>' +
-                    '</div>' +
-                    '<div class="p-2 border-r border-black">' +
-                        '<div class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--c-text-tertiary);">Max Increase</div>' +
-                        '<div class="font-bold" style="color:var(--c-down);">' + (data.max_change >= 0 ? '+' : '') + data.max_change.toFixed(4) + '%</div>' +
-                    '</div>' +
-                    '<div class="p-2">' +
-                        '<div class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--c-text-tertiary);">Max Decrease</div>' +
-                        '<div class="font-bold" style="color:var(--c-up);">' + (data.min_change >= 0 ? '+' : '') + data.min_change.toFixed(4) + '%</div>' +
-                    '</div>' +
+                '<div style="padding:0 20px 12px;font-size:11px;font-family:var(--font-mono);color:var(--c-text-tertiary);">' +
+                    'Z ' + (zScore >= 0 ? '+' : '') + zScore.toFixed(2) + 'σ · <span style="color:' + zScoreColor + ';font-weight:700;">' + zInterp + '</span> · σ ' + stdDev.toFixed(4) +
+                '</div>' +
+            '</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;">' +
+                '<div style="padding:24px 20px;border-right:1px solid var(--c-border);border-bottom:1px solid var(--c-border);background:' + INC_BG + ';">' +
+                    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.25em;color:' + INC + ';">Increase Days</div>' +
+                    '<div style="font-size:52px;font-weight:900;font-family:var(--font-mono);color:' + INC + ';line-height:1;margin-top:8px;">' + positiveDays + '</div>' +
+                '</div>' +
+                '<div style="padding:24px 20px;border-bottom:1px solid var(--c-border);background:' + DEC_BG + ';">' +
+                    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.25em;color:' + DEC + ';">Decrease Days</div>' +
+                    '<div style="font-size:52px;font-weight:900;font-family:var(--font-mono);color:' + DEC + ';line-height:1;margin-top:8px;">' + negativeDays + '</div>' +
+                '</div>' +
+                '<div style="padding:24px 20px;border-right:1px solid var(--c-border);background:' + INC_BG + ';">' +
+                    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.25em;color:' + INC + ';">Max Increase</div>' +
+                    '<div style="font-size:36px;font-weight:900;font-family:var(--font-mono);color:' + INC + ';line-height:1;margin-top:8px;">' + (data.max_change >= 0 ? '+' : '') + data.max_change.toFixed(4) + '%</div>' +
+                '</div>' +
+                '<div style="padding:24px 20px;background:' + DEC_BG + ';">' +
+                    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.25em;color:' + DEC + ';">Max Decrease</div>' +
+                    '<div style="font-size:36px;font-weight:900;font-family:var(--font-mono);color:' + DEC + ';line-height:1;margin-top:8px;">' + (data.min_change >= 0 ? '+' : '') + data.min_change.toFixed(4) + '%</div>' +
                 '</div>' +
             '</div>';
     }
@@ -653,6 +645,7 @@
     
     // Expose for inline onclick attributes
     window.switchETF = switchETF;
+    window.setDateRange = setDateRange;
     } catch(e) { console.error('ETF page init error:', e); }
     });
     </script>

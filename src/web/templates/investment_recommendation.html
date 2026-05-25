@@ -92,6 +92,28 @@
     .reason-item { display:flex; align-items:flex-start; gap:8px; padding:6px 0; font-size:13px; color:var(--c-text-secondary); line-height:1.5; }
     .reason-bullet { flex-shrink:0; color:var(--c-accent); font-weight:700; }
 
+    /* ── Visual analysis grid ── */
+    .vis-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+    .vis-cell { background:var(--c-card); border:1px solid var(--c-border); border-radius:0; padding:0; overflow:hidden; }
+    .vis-title { font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:0.2em; padding:10px 16px; border-bottom:1px solid var(--c-border); margin:0; color:var(--c-text); }
+    .vis-chart { width:100%; height:300px; }
+
+    /* ── Confidence bar ── */
+    .conf-wrap { padding:20px 16px; display:flex; flex-direction:column; justify-content:center; height:calc(100% - 37px); }
+    .conf-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.2em; color:var(--c-text-muted); margin-bottom:8px; }
+    .conf-score { font-size:48px; font-weight:900; font-family:var(--font-mono); line-height:1; margin-bottom:12px; }
+    .conf-bar-outer { width:100%; height:20px; border:3px solid #000; background:#fff; }
+    .conf-bar-fill { height:100%; transition:width 0.6s ease; }
+    .conf-bar-fill.high { background:#16A34A; }
+    .conf-bar-fill.mid { background:#D97706; }
+    .conf-bar-fill.low { background:#DC2626; }
+    .conf-desc { font-size:11px; color:var(--c-text-tertiary); margin-top:8px; line-height:1.5; }
+
+    @media (max-width:640px) {
+        .vis-grid { grid-template-columns:1fr; }
+        .vis-chart { height:260px; }
+    }
+
     /* ── Loading / error ── */
     .loading-state { text-align:center; padding:60px 20px; color:var(--c-text-tertiary); }
 
@@ -188,6 +210,26 @@
             <!-- ═══════ KPI Row ═══════ -->
             <div class="kpi-row" id="kpi-row"></div>
 
+            <!-- ═══════ Visual Analysis Grid ═══════ -->
+            <div class="vis-grid">
+                <div class="vis-cell">
+                    <h3 class="vis-title">Factor Scoring Radar</h3>
+                    <div id="chart-radar" class="vis-chart"></div>
+                </div>
+                <div class="vis-cell">
+                    <h3 class="vis-title">Risk vs. Return Quadrant</h3>
+                    <div id="chart-scatter" class="vis-chart"></div>
+                </div>
+                <div class="vis-cell">
+                    <h3 class="vis-title">Allocation Weight</h3>
+                    <div id="chart-donut" class="vis-chart"></div>
+                </div>
+                <div class="vis-cell">
+                    <h3 class="vis-title">Confidence Score</h3>
+                    <div id="conf-bar-wrap"></div>
+                </div>
+            </div>
+
             <!-- ═══════ ETF Recommendations ═══════ -->
             <div class="report-section">
                 <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:2px;"><path d="M18 20V10M12 20V4M6 20v-6"/></svg> ETF Allocation Advice</h3>
@@ -195,13 +237,13 @@
                 <table class="rec-table responsive-card" id="rec-table">
                     <thead>
                         <tr>
-                            <th style="width:32px;">#</th>
-                            <th>ETF</th>
-                            <th style="width:48px;">Quadrant</th>
-                            <th style="width:64px;">Factor Score</th>
-                            <th style="width:80px;">Strategy</th>
-                            <th>Position</th>
-                            <th style="width:50px;">Confidence</th>
+                            <th style="width:28px;">#</th>
+                            <th style="width:140px;">ETF</th>
+                            <th style="width:36px;">Q</th>
+                            <th style="width:56px;">Score</th>
+                            <th>Strategy</th>
+                            <th style="width:100px;">Position</th>
+                            <th style="width:40px;">Conf</th>
                         </tr>
                     </thead>
                     <tbody id="rec-body"></tbody>
@@ -338,6 +380,195 @@
                 return '<div class="kpi-card"><div class="kpi-label">' + k.label + '</div><div class="kpi-value">' + k.value + '</div><div class="kpi-sub">' + k.sub + '</div></div>';
             }).join('');
 
+            // ── Visual analysis charts ──
+            if (typeof echarts !== 'undefined' && data.recommendations && data.recommendations.length > 0) {
+                renderVisCharts(data);
+            }
+
+            function renderVisCharts(data) {
+                var recs = data.recommendations;
+                var COLORS = ['#000000', '#2563EB', '#DC2626', '#16A34A', '#D97706'];
+
+                recs.forEach(function(r) {
+                    r._mom = parseFloat(r.momentum) || 0;
+                    r._flow = r.flow_pct || 0;
+                    r._quality = r.z_quality || 0;
+                    r._efficiency = r.z_efficiency || 0;
+                    r._pos = parseFloat(r.position_ratio) || 0;
+                    r._shortName = r.name.replace(/ETF/i, '').trim();
+                });
+
+                // --- Radar Chart ---
+                requestAnimationFrame(function() {
+                    var radarEl = document.getElementById('chart-radar');
+                    if (!radarEl) return;
+                    var radarChart = echarts.init(radarEl);
+
+                    var dims = ['_mom', '_flow', '_quality', '_efficiency'];
+                    var dimLabels = ['Momentum', 'Flow', 'Quality', 'Efficiency'];
+                    var norm = {};
+                    dims.forEach(function(d) {
+                        var vals = recs.map(function(r) { return r[d]; });
+                        var min = Math.min.apply(null, vals);
+                        var max = Math.max.apply(null, vals);
+                        var range = max - min || 1;
+                        norm[d] = vals.map(function(v) { return Math.round((v - min) / range * 100); });
+                    });
+
+                    var radarData = recs.map(function(r, i) {
+                        return {
+                            value: dims.map(function(d) { return norm[d][i]; }),
+                            name: r._shortName,
+                            symbol: 'rect',
+                            symbolSize: 6,
+                            lineStyle: { width: 2, color: COLORS[i] },
+                            itemStyle: { color: COLORS[i] },
+                            areaStyle: { opacity: 0.06, color: COLORS[i] }
+                        };
+                    });
+
+                    radarChart.setOption({
+                        backgroundColor: 'transparent',
+                        legend: {
+                            data: recs.map(function(r) { return r._shortName; }),
+                            bottom: 4,
+                            textStyle: { fontSize: 10, fontFamily: 'IBM Plex Mono, monospace', color: '#444' },
+                            icon: 'rect', itemWidth: 10, itemHeight: 10, itemGap: 14
+                        },
+                        radar: {
+                            indicator: dimLabels.map(function(l) { return { name: l, max: 100 }; }),
+                            shape: 'polygon',
+                            splitNumber: 4,
+                            radius: '58%',
+                            center: ['50%', '44%'],
+                            axisLine: { lineStyle: { color: '#000', width: 2 } },
+                            splitLine: { lineStyle: { color: '#ddd', width: 1 } },
+                            splitArea: { show: false },
+                            name: { textStyle: { color: '#111', fontSize: 10, fontWeight: 700, fontFamily: 'IBM Plex Mono, monospace' } }
+                        },
+                        series: [{ type: 'radar', data: radarData }]
+                    });
+                });
+
+                // --- Scatter Plot ---
+                requestAnimationFrame(function() {
+                    var scatterEl = document.getElementById('chart-scatter');
+                    if (!scatterEl) return;
+                    var scatterChart = echarts.init(scatterEl);
+
+                    var scatterData = recs.map(function(r, i) {
+                        return {
+                            value: [r._flow, r._mom * 100],
+                            name: r._shortName,
+                            itemStyle: { color: COLORS[i], borderColor: '#000', borderWidth: 2 }
+                        };
+                    });
+
+                    var meanFlow = recs.reduce(function(s, r) { return s + r._flow; }, 0) / recs.length;
+                    var meanMom = recs.reduce(function(s, r) { return s + r._mom * 100; }, 0) / recs.length;
+
+                    scatterChart.setOption({
+                        backgroundColor: 'transparent',
+                        grid: { left: 55, right: 16, top: 30, bottom: 48 },
+                        xAxis: {
+                            name: 'Capital Flow',
+                            nameLocation: 'middle', nameGap: 28,
+                            nameTextStyle: { fontSize: 9, fontWeight: 700, fontFamily: 'IBM Plex Mono', color: '#666' },
+                            axisLine: { lineStyle: { color: '#999', width: 1 } },
+                            axisTick: { lineStyle: { color: '#999' } },
+                            axisLabel: { fontSize: 9, fontFamily: 'IBM Plex Mono', color: '#666' },
+                            splitLine: { show: false }
+                        },
+                        yAxis: {
+                            name: 'Return %',
+                            nameLocation: 'end', nameGap: 6,
+                            nameTextStyle: { fontSize: 9, fontWeight: 700, fontFamily: 'IBM Plex Mono', color: '#666' },
+                            axisLine: { lineStyle: { color: '#999', width: 1 } },
+                            axisTick: { lineStyle: { color: '#999' } },
+                            axisLabel: { fontSize: 9, fontFamily: 'IBM Plex Mono', color: '#666', formatter: '{value}%' },
+                            splitLine: { show: false }
+                        },
+                        series: [{
+                            type: 'scatter',
+                            data: scatterData,
+                            symbolSize: 20,
+                            label: {
+                                show: true, formatter: '{b}', position: 'top',
+                                fontSize: 9, fontWeight: 700, fontFamily: 'IBM Plex Mono', color: '#111'
+                            },
+                            markLine: {
+                                silent: true,
+                                lineStyle: { color: '#000', width: 2, type: 'solid' },
+                                data: [{ xAxis: 0 }, { yAxis: 0 }],
+                                symbol: 'none',
+                                label: { show: false }
+                            }
+                        }],
+                        graphic: [
+                            { type: 'text', left: '12%', top: 8, style: { text: 'STRONG', fill: '#ccc', fontSize: 10, fontWeight: 900, fontFamily: 'IBM Plex Mono' } },
+                            { type: 'text', right: '10%', bottom: 8, style: { text: 'RISK', fill: '#ccc', fontSize: 10, fontWeight: 900, fontFamily: 'IBM Plex Mono' } }
+                        ]
+                    });
+                });
+
+                // --- Donut Chart ---
+                requestAnimationFrame(function() {
+                    var donutEl = document.getElementById('chart-donut');
+                    if (!donutEl) return;
+                    var donutChart = echarts.init(donutEl);
+
+                    var donutData = recs.map(function(r, i) {
+                        return {
+                            value: r._pos,
+                            name: r._shortName,
+                            itemStyle: { color: COLORS[i], borderColor: '#fff', borderWidth: 3 }
+                        };
+                    });
+
+                    donutChart.setOption({
+                        backgroundColor: 'transparent',
+                        tooltip: {
+                            trigger: 'item', formatter: '{b}: {d}%',
+                            backgroundColor: '#fff', borderColor: '#000', borderWidth: 2,
+                            textStyle: { fontFamily: 'IBM Plex Mono', fontSize: 12, color: '#111' }
+                        },
+                        series: [{
+                            type: 'pie',
+                            radius: ['42%', '72%'],
+                            center: ['50%', '50%'],
+                            data: donutData,
+                            label: {
+                                formatter: '{b}\n{d}%', fontSize: 10, fontWeight: 700,
+                                fontFamily: 'IBM Plex Mono', color: '#111', lineHeight: 16
+                            },
+                            labelLine: { lineStyle: { color: '#000', width: 2 }, length: 10, length2: 15 },
+                            emphasis: { itemStyle: { borderColor: '#000', borderWidth: 3, shadowBlur: 0 } },
+                            itemStyle: { borderWidth: 3, borderColor: '#fff' }
+                        }]
+                    });
+                });
+
+                // --- Confidence Bar ---
+                var confEl = document.getElementById('conf-bar-wrap');
+                if (confEl) {
+                    var icWinRate = data.ic_win_rate || 0;
+                    var icir = Math.abs(data.icir || 0);
+                    var confScore = Math.round(icWinRate * 60 + Math.min(icir, 0.5) / 0.5 * 40);
+                    confScore = Math.max(0, Math.min(100, confScore));
+                    var confLevel = confScore >= 75 ? 'high' : (confScore >= 50 ? 'mid' : 'low');
+                    var confColor = confScore >= 75 ? '#16A34A' : (confScore >= 50 ? '#D97706' : '#DC2626');
+                    var confLabel = confScore >= 75 ? 'High Confidence' : (confScore >= 50 ? 'Moderate Confidence' : 'Low Confidence');
+
+                    confEl.innerHTML =
+                        '<div class="conf-wrap">' +
+                            '<div class="conf-label">Model Confidence</div>' +
+                            '<div class="conf-score" style="color:' + confColor + ';">' + confScore + '<span style="font-size:18px;color:var(--c-text-muted);font-weight:400;">/100</span></div>' +
+                            '<div class="conf-bar-outer"><div class="conf-bar-fill ' + confLevel + '" style="width:' + confScore + '%;"></div></div>' +
+                            '<div class="conf-desc">' + confLabel + ' — IC Win Rate ' + (icWinRate * 100).toFixed(1) + '%, ICIR ' + (data.icir || 0).toFixed(2) + '</div>' +
+                        '</div>';
+                }
+            }
+
             // ── ETF Recommendation table ──
             var tbody = document.getElementById('rec-body');
             if (data.recommendations && data.recommendations.length > 0) {
@@ -353,7 +584,7 @@
 
                     var quad = r.quadrant || (r.strategy.indexOf('Q1') >= 0 ? 1 : 2);
                     var quadCls = 'quad-' + quad;
-                    var quadLabel = quad === 1 ? 'Strong' : 'Lurk';
+                    var quadLabel = 'Q' + quad;
 
                     var pct = parseFloat(r.position_ratio);
                     var barPct = maxPos > 0 ? Math.round(pct / maxPos * 100) : 0;
@@ -369,11 +600,11 @@
 
                     return '<tr>' +
                         '<td data-label="Rank"><span class="rank-num ' + rank + '">' + rankText + '</span></td>' +
-                        '<td data-label="ETF"><strong>' + r.name + '</strong><br><span style="font-size:11px;color:var(--c-text-muted);font-family:var(--font-mono);">' + r.code + '</span></td>' +
+                        '<td data-label="ETF"><strong>' + r.name + '</strong> <span style="font-size:10px;color:var(--c-text-muted);font-family:var(--font-mono);">' + r.code + '</span></td>' +
                         '<td data-label="Quadrant"><span class="quad-tag ' + quadCls + '">' + quadLabel + '</span></td>' +
-                        '<td data-label="Score" style="font-family:var(--font-mono);font-size:13px;font-weight:600;">' + (r.factor_score !== undefined ? r.factor_score.toFixed(3) : '--') + '</td>' +
-                        '<td data-label="Strategy"><span style="font-size:10px;color:' + qColor + ';font-weight:600;">Financial Quality: ' + qDisplay + '</span><br><span style="font-size:11px;color:var(--c-text-secondary);line-height:1.3;display:block;">' + (r.strategy_desc || r.strategy || '') + '</span></td>' +
-                        '<td data-label="Position"><div class="pos-bar-wrap"><div class="pos-bar"><div class="pos-bar-fill ' + barCls + '" style="width:' + barPct + '%;"></div></div><span class="pos-text">' + pct.toFixed(1) + '%</span></div>' +
+                        '<td data-label="Score" style="font-family:var(--font-mono);font-size:12px;font-weight:600;">' + (r.factor_score !== undefined ? r.factor_score.toFixed(3) : '--') + '</td>' +
+                        '<td data-label="Strategy"><span style="font-size:10px;color:' + qColor + ';font-weight:600;">Quality ' + qDisplay + '</span> · <span style="font-size:11px;color:var(--c-text-secondary);">' + (r.strategy_desc || r.strategy || '') + '</span></td>' +
+                        '<td data-label="Position"><div class="pos-bar-wrap"><div class="pos-bar"><div class="pos-bar-fill ' + barCls + '" style="width:' + barPct + '%;"></div></div><span class="pos-text">' + pct.toFixed(1) + '%</span></div></td>' +
                         '<td data-label="Confidence" style="text-align:center;"><span class="conf-dot ' + confCls + '" title="Confidence: ' + confLabel + '"></span></td>' +
                         '</tr>';
                 }).join('');
