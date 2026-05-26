@@ -70,13 +70,14 @@
         <!-- Factor Construction -->
         <div class="tech-section">
             <h3><span class="icon" style="background:#e8f5e8;">&#9881;</span> Factor Construction Method</h3>
-            <p>This system uses a <strong>Five-Factor Quadrant Model</strong> (V5 upgrade) for cross-sectional analysis of sector ETFs. It standardizes five dimensions — RSRS resistance/support strength, capital flow (Flow), price momentum (Momentum), financial quality (F_Quality), and intraday efficiency (IntEff) — then combines them into a composite factor using weighted averaging.</p>
+            <p>This system uses a <strong>Six-Factor Quadrant Model</strong> (V6 upgrade) for cross-sectional analysis of sector ETFs. It standardizes six dimensions — RSRS resistance/support strength, capital flow (Flow), price momentum (Momentum), financial quality (F_Quality), intraday efficiency (IntEff), and RSI momentum (RSI_Mom) — then combines them into a composite factor using weighted averaging.</p>
             <ul>
                 <li><strong>RSRS Factor (Resistance Support Relative Strength)</strong>: OLS regression of daily highs and lows (&beta; &times; R&sup2;), measuring support/resistance structural stability. Positive values indicate stable trend structure; negative values indicate unstable structure.</li>
                 <li><strong>Flow Factor</strong>: EWMA-weighted regression slope on ETF share data (half-life 3 days), then cross-sectional Rank standardization. Positive = capital inflow; negative = outflow.</li>
                 <li><strong>Momentum Factor</strong>: Price return over the past M days, divided by the same-period volatility (60-day) for risk adjustment.</li>
                 <li><strong>Financial Quality Factor (F_Quality)</strong>: Combines three fundamental dimensions — ROE, PB valuation percentile (inverted), and earnings growth — of industry constituent stocks, using circulating market-cap weighted synthesis. See financial quality factor section below.</li>
                 <li><strong>Intraday Efficiency Factor (IntEff)</strong>: Calculates daily price efficiency from OHLC proxy (Eff = net daily change / intraday path length), then takes the long-short EWMA difference on the 5-day SMA of Eff. Measures <strong>momentum changes in efficiency levels</strong>: positive values indicate improving efficiency (trend strengthening), negative values indicate declining efficiency (trend weakening / transitioning to oscillation). See intraday efficiency factor section below.</li>
+                <li><strong>RSI Momentum Factor (RSI_Mom)</strong>: Computes the difference between short-term RSI(5) and medium-term RSI(20), then applies size neutralization by subtracting 0.5 &times; rank(fd_share). The rank-based approach and subtraction neutralization avoid collinearity with existing factors (max |Spearman| &lt; 0.22). Captures <strong>short-term mean-reversion signals relative to medium-term momentum</strong>: positive values indicate short-term strength relative to trend; negative values indicate short-term weakness. See RSI momentum factor section below.</li>
             </ul>
             <div class="tech-formula">
                 RSRS = &beta; &times; R&sup2; (High ~ Low, OLS regression, N-day window)<br>
@@ -86,7 +87,7 @@
                 IntEff = EWMA_short(SMA_5(Eff)) - EWMA_long(SMA_5(Eff))<br>
                 <br>
                 Composite Factor = w_rsrs&times;Z_rank(RSRS) + w_flow&times;Z_rank(Flow) + w_mom&times;Z_rank(Mom)<br>
-                &emsp;&emsp;&emsp;&emsp;+ w_quality&times;Z_rank(F_Quality) + w_efficiency&times;Z_rank(IntEff)<br>
+                &emsp;&emsp;&emsp;&emsp;+ w_quality&times;Z_rank(F_Quality) + w_efficiency&times;Z_rank(IntEff) + w_rsi&times;Z_rank(RSI_Mom)<br>
                 <br>
                 Z_rank(x) = Z-score(Rank(x)) &mdash; Rank first, then standardize
             </div>
@@ -129,6 +130,23 @@
                 IntEff = EWMA(Eff_5, &lambda;=5d) - EWMA(Eff_5, &lambda;=20d)
             </div>
             <p>IntEff participates in composite factor synthesis after cross-sectional Rank standardization. The core value of this factor lies in identifying inflection points in trend structure: when IntEff turns from negative to positive, it signals declining noise and potential trend acceleration; when it turns from positive to negative, it signals trend exhaustion risk.</p>
+        </div>
+
+        <!-- V6: RSI Momentum Factor -->
+        <div class="tech-section">
+            <h3><span class="icon" style="background:#e0f2fe;">&#8597;</span> RSI Momentum Factor (RSI_Mom) — Added in V6</h3>
+            <p>V6 introduced a sixth factor dimension — <strong>RSI Momentum Factor (RSI_Mom)</strong> — capturing short-term mean-reversion signals through multi-period RSI divergence, with size neutralization to maintain independence from existing factors.</p>
+            <ul>
+                <li><strong>RSI Divergence Signal</strong>: RSI(5) - RSI(20) measures the gap between short-term and medium-term relative strength. A positive gap indicates short-term strength relative to the trend; a negative gap indicates short-term exhaustion.</li>
+                <li><strong>Size Neutralization</strong>: Subtracting 0.5 &times; cross-sectional rank of ETF fund shares (fd_share) reduces the factor's correlation with the quality and momentum factors. Backtesting confirmed max |Spearman| &lt; 0.22 with all existing factors.</li>
+                <li><strong>Rank-Based Processing</strong>: Cross-sectional rank normalization followed by Z-score standardization, robust for the small-N (17-22 ETFs) panel.</li>
+            </ul>
+            <div class="tech-formula">
+                RSI(n) = 100 - 100/(1 + RS), RS = avg_gain(n) / avg_loss(n)<br>
+                RSI_diff = RSI(5) - RSI(20)<br>
+                RSI_Mom = Z_score(rank(RSI_diff) - 0.5 &times; rank(fd_share))
+            </div>
+            <p>Backtest results (short preset, H=10): solo IC=0.042, ICIR=0.144. Adding to the composite improved overall IC from 0.143 to 0.160 and ICIR from 0.501 to 0.545, with no significant collinearity with existing factors.</p>
         </div>
 
         <!-- Quadrant Model -->
@@ -186,16 +204,15 @@
         <!-- Preset Parameters -->
         <div class="tech-section">
             <h3><span class="icon" style="background:#e8e0f4;">&#9881;</span> Preset Parameters</h3>
-            <p>Each preset defines five-factor parameters and differentiated weights:</p>
+            <p>Each preset defines six-factor parameters and differentiated weights:</p>
             <ul>
-                <li><strong>Short-term</strong>: RSRS=20, Flow=10, Mom=20, H=10. Weights: RSRS 0.28 / Flow 0.14 / Mom 0.28 / Quality 0.20 / Eff 0.10.</li>
-                <li><strong>Medium-term</strong>: RSRS=20, Flow=20, Mom=60, H=20. Weights: RSRS 0.21 / Flow 0.21 / Mom 0.28 / Quality 0.20 / Eff 0.10.</li>
-                <li><strong>Long-term</strong>: RSRS=30, Flow=40, Mom=120, H=40. Weights: RSRS 0.175 / Flow 0.175 / Mom 0.35 / Quality 0.20 / Eff 0.10.</li>
-                <li><strong>RSRS Aggressive</strong>: RSRS=15, Flow=10, Mom=10, H=10. Weights: RSRS 0.35 / Flow 0.14 / Mom 0.21 / Quality 0.20 / Eff 0.10.</li>
+                <li><strong>Short-term</strong>: RSRS=20, Flow=10, Mom=20, H=10. Weights: RSRS 0.258 / Flow 0.129 / Mom 0.258 / Quality 0.184 / Eff 0.092 / RSI_Mom 0.08.</li>
+                <li><strong>Medium-term</strong>: RSRS=20, Flow=20, Mom=60, H=20. Weights: RSRS 0.193 / Flow 0.193 / Mom 0.258 / Quality 0.184 / Eff 0.092 / RSI_Mom 0.08.</li>
+                <li><strong>Long-term</strong>: RSRS=30, Flow=40, Mom=120, H=40. Weights: RSRS 0.161 / Flow 0.161 / Mom 0.322 / Quality 0.184 / Eff 0.092 / RSI_Mom 0.08.</li>
             </ul>
             <p style="margin-top:8px;"><strong>Dynamic Weight Adjustment</strong>: The financial quality weight floats between 0.10 and 0.40 based on market timing signals (when the market is weak, quality drops to 0.10, releasing more weight to technical factors; during oversold bounces, quality rises to 0.40 for enhanced defense).</p>
             <p style="margin-top:8px;"><strong>Weak Market Reversal Mode</strong>: When the market timing signal is &lt; -0.3 (weak/overheated), the momentum (Mom) factor automatically switches to a <strong>short-period reversal signal</strong> (negative of 5-day returns), enabling the system to capture mean-reversion opportunities when trends fail. In weak markets, the four-quadrant definitions change to: Q1 = capital inflow + oversold price, Q2 = capital inflow + price rebound, Q3 = capital outflow + overbought price, Q4 = capital outflow + price decline.</p>
-            <p>RSRS = regression window days, Flow = share lookback days, Mom = momentum lookback days, Quality = financial quality factor, Efficiency = intraday efficiency factor, H = optimal prediction period.</p>
+            <p>RSRS = regression window days, Flow = share lookback days, Mom = momentum lookback days, Quality = financial quality factor, Efficiency = intraday efficiency factor, RSI_Mom = RSI momentum factor, H = optimal prediction period.</p>
         </div>
 
         <!-- Disclaimers -->

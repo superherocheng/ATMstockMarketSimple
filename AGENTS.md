@@ -127,12 +127,15 @@ Supporting: `_fetch_factor_base_data()` (DB全表扫描仅一次), `_get_latest_
 - Internal: `_ols_residual()`, `_ridge_residual()`, `_composite_orthogonalize()`, `Z_score()`
 
 #### `presets.py` — Preset Configuration
-- `get_preset(preset_id)` → weight dict (RSRS/Flow/Mom/Quality/Efficiency)
-- `all_preset_ids()` → ['short', 'medium', 'long', 'rsrs_aggressive']
+- `get_preset(preset_id)` → weight dict (RSRS/Flow/Mom/Quality/Efficiency/RSI_Mom)
+- `all_preset_ids()` → ['short', 'medium', 'long']
+
+#### `rsi_factor.py` — RSI Momentum Factor (V6)
+- `compute_rsi_momentum_for_etf(close, fd_share)` → RSI(5)-RSI(20) series per ETF
 
 #### `recommendation_engine.py` — Investment Recommendation
 - `build_investment_recommendation(preset_id="short")` → full recommendation dict:
-  - Five-factor scoring + RSRS quadrant coverage
+  - Six-factor scoring + RSRS quadrant coverage
   - Two-stage correlation penalty (candidate pool → top 10 → pairwise → top 5)
   - Market timing overhead (adjusts position ±30%)
   - Single ETF position cap 25%
@@ -189,12 +192,11 @@ Composite = w_rsrs × z_rsrs + w_flow × z_flow + w_mom × z_mom
 
 Presets:
 
-| Preset | RSRS | Flow | Mom | Qual | Eff | Horizon |
-|--------|:----:|:----:|:---:|:----:|:---:|:-------:|
-| short | 0.28 | 0.14 | 0.28 | 0.20 | 0.10 | H=10 |
-| medium | 0.21 | 0.21 | 0.28 | 0.20 | 0.10 | H=20 |
-| long | 0.175 | 0.175 | 0.35 | 0.20 | 0.10 | H=40 |
-| rsrs_aggressive | 0.35 | 0.14 | 0.21 | 0.20 | 0.10 | H=10 |
+| Preset | RSRS | Flow | Mom | Qual | Eff | RSI_Mom | Horizon |
+|--------|:----:|:----:|:---:|:----:|:---:|:-------:|:-------:|
+| short | 0.258 | 0.129 | 0.258 | 0.184 | 0.092 | 0.08 | H=10 |
+| medium | 0.193 | 0.193 | 0.258 | 0.184 | 0.092 | 0.08 | H=20 |
+| long | 0.161 | 0.161 | 0.322 | 0.184 | 0.092 | 0.08 | H=40 |
 
 ### Test Structure
 

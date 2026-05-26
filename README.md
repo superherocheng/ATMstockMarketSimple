@@ -32,16 +32,17 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 - 📉 **K线图表展示** - 基于ECharts 5的专业K线图，支持多维度数据分析
 
 - 🔄 **一键更新+回测** - 更新ETF数据后自动运行因子计算+IC分析，一步到位
-- 🏠 **首页因子概览** - 首页IC汇总卡片，展示各预设的IC均值/ICIR/胜率及五因子权重
+- 🛡️ **份额完整性检查** - 因子计算前自动检查截面数据是否齐全，份额不全时跳过计算
+- 🏠 **首页因子概览** - 首页IC汇总卡片，展示各预设的IC均值/ICIR/胜率及六因子权重
 
 ### 🔬 量化分析
-- 🔬 **五因子评分模型** - RSRS(阻力支撑) + 资金流(Flow) + 动量(Mom) + 财务质量(Quality) + 日内效率(Efficiency)，ICIR=0.38
+- 🔬 **六因子评分模型** - RSRS(阻力支撑) + 资金流(Flow) + 动量(Mom) + 财务质量(Quality) + 日内效率(Efficiency) + RSI动量(RSI_Mom)，ICIR=0.55
 - 💪 **RSRS因子** - 基于高低点滚动OLS回归(β×R²)，衡量支撑/阻力结构强度，与动量极低共线性(Pearson<0.23)
 - ⚡ **向量化因子引擎** - 滑动窗口预计算RSRS/Flow/Mom，全量回测从~25s降至~5s，提速5-8x
 - 🔄 **并行预设计算+数据共享** - 4组预设并行计算，DB全表扫描仅执行一次，避免重复IO
 - 📈 **IC有效性检验** - Spearman Rank IC + ICIR + IC衰减曲线 + **滚动ICIR衰退检测**
 - 🎯 **四象限分类+RSRS覆盖** - Q1强势/Q2潜伏/Q3撤离/Q4风险；Q3中RSRS>0.3的品种按信号强度纳入候选
-- 🏆 **投资建议引擎** - 五因子得分 + RSRS象限覆盖 + IC置信度 + 两阶段相关性惩罚 + 大盘择时 + 滚动ICIR衰减检测 → 仓位配置
+- 🏆 **投资建议引擎** - 六因子得分 + RSRS象限覆盖 + IC置信度 + 两阶段相关性惩罚 + 大盘择时 + 滚动ICIR衰减检测 → 仓位配置
 - 📡 **大盘择时** - 基于中证500 RSI+动量+份额变化的市场状态判断
 - 🛡️ **数据覆盖回退** - 最新交易日数据不全时自动回退到最近完整日期
 
@@ -58,6 +59,7 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 ```
 综合因子 = w_rsrs × z_rsrs + w_flow × z_flow + w_mom × z_mom
          + w_quality × z_quality + w_efficiency × z_efficiency
+         + w_rsi × z_rsi_momentum
 ```
 
 | 子因子 | 计算方式 | 说明 |
@@ -67,17 +69,17 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 | **动量(Mom)** | 累计收益率 / 60日波动率 | 风险调整后动量 |
 | **财务质量(Quality)** | ROE/毛利率/负债率/现金流质量综合评分 | 基本面防御力（V4新增） |
 | **日内效率(Efficiency)** | OHLC排列熵与趋势效率代理 | 交易结构稳定性（V5新增） |
+| **RSI动量(RSI_Mom)** | RSI(5)-RSI(20)，规模中性化后Rank标准化 | 短期均值回归信号（V6新增） |
 
 ### 权重配置
 
-各预设使用不同的五因子权重：
+各预设使用不同的六因子权重：
 
-| 预设 | RSRS | Flow | Mom | Quality | Efficiency | 适用场景 |
-|------|:----:|:----:|:---:|:-------:|:----------:|----------|
-| **short** | 0.28 | 0.14 | 0.28 | 0.20 | 0.10 | 短线 (H=10) |
-| **medium** | 0.21 | 0.21 | 0.28 | 0.20 | 0.10 | 中线 (H=20) |
-| **long** | 0.175 | 0.175 | 0.35 | 0.20 | 0.10 | 长线 (H=40) |
-| **rsrs_aggressive** | 0.35 | 0.14 | 0.21 | 0.20 | 0.10 | 牛市偏RSRS (H=10) |
+| 预设 | RSRS | Flow | Mom | Quality | Efficiency | RSI_Mom | 适用场景 |
+|------|:----:|:----:|:---:|:-------:|:----------:|:-------:|----------|
+| **short** | 0.258 | 0.129 | 0.258 | 0.184 | 0.092 | 0.08 | 短线 (H=10) |
+| **medium** | 0.193 | 0.193 | 0.258 | 0.184 | 0.092 | 0.08 | 中线 (H=20) |
+| **long** | 0.161 | 0.161 | 0.322 | 0.184 | 0.092 | 0.08 | 长线 (H=40) |
 
 ### RSRS因子验证
 
@@ -141,11 +143,12 @@ ATMstockMarketSimple/
 │   │   └── services/
 │   │       └── cache.py             # Redis + 内存缓存
 │   ├── analysis/                    # 量化分析模块
-│   │   ├── factor_engine.py         # 五因子计算 (RSRS + Flow + Mom + Quality + Efficiency)
+│   │   ├── factor_engine.py         # 六因子计算 (RSRS + Flow + Mom + Quality + Efficiency + RSI_Mom)
 │   │   ├── ic_analyzer.py           # IC/ICIR分析 + 象限收益
 │   │   ├── chart_builder.py         # ECharts数据转换
 │   │   ├── market_timing.py         # 中证500大盘择时
 │   │   ├── recommendation_engine.py # 投资建议引擎
+│   │   ├── rsi_factor.py            # RSI动量因子 (V6)
 │   │   └── presets.py               # 因子预设配置
 │   ├── core/                        # 数据库管理、交易日历
 │   └── data_fetchers/              # Tushare数据获取
@@ -170,30 +173,39 @@ ATMstockMarketSimple/
 - Redis (可选，用于缓存)
 - Tushare Pro Token ([获取地址](https://tushare.pro/))
 
-### Docker 部署（推荐）
+### Docker 部署（推荐，VPS一键部署）
 
 ```bash
 # 1. 克隆仓库
 git clone https://github.com/superherocheng/ATMstockMarketSimple.git
 cd ATMstockMarketSimple
 
-# 2. 配置环境变量
+# 2. 配置环境变量（只需填写 Tushare Token）
 cp .env.example .env
-# 编辑 .env 文件，填写 TUSHARE_TOKEN
+nano .env
+# 必填：TUSHARE_TOKEN=your_token_here
+# 可选：修改 POSTGRES_PASSWORD（默认 password）
 
-# 3. 启动服务
-docker compose up -d
+# 3. 一键启动（含PostgreSQL + Redis + 自动迁移）
+docker compose up -d --build
 
-# 4. 初始化数据库
-docker exec atmstockmarket alembic upgrade head
+# 4. 查看启动日志
+docker logs -f atmstockmarket
 
-# 5. 拉取ETF数据
+# 5. 拉取ETF历史数据（首次部署必须执行）
 docker exec atmstockmarket python3 -u /app/src/data_fetchers/tushare_fetcher.py --etf
 
-# 6. 重启应用
-docker restart atmstockmarket
+# 6. 访问 http://your-vps-ip:5656
+#    首页点击 "Update + Backtest" 开始使用
+```
 
-# 访问 http://localhost:5656
+**日常更新**：直接在首页点击 "Update + Backtest" 按钮即可，无需SSH登录。
+
+**更新代码**：
+```bash
+cd ATMstockMarketSimple
+git pull
+docker compose up -d --build
 ```
 
 ### 本地开发
@@ -332,6 +344,46 @@ uvicorn src.web.app:app --reload --port 5656
 | **Q4 风险** | z_flow < 0, z_mom ≥ 0 — 资金流出但价格上涨，警惕诱多 |
 | **IC** | 信息系数，衡量因子预测力（>0.03为有效） |
 | **ICIR** | IC均值/标准差，衡量因子稳定性（>0.3为可用） |
+
+## 📋 v18.0.0 更新日志
+
+### 🔬 六因子模型升级 (V6)
+
+| 模块 | 改动 |
+|------|------|
+| **新增 RSI 动量因子** | RSI(5)-RSI(20) 差值经规模中性化后 Rank 标准化。单因子 IC=0.042, ICIR=0.144，与现有因子最大 \|Spearman\| < 0.22 |
+| **合成因子提升** | IC 从 0.143 → 0.160 (+12%)，ICIR 从 0.501 → 0.5545 (+9%) |
+| **权重重分配** | 现有五因子等比缩减释放 8% 给 RSI_Mom，总权重保持 1.0 |
+| **DB 迁移** | 新增 Alembic 007：`factor_daily` 表增加 `rsi_momentum` / `z_rsi_momentum` 列 |
+
+### 🛡️ 数据完整性保障
+
+| 模块 | 改动 |
+|------|------|
+| **份额截面检查** | 一键更新流程在因子计算前检查最新交易日份额数据是否齐全。若截面不完整（T+1 数据未到齐），自动跳过因子计算和投资建议生成，避免不完整截面引入因子偏差 |
+
+### 🎨 前端更新
+
+| 模块 | 改动 |
+|------|------|
+| **首页** | "Five-Factor Model" → "Six-Factor Model"；移除已删除的 RSRS Aggressive 预设；IC 表中过滤已废弃预设数据 |
+| **行业ETF页** | 图表配对等高修复（Recent Change / Share Change 同高，K-Line / Share Value 同高） |
+| **投资建议页** | 雷达图 4 维 → 5 维（新增 RSI）；表格显示 RSI 动量分数 |
+| **技术说明页** | 新增 RSI 动量因子说明段落；更新复合公式和权重表 |
+| **日志框定位** | Terminal 日志框从 Data Management 卡片移至首页独立区域，不再影响卡片高度 |
+
+### 🐳 Docker 优化
+
+| 模块 | 改动 |
+|------|------|
+| **docker-compose.yml** | 移除外部网络依赖 `docker_network`，纯净 VPS 环境可直接 `docker compose up -d`；增加 `TZ=Asia/Shanghai` 时区设置 |
+| **README** | 重写 Docker 部署章节为一键部署流程 |
+
+### 🗑️ 清理
+- 移除 `rsrs_aggressive` 预设（代码、模板、文档、API 过滤、DB 查询）
+- IC 表中过滤已废弃预设的回测数据
+
+---
 
 ## 📋 v17.0.0 更新日志
 

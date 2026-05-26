@@ -70,8 +70,8 @@
             <button class="tab-btn" data-filter="negative" onclick="setFilter(this)">NEGATIVE</button>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 stagger-children">
-            <div class="glass p-4 sm:p-6" style="display:flex;flex-direction:column;">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="glass p-4 sm:p-6 chart-pair" style="display:flex;flex-direction:column;">
                 <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
                     Recent Change Comparison
                 </h3>
@@ -79,7 +79,7 @@
                     <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
                 </div>
             </div>
-            <div class="glass p-4 sm:p-6" style="display:flex;flex-direction:column;">
+            <div class="glass p-4 sm:p-6 chart-pair" style="display:flex;flex-direction:column;">
                 <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
                     Share Change Trends
                 </h3>
@@ -90,14 +90,14 @@
         </div>
 
         <div id="detail-section" class="hidden">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 stagger-children">
-                <div class="glass p-4 sm:p-6" style="display:flex;flex-direction:column;">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="glass p-4 sm:p-6 chart-pair" style="display:flex;flex-direction:column;">
                     <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
                         <span id="detail-title">ETF Details</span>
                     </h3>
                     <div id="detail-kline" class="chart-main"></div>
                 </div>
-                <div class="glass p-4 sm:p-6" style="display:flex;flex-direction:column;">
+                <div class="glass p-4 sm:p-6 chart-pair" style="display:flex;flex-direction:column;">
                     <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
                         <span id="detail-share-title">Share Value</span>
                     </h3>

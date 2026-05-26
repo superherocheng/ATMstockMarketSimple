@@ -394,6 +394,7 @@
                     r._flow = r.flow_pct || 0;
                     r._quality = r.z_quality || 0;
                     r._efficiency = r.z_efficiency || 0;
+                    r._rsi = r.z_rsi_momentum || 0;
                     r._pos = parseFloat(r.position_ratio) || 0;
                     r._shortName = r.name.replace(/ETF/i, '').trim();
                 });
@@ -404,8 +405,8 @@
                     if (!radarEl) return;
                     var radarChart = echarts.init(radarEl);
 
-                    var dims = ['_mom', '_flow', '_quality', '_efficiency'];
-                    var dimLabels = ['Momentum', 'Flow', 'Quality', 'Efficiency'];
+                    var dims = ['_mom', '_flow', '_quality', '_efficiency', '_rsi'];
+                    var dimLabels = ['Momentum', 'Flow', 'Quality', 'Efficiency', 'RSI'];
                     var norm = {};
                     dims.forEach(function(d) {
                         var vals = recs.map(function(r) { return r[d]; });
@@ -598,12 +599,17 @@
                     var qColor = zq > 0.5 ? 'var(--c-up)' : (zq < -0.5 ? 'var(--c-down)' : 'var(--c-text-tertiary)');
                     var qDisplay = (typeof zq === 'number' && zq !== 0) ? (zq > 0 ? '+' : '') + zq.toFixed(2) + '\u03C3' : '--';
 
+                    // V6: RSI momentum score for display
+                    var zr = r.z_rsi_momentum || 0;
+                    var rColor = zr > 0.3 ? 'var(--c-up)' : (zr < -0.3 ? 'var(--c-down)' : 'var(--c-text-tertiary)');
+                    var rDisplay = (typeof zr === 'number' && zr !== 0) ? (zr > 0 ? '+' : '') + zr.toFixed(2) + '\u03C3' : '--';
+
                     return '<tr>' +
                         '<td data-label="Rank"><span class="rank-num ' + rank + '">' + rankText + '</span></td>' +
                         '<td data-label="ETF"><strong>' + r.name + '</strong> <span style="font-size:10px;color:var(--c-text-muted);font-family:var(--font-mono);">' + r.code + '</span></td>' +
                         '<td data-label="Quadrant"><span class="quad-tag ' + quadCls + '">' + quadLabel + '</span></td>' +
                         '<td data-label="Score" style="font-family:var(--font-mono);font-size:12px;font-weight:600;">' + (r.factor_score !== undefined ? r.factor_score.toFixed(3) : '--') + '</td>' +
-                        '<td data-label="Strategy"><span style="font-size:10px;color:' + qColor + ';font-weight:600;">Quality ' + qDisplay + '</span> · <span style="font-size:11px;color:var(--c-text-secondary);">' + (r.strategy_desc || r.strategy || '') + '</span></td>' +
+                        '<td data-label="Strategy"><span style="font-size:10px;color:' + qColor + ';font-weight:600;">Quality ' + qDisplay + '</span> · <span style="font-size:10px;color:' + rColor + ';font-weight:600;">RSI ' + rDisplay + '</span> · <span style="font-size:11px;color:var(--c-text-secondary);">' + (r.strategy_desc || r.strategy || '') + '</span></td>' +
                         '<td data-label="Position"><div class="pos-bar-wrap"><div class="pos-bar"><div class="pos-bar-fill ' + barCls + '" style="width:' + barPct + '%;"></div></div><span class="pos-text">' + pct.toFixed(1) + '%</span></div></td>' +
                         '<td data-label="Confidence" style="text-align:center;"><span class="conf-dot ' + confCls + '" title="Confidence: ' + confLabel + '"></span></td>' +
                         '</tr>';

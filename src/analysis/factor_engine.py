@@ -1,11 +1,12 @@
 """Factor computation engine for sector ETF four-quadrant analysis.
 
 Computes RSRS (resistance support), Flow (share trend), Momentum (vol-adj),
-Financial Quality (F_Quality), cross-sectional Z-scores, four-factor composite,
-and quadrant classification.
+Financial Quality (F_Quality), Intraday Efficiency, RSI Momentum,
+cross-sectional Z-scores, six-factor composite, and quadrant classification.
 
 V4: Integrated Financial Quality Factor (F_Quality) as the 4th factor.
-See financial_factor.py for the F_Quality computation methodology.
+V5: Added Intraday Efficiency Factor (IntEff) as the 5th factor.
+V6: Added RSI Momentum Factor as the 6th factor.
 """
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -15,6 +16,7 @@ import pandas as pd
 
 from src.analysis.presets import get_preset, all_preset_ids
 from src.analysis.intraday_efficiency import compute_efficiency_for_etf
+from src.analysis.rsi_factor import compute_rsi_momentum_for_etf
 # BARRA neutralization available but disabled for small cross-section.
 # See src/analysis/barra_neutralization.py and comments in _compute_preset_factors.
 
@@ -139,6 +141,11 @@ def _cross_sectional_zscore(values: pd.Series) -> pd.Series:
     if rank_std == 0 or pd.isna(rank_std):
         return pd.Series(0.0, index=values.index)
     return (ranks - ranks.mean()) / rank_std
+
+
+def _share_val_for_date(code: str, date: str, share_lookup: dict) -> float:
+    """Look up fd_share for an ETF on a given date."""
+    return share_lookup.get((code, date), np.nan)
 
 
 def _classify_quadrant(z_flow: float, z_mom: float) -> int:
@@ -338,12 +345,16 @@ def _compute_preset_factors(pid: str, *,
         eff_sma = preset.get("eff_sma_window", 0)
         eff_arr = compute_efficiency_for_etf(ek, sma_window=eff_sma)
 
+        # V6: RSI Momentum Factor (RSI(5)-RSI(20), size-neutralized later)
+        rsi_arr = compute_rsi_momentum_for_etf(ek["close"], es["fd_share"])
+
         # Build a DataFrame with all factor series per (etf_code, trade_date)
         df = ek[["ts_code", "trade_date"]].copy()
         df["rsrs"] = rsrs_arr
         df["mom"] = mom_arr
         df["mom_rev"] = rev_arr
         df["efficiency"] = eff_arr.values if hasattr(eff_arr, 'values') else eff_arr
+        df["rsi_momentum"] = rsi_arr.values if hasattr(rsi_arr, 'values') else rsi_arr
 
         # Merge flow from share data (join on trade_date)
         flow_df = pd.DataFrame({"trade_date": es["trade_date"].values,
@@ -404,6 +415,11 @@ def _compute_preset_factors(pid: str, *,
     quality_factors = _get_latest_financial_factors()
     has_quality = bool(quality_factors)
 
+    # ── Step 4b: build share lookup for RSI size neutralization ──
+    share_lookup = {}
+    for _, row in share_df.iterrows():
+        share_lookup[(row["ts_code"], row["trade_date"])] = float(row["fd_share"]) if pd.notna(row["fd_share"]) else np.nan
+
     # ── Step 5: compute cross-sectional stats per date ──
     # Filter raw_all to dates we care about (speeds up lookups)
     raw_new = raw_all[raw_all["trade_date"].isin(new_dates)].copy()
@@ -423,7 +439,7 @@ def _compute_preset_factors(pid: str, *,
             continue
 
         # Drop rows with any NaN factor
-        day_raw = day_raw.dropna(subset=["rsrs", "flow", "mom", "efficiency"])
+        day_raw = day_raw.dropna(subset=["rsrs", "flow", "mom", "efficiency", "rsi_momentum"])
 
         if len(day_raw) < 2:
             continue
@@ -440,6 +456,17 @@ def _compute_preset_factors(pid: str, *,
         day_raw["z_flow"] = _cross_sectional_zscore(day_raw["flow"]).values
         day_raw["z_mom"] = _cross_sectional_zscore(day_raw["mom"]).values
         day_raw["z_efficiency"] = _cross_sectional_zscore(day_raw["efficiency"]).values
+
+        # ── V6: RSI Momentum with size neutralization ──
+        # rank(RSI_diff) - 0.5 * rank(fd_share), then Z-score
+        rsi_rank = day_raw["rsi_momentum"].rank()
+        # Build size rank from fd_share via share_lookup
+        size_vals = day_raw["ts_code"].map(
+            lambda c: _share_val_for_date(c, d, share_lookup)
+        )
+        size_rank = size_vals.rank() if size_vals.notna().sum() >= 2 else pd.Series(0.0, index=day_raw.index)
+        rsi_combined = rsi_rank - 0.5 * size_rank
+        day_raw["z_rsi_momentum"] = _cross_sectional_zscore(rsi_combined).values
 
         # ── V4: Merge Financial Quality Factor ──
         if has_quality:
@@ -477,18 +504,22 @@ def _compute_preset_factors(pid: str, *,
         w_mom = weights.get("mom", 0.20)
         w_quality = weights.get("quality", 0.20)
         w_efficiency = weights.get("efficiency", 0.20)
+        w_rsi = weights.get("rsi_momentum", 0.08)
 
         quality_active = (
             has_quality
             and (day_raw["z_quality"].abs() > 1e-10).any()
         )
         eff_active = (day_raw["z_efficiency"].abs() > 1e-10).any()
+        rsi_active = (day_raw["z_rsi_momentum"].abs() > 1e-10).any()
 
         dead_factors = []
         if not quality_active:
             dead_factors.append("quality")
         if not eff_active:
             dead_factors.append("efficiency")
+        if not rsi_active:
+            dead_factors.append("rsi_momentum")
 
         if dead_factors:
             dead_weight = 0.0
@@ -498,6 +529,9 @@ def _compute_preset_factors(pid: str, *,
             if "efficiency" in dead_factors:
                 dead_weight += w_efficiency
                 w_efficiency = 0.0
+            if "rsi_momentum" in dead_factors:
+                dead_weight += w_rsi
+                w_rsi = 0.0
             # Proportionally redistribute to RSRS/Flow/Mom
             active_weight = w_rsrs + w_flow + w_mom
             if active_weight > 0:
@@ -514,12 +548,13 @@ def _compute_preset_factors(pid: str, *,
                              + w_flow * day_raw["z_flow"]
                              + w_mom * day_raw["z_mom"]
                              + w_quality * day_raw["z_quality"]
-                             + w_efficiency * day_raw["z_efficiency"])
+                             + w_efficiency * day_raw["z_efficiency"]
+                             + w_rsi * day_raw["z_rsi_momentum"])
 
         # Commodity ETF: redistribute quality weight to technical factors.
         # 商品ETF（石油/黄金）无财务基本面，F_Quality=截面中位数（z≈0），
         # 但中位数在股票基本面普遍偏弱/偏强时会产生虚假的相对优势。
-        # 处理方式：将 quality 权重等比例分摊到其余四个技术面因子。
+        # 处理方式：将 quality 权重等比例分摊到其余技术面因子。
         try:
             from src.analysis.financial_factor import COMMODITY_ETF_CODES
         except ImportError:
@@ -533,6 +568,7 @@ def _compute_preset_factors(pid: str, *,
                     + w_flow * day_raw.loc[commodity_mask, "z_flow"]
                     + w_mom * day_raw.loc[commodity_mask, "z_mom"]
                     + w_efficiency * day_raw.loc[commodity_mask, "z_efficiency"]
+                    + w_rsi * day_raw.loc[commodity_mask, "z_rsi_momentum"]
                 ) / technical_weight
 
         # Quadrant (unchanged: still based on flow + mom only)
@@ -553,6 +589,8 @@ def _compute_preset_factors(pid: str, *,
                 "z_quality": float(row["z_quality"]),
                 "intraday_eff": float(row["efficiency"]),
                 "z_efficiency": float(row["z_efficiency"]),
+                "rsi_momentum": float(row["rsi_momentum"]),
+                "z_rsi_momentum": float(row["z_rsi_momentum"]),
                 "factor": float(row["factor"]),
                 "quadrant": int(row["quadrant"]),
             }

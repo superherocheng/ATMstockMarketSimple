@@ -110,7 +110,9 @@ async def api_ic_summary_all():
     result = []
     for r in rows:
         rid = r[0]
-        config = preset_config.get(rid, {"label": rid, "desc": ""})
+        if rid not in preset_config:
+            continue
+        config = preset_config[rid]
         result.append({
             "preset_id": rid,
             "label": config["label"],

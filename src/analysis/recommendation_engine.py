@@ -72,7 +72,21 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
             "WHERE table_name='factor_daily' AND column_name='z_efficiency'"
         )).fetchone() is not None
 
-        if has_rsrs and has_quality and has_efficiency:
+        has_rsi = conn.execute(text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='factor_daily' AND column_name='z_rsi_momentum'"
+        )).fetchone() is not None
+
+        if has_rsrs and has_quality and has_efficiency and has_rsi:
+            factor_rows = conn.execute(text("""
+                SELECT etf_code, z_flow, z_mom, factor, quadrant, flow, mom,
+                       rsrs, z_rsrs, f_quality, z_quality, intraday_eff, z_efficiency,
+                       rsi_momentum, z_rsi_momentum
+                FROM factor_daily
+                WHERE preset_id = :pid AND trade_date = :d
+                ORDER BY factor DESC
+            """), {"pid": preset_id, "d": latest_date}).fetchall()
+        elif has_rsrs and has_quality and has_efficiency:
             factor_rows = conn.execute(text("""
                 SELECT etf_code, z_flow, z_mom, factor, quadrant, flow, mom,
                        rsrs, z_rsrs, f_quality, z_quality, intraday_eff, z_efficiency
@@ -201,8 +215,19 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
         # V5: intraday efficiency columns
         entry["z_efficiency"] = 0.0
         entry["efficiency_raw"] = 0.0
+        # V6: RSI momentum columns
+        entry["z_rsi_momentum"] = 0.0
+        entry["rsi_momentum_raw"] = 0.0
 
-        if has_rsrs and has_quality and has_efficiency and len(r) >= 13:
+        if has_rsrs and has_quality and has_efficiency and has_rsi and len(r) >= 15:
+            entry["z_rsrs"] = float(r[8]) if r[8] else 0
+            entry["f_quality_raw"] = float(r[9]) if r[9] else 0
+            entry["z_quality"] = float(r[10]) if r[10] else 0
+            entry["efficiency_raw"] = float(r[11]) if r[11] else 0
+            entry["z_efficiency"] = float(r[12]) if r[12] else 0
+            entry["rsi_momentum_raw"] = float(r[13]) if r[13] else 0
+            entry["z_rsi_momentum"] = float(r[14]) if r[14] else 0
+        elif has_rsrs and has_quality and has_efficiency and len(r) >= 13:
             entry["z_rsrs"] = float(r[8]) if r[8] else 0
             entry["f_quality_raw"] = float(r[9]) if r[9] else 0
             entry["z_quality"] = float(r[10]) if r[10] else 0
@@ -446,6 +471,8 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
             "f_quality_raw": round(c["f_quality_raw"], 4),
             "z_efficiency": round(c["z_efficiency"], 4),
             "efficiency_raw": round(c["efficiency_raw"], 4),
+            "z_rsi_momentum": round(c["z_rsi_momentum"], 4),
+            "rsi_momentum_raw": round(c["rsi_momentum_raw"], 4),
         })
 
     # ── Risk warnings (use optimal forward period's ICIR) ──
@@ -596,6 +623,7 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
         "weight_allocation": {
             "quality_active": has_quality,
             "efficiency_active": True,
+            "rsi_momentum_active": has_rsi,
         },
         "timing": {
             "score": timing.get("score", 0),

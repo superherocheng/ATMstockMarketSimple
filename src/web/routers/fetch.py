@@ -139,6 +139,50 @@ def _run_fetch(task_type):
 
         _add_log("[DONE] 数据获取完成！")
 
+        # ── 检查份额数据截面完整性 ──
+        # 因子计算依赖完整的截面数据。份额数据通常T+1才公布，
+        # 如果最新交易日只有部分ETF有份额数据，说明截面不完整，
+        # 此时计算因子会引入偏差（缺失ETF的flow因子=NaN），应跳过。
+        try:
+            _ensure_db()
+            from config.config import SECTOR_ETF
+            from sqlalchemy import text
+            from src.core.db_manager_postgresql import get_conn
+            conn = get_conn()
+
+            # 找到最新的份额日期和日线日期
+            share_max = conn.execute(text(
+                "SELECT MAX(trade_date) FROM etf_share"
+            )).fetchone()[0]
+            kline_max = conn.execute(text(
+                "SELECT MAX(trade_date) FROM sector_etf_daily"
+            )).fetchone()[0]
+
+            share_max_str = str(share_max).replace("-", "")
+            kline_max_str = str(kline_max).replace("-", "")
+
+            # 统计最新份额日期有多少个ETF
+            share_count = conn.execute(text(
+                "SELECT COUNT(DISTINCT ts_code) FROM etf_share WHERE trade_date = :d"
+            ), {"d": share_max}).fetchone()[0]
+
+            total_sector = len(SECTOR_ETF)
+
+            _add_log(f"[INFO] 最新日线日期: {kline_max_str}, 最新份额日期: {share_max_str}")
+            _add_log(f"[INFO] 份额截面: {share_count}/{total_sector} 只ETF有数据")
+
+            if share_count < total_sector:
+                _add_log(f"[SKIP] 份额数据不完整（{share_count}/{total_sector}），跳过因子计算")
+                _add_log("[INFO] 份额数据通常T+1公布，请在下一个交易日开盘后重新获取")
+                _cache_invalidate("etf", "overview", "analysis")
+                with _fetch_lock:
+                    _fetch_status["backtest_done"] = False
+                    _fetch_status["progress"] = 100
+                    _fetch_status["current_step"] = "完成（份额不完整，回测跳过）"
+                return
+        except Exception as e:
+            _add_log(f"[WARN] 份额完整性检查失败: {e}，继续执行回测")
+
         # ── 回测阶段：因子计算+IC分析 ──
         try:
             _ensure_db()
@@ -179,9 +223,9 @@ def _run_fetch(task_type):
         # 投资建议预生成（缓存预热）
         try:
             from src.analysis.recommendation_engine import build_investment_recommendation
-            for pid in ["short", "medium", "long", "rsrs_aggressive"]:
+            for pid in ["short", "medium", "long"]:
                 build_investment_recommendation(pid)
-            _add_log("[OK] 投资建议已预生成（4个预设）")
+            _add_log("[OK] 投资建议已预生成（3个预设）")
         except Exception as e:
             _add_log(f"[WARN] 投资建议预生成失败: {e}")
 

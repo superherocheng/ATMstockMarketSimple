@@ -5,16 +5,17 @@ Each preset defines:
 - flow_lookback: Share flow trend window (N)
 - mom_lookback: Momentum lookback (M)
 - forward_periods: Evaluation horizon(s) (H)
-- factor_weights: Five-factor combination weights
+- factor_weights: Six-factor combination weights
 
 V4: Added financial quality factor (f_quality).
 V5: Added intraday efficiency factor (efficiency).
+V6: Added RSI momentum factor (rsi_momentum).
 
 Weight design:
-  Base weights from README (3-factor) are proportionally scaled to 70%,
-  with quality=0.20 and efficiency=0.10 filling the remaining 30%.
-  This preserves the original strategy differentiation while fairly
-  allocating to the two new auxiliary factors.
+  Base weights from README (3-factor) are proportionally scaled,
+  with quality=0.184, efficiency=0.092, rsi_momentum=0.08 filling
+  the remaining share. This preserves the original strategy differentiation
+  while fairly allocating to the three auxiliary factors.
 """
 PRESETS = {
     "short": {
@@ -25,7 +26,7 @@ PRESETS = {
         "flow_lookback": 10,
         "mom_lookback": 20,
         "forward_periods": [10],
-        "factor_weights": {"rsrs": 0.28, "flow": 0.14, "mom": 0.28, "quality": 0.20, "efficiency": 0.10},
+        "factor_weights": {"rsrs": 0.258, "flow": 0.129, "mom": 0.258, "quality": 0.184, "efficiency": 0.092, "rsi_momentum": 0.08},
         "eff_sma_window": 0,
         "reversal_lookback": 5,
     },
@@ -37,7 +38,7 @@ PRESETS = {
         "flow_lookback": 20,
         "mom_lookback": 60,
         "forward_periods": [20],
-        "factor_weights": {"rsrs": 0.21, "flow": 0.21, "mom": 0.28, "quality": 0.20, "efficiency": 0.10},
+        "factor_weights": {"rsrs": 0.193, "flow": 0.193, "mom": 0.258, "quality": 0.184, "efficiency": 0.092, "rsi_momentum": 0.08},
         "eff_sma_window": 5,
         "reversal_lookback": 5,
     },
@@ -49,20 +50,8 @@ PRESETS = {
         "flow_lookback": 40,
         "mom_lookback": 120,
         "forward_periods": [40],
-        "factor_weights": {"rsrs": 0.175, "flow": 0.175, "mom": 0.35, "quality": 0.20, "efficiency": 0.10},
+        "factor_weights": {"rsrs": 0.161, "flow": 0.161, "mom": 0.322, "quality": 0.184, "efficiency": 0.092, "rsi_momentum": 0.08},
         "eff_sma_window": 5,
-        "reversal_lookback": 5,
-    },
-    "rsrs_aggressive": {
-        "id": "rsrs_aggressive",
-        "label": "RSRS Aggressive",
-        "description": "RSRS=15, Flow=10, Mom=10, H=10 — RSRS-heavy weighting",
-        "rsrs_lookback": 15,
-        "flow_lookback": 10,
-        "mom_lookback": 10,
-        "forward_periods": [10],
-        "factor_weights": {"rsrs": 0.35, "flow": 0.14, "mom": 0.21, "quality": 0.20, "efficiency": 0.10},
-        "eff_sma_window": 0,
         "reversal_lookback": 5,
     },
 }
@@ -77,4 +66,4 @@ def get_preset(preset_id: str) -> dict:
 
 def all_preset_ids() -> list:
     """Return all preset IDs in display order."""
-    return ["short", "medium", "long", "rsrs_aggressive"]
+    return ["short", "medium", "long"]
