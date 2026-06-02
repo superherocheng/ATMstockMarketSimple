@@ -69,9 +69,8 @@ Thumbs.db
 .env.local
 .env.*.local
 
-# Tushare 配置保护
-src/core/config.py
-config/config.py
+# Tushare Token 由环境变量 TUSHARE_TOKEN 管理或直接配置在 config.py
+# config/config.py 已被跟踪以同步 ETF 池配置
 
 # Lock files (optional)
 uv.lock
