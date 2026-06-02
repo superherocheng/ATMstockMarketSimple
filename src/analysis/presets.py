@@ -34,7 +34,7 @@ PRESETS = {
     "optimized": {
         "id": "optimized",
         "label": "Optimized",
-        "description": "RSRS=20, Flow=10, Mom=20, H=15 — ICIR-optimized weights, Quality/Eff zeroed",
+        "description": "RSRS=20, Flow=10, Mom=20, H=15 — ICIR-optimized weights, Quality/Eff zeroed, RSRS MA-filtered",
         "rsrs_lookback": 20,
         "flow_lookback": 10,
         "mom_lookback": 20,
@@ -42,6 +42,7 @@ PRESETS = {
         "factor_weights": {"rsrs": 0.38, "flow": 0.22, "mom": 0.32, "quality": 0.0, "efficiency": 0.0, "rsi_momentum": 0.08},
         "eff_sma_window": 0,
         "reversal_lookback": 5,
+        "rsrs_ma_dampening": 0.5,
     },
     "medium": {
         "id": "medium",

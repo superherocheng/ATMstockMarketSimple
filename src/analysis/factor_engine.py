@@ -322,6 +322,26 @@ def _compute_preset_factors(pid: str, *,
             return 0
 
     all_dates = sorted(kline_df["trade_date"].unique())
+    date_idx_map = {d: i for i, d in enumerate(all_dates)}
+
+    # V7: Pre-compute MA20 trend filter per (ETF_code, date_index)
+    rsrs_ma_damp = preset.get("rsrs_ma_dampening", 0.0)
+    _ma_trend_lookup = {}
+    if rsrs_ma_damp > 0:
+        for code in kline_df["ts_code"].unique():
+            ek = kline_df[kline_df["ts_code"] == code].sort_values("trade_date")
+            closes = ek["close"].values.astype(float)
+            ek_dates = ek["trade_date"].values
+            ma20 = np.full(len(closes), np.nan)
+            for mi in range(19, len(closes)):
+                ma20[mi] = np.mean(closes[mi - 19:mi + 1])
+            for mi in range(len(ek_dates)):
+                if ek_dates[mi] in date_idx_map:
+                    ti = date_idx_map[ek_dates[mi]]
+                    ma_cur = ma20[mi]
+                    ma_lag = ma20[mi - 3] if mi >= 3 else np.nan
+                    trend = 1.0 if (pd.notna(ma_cur) and pd.notna(ma_lag) and ma_cur > ma_lag) else 0.0
+                    _ma_trend_lookup[(code, ti)] = trend
 
     # ── Step 1: pre-compute raw factor series per ETF ──
     raw_dfs = []
@@ -456,6 +476,19 @@ def _compute_preset_factors(pid: str, *,
         day_raw["z_flow"] = _cross_sectional_zscore(day_raw["flow"]).values
         day_raw["z_mom"] = _cross_sectional_zscore(day_raw["mom"]).values
         day_raw["z_efficiency"] = _cross_sectional_zscore(day_raw["efficiency"]).values
+
+        # V7: RSRS MA trend filter — dampen z_rsrs when MA20 trend is bearish
+        rsrs_ma_damp = preset.get("rsrs_ma_dampening", 0.0)
+        if rsrs_ma_damp > 0:
+            for idx_r, row_r in day_raw.iterrows():
+                code = row_r["ts_code"]
+                t = d
+                if t in date_idx_map:
+                    ti = date_idx_map[t]
+                    # Check MA20 trend from pre-computed lookup
+                    trend = _ma_trend_lookup.get((code, ti), 1.0)
+                    if trend < 0.5:
+                        day_raw.loc[idx_r, "z_rsrs"] *= rsrs_ma_damp
 
         # ── V6: RSI Momentum with size neutralization ──
         # rank(RSI_diff) - 0.5 * rank(fd_share), then Z-score
