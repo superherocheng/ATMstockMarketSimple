@@ -10,12 +10,13 @@ Each preset defines:
 V4: Added financial quality factor (f_quality).
 V5: Added intraday efficiency factor (efficiency).
 V6: Added RSI momentum factor (rsi_momentum).
+V7: Added optimized preset with H=15, zeroed Quality/Efficiency based on
+    rolling ICIR validation showing they consistently harm composite IC.
 
-Weight design:
-  Base weights from README (3-factor) are proportionally scaled,
-  with quality=0.184, efficiency=0.092, rsi_momentum=0.08 filling
-  the remaining share. This preserves the original strategy differentiation
-  while fairly allocating to the three auxiliary factors.
+Weight design (v7 optimized):
+  Quality (ICIR=-0.24) and Efficiency (ICIR=-0.19) zeroed after 5-window
+  rolling validation showed negative IC across all windows.
+  Remaining weight allocated to RSRS/Mom/Flow/RSI_Mom with ICIR²-optimized ratios.
 """
 PRESETS = {
     "short": {
@@ -27,6 +28,18 @@ PRESETS = {
         "mom_lookback": 20,
         "forward_periods": [10],
         "factor_weights": {"rsrs": 0.258, "flow": 0.129, "mom": 0.258, "quality": 0.184, "efficiency": 0.092, "rsi_momentum": 0.08},
+        "eff_sma_window": 0,
+        "reversal_lookback": 5,
+    },
+    "optimized": {
+        "id": "optimized",
+        "label": "Optimized",
+        "description": "RSRS=20, Flow=10, Mom=20, H=15 — ICIR-optimized weights, Quality/Eff zeroed",
+        "rsrs_lookback": 20,
+        "flow_lookback": 10,
+        "mom_lookback": 20,
+        "forward_periods": [15],
+        "factor_weights": {"rsrs": 0.38, "flow": 0.22, "mom": 0.32, "quality": 0.0, "efficiency": 0.0, "rsi_momentum": 0.08},
         "eff_sma_window": 0,
         "reversal_lookback": 5,
     },
@@ -66,4 +79,4 @@ def get_preset(preset_id: str) -> dict:
 
 def all_preset_ids() -> list:
     """Return all preset IDs in display order."""
-    return ["short", "medium", "long"]
+    return ["short", "optimized", "medium", "long"]

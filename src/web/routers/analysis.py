@@ -35,11 +35,11 @@ async def page_investment_recommendation(request: Request):
 
 @router.get("/api/analysis/presets")
 async def api_presets():
-    return {"presets": list(PRESETS.values()), "default": "short"}
+    return {"presets": list(PRESETS.values()), "default": "optimized"}
 
 
 @router.get("/api/analysis/factor-distribution")
-async def api_factor_distribution(preset_id: str = "short"):
+async def api_factor_distribution(preset_id: str = "optimized"):
     return _cached_persistent(
         f"analysis_factor_dist_{preset_id}",
         lambda: chart_builder.build_factor_distribution(preset_id),
@@ -48,7 +48,7 @@ async def api_factor_distribution(preset_id: str = "short"):
 
 
 @router.get("/api/analysis/ic-series")
-async def api_ic_series(preset_id: str = "short"):
+async def api_ic_series(preset_id: str = "optimized"):
     return _cached_persistent(
         f"analysis_ic_series_{preset_id}",
         lambda: chart_builder.build_ic_series(preset_id),
@@ -57,7 +57,7 @@ async def api_ic_series(preset_id: str = "short"):
 
 
 @router.get("/api/analysis/quadrant-heatmap")
-async def api_quadrant_heatmap(preset_id: str = "short"):
+async def api_quadrant_heatmap(preset_id: str = "optimized"):
     return _cached_persistent(
         f"analysis_qheatmap_{preset_id}",
         lambda: chart_builder.build_quadrant_heatmap(preset_id),
@@ -66,7 +66,7 @@ async def api_quadrant_heatmap(preset_id: str = "short"):
 
 
 @router.get("/api/analysis/group-returns")
-async def api_group_returns(preset_id: str = "short"):
+async def api_group_returns(preset_id: str = "optimized"):
     return _cached_persistent(
         f"analysis_group_ret_{preset_id}",
         lambda: chart_builder.build_group_returns(preset_id),
@@ -75,7 +75,7 @@ async def api_group_returns(preset_id: str = "short"):
 
 
 @router.get("/api/analysis/rolling-icir")
-async def api_rolling_icir(preset_id: str = "short", window: int = 60):
+async def api_rolling_icir(preset_id: str = "optimized", window: int = 60):
     return _cached_persistent(
         f"analysis_rolling_icir_{preset_id}_{window}",
         lambda: chart_builder.build_rolling_icir(preset_id, window),
@@ -128,7 +128,7 @@ async def api_ic_summary_all():
 
 
 @router.get("/api/analysis/summary")
-async def api_summary(preset_id: str = "short"):
+async def api_summary(preset_id: str = "optimized"):
     return _cached_persistent(
         f"analysis_summary_{preset_id}",
         lambda: chart_builder.build_summary(preset_id),
@@ -137,7 +137,7 @@ async def api_summary(preset_id: str = "short"):
 
 
 @router.get("/api/investment-recommendation")
-async def api_investment_recommendation(preset_id: str = "short"):
+async def api_investment_recommendation(preset_id: str = "optimized"):
     return _cached_persistent(
         f"investment_rec_v2_{preset_id}",
         lambda: recommendation_engine.build_investment_recommendation(preset_id),
