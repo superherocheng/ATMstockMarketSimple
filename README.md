@@ -1,4 +1,4 @@
-# ATMstockMarketSimple 📈
+# ATMstockMarketSimple
 
 <div align="center">
 
@@ -6,8 +6,8 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104%2B-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14%2B-336791?logo=postgresql&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
-![ICIR](https://img.shields.io/badge/ICIR-0.50-brightgreen)
-![RSRS](https://img.shields.io/badge/RSRS-集成-blueviolet)
+![ICIR](https://img.shields.io/badge/ICIR-0.91-brightgreen)
+![ETF](https://img.shields.io/badge/ETF-32-blue)
 
 **A股ETF量化监控平台 | Chinese A-Share ETF Quantitative Monitoring Platform**
 
@@ -27,7 +27,7 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 
 ### 📊 数据监控
 - 🎯 **指数ETF监控** - 实时追踪沪深300、中证500、上证50、中证1000、科创50等核心指数
-- 📊 **行业ETF轮动** - 可视化15个行业ETF资金流向，发现板块轮动机会
+- 📊 **行业ETF轮动** - 可视化32个行业ETF资金流向，发现板块轮动机会
 - 📈 **份额变化分析** - 自动计算份额变化标准差，提供趋势判断
 - 📉 **K线图表展示** - 基于ECharts 5的专业K线图，支持多维度数据分析
 
@@ -36,15 +36,16 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 - 🏠 **首页因子概览** - 首页IC汇总卡片，展示各预设的IC均值/ICIR/胜率及六因子权重
 
 ### 🔬 量化分析
-- 🔬 **六因子评分模型** - RSRS(阻力支撑) + 资金流(Flow) + 动量(Mom) + 财务质量(Quality) + 日内效率(Efficiency) + RSI动量(RSI_Mom)，ICIR=0.55
+- 🔬 **六因子评分模型** - RSRS(阻力支撑) + 资金流(Flow) + 动量(Mom) + RSI动量(RSI_Mom)，Optimized预设ICIR=0.91
 - 💪 **RSRS因子** - 基于高低点滚动OLS回归(β×R²)，衡量支撑/阻力结构强度，与动量极低共线性(Pearson<0.23)
 - ⚡ **向量化因子引擎** - 滑动窗口预计算RSRS/Flow/Mom，全量回测从~25s降至~5s，提速5-8x
 - 🔄 **并行预设计算+数据共享** - 4组预设并行计算，DB全表扫描仅执行一次，避免重复IO
 - 📈 **IC有效性检验** - Spearman Rank IC + ICIR + IC衰减曲线 + **滚动ICIR衰退检测**
 - 🎯 **四象限分类+RSRS覆盖** - Q1强势/Q2潜伏/Q3撤离/Q4风险；Q3中RSRS>0.3的品种按信号强度纳入候选
-- 🏆 **投资建议引擎** - 六因子得分 + RSRS象限覆盖 + IC置信度 + 两阶段相关性惩罚 + 大盘择时 + 滚动ICIR衰减检测 → 仓位配置
+- 🏆 **投资建议引擎** - 因子得分 + RSRS象限覆盖 + IC置信度 + 两阶段相关性惩罚 + 大盘择时 + 滚动ICIR衰减检测 → 仓位配置
 - 📡 **大盘择时** - 基于中证500 RSI+动量+份额变化的市场状态判断
 - 🛡️ **数据覆盖回退** - 最新交易日数据不全时自动回退到最近完整日期
+- 🧪 **泛化性验证** - 32-ETF池滚动3月验证：ICIR=0.91，年化超额22.5%（扣0.10%成本），换手率76%
 
 ### 🎨 用户体验
 - 📋 **专业投资报告** - 报告式投资建议页，含KPI指标+排名表+风险提示
@@ -67,37 +68,39 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 | **RSRS(阻力支撑)** | 高低点滚动OLS回归(β×R²)，N日窗口 | 支撑/阻力结构强度，与动量极低共线性(Pearson<0.23) |
 | **资金流(Flow)** | EWMA加权斜率 (半衰期3天) → Rank标准化 | 份额变化趋势，近期敏感 |
 | **动量(Mom)** | 累计收益率 / 60日波动率 | 风险调整后动量 |
-| **财务质量(Quality)** | ROE/毛利率/负债率/现金流质量综合评分 | 基本面防御力（V4新增） |
-| **日内效率(Efficiency)** | OHLC排列熵与趋势效率代理 | 交易结构稳定性（V5新增） |
-| **RSI动量(RSI_Mom)** | RSI(5)-RSI(20)，规模中性化后Rank标准化 | 短期均值回归信号（V6新增） |
+| **财务质量(Quality)** | ROE/毛利率/负债率/现金流质量综合评分 | 基本面防御力（V4） |
+| **日内效率(Efficiency)** | OHLC排列熵与趋势效率代理 | 交易结构稳定性（V5） |
+| **RSI动量(RSI_Mom)** | RSI(5)-RSI(20)，规模中性化后Rank标准化 | 短期均值回归信号（V6） |
 
 ### 权重配置
 
-各预设使用不同的六因子权重：
-
 | 预设 | RSRS | Flow | Mom | Quality | Efficiency | RSI_Mom | 适用场景 |
 |------|:----:|:----:|:---:|:-------:|:----------:|:-------:|----------|
+| **Optimized** | 0.38 | 0.22 | 0.32 | 0 | 0 | 0.08 | **推荐** (H=15, ICIR=0.91) |
 | **short** | 0.258 | 0.129 | 0.258 | 0.184 | 0.092 | 0.08 | 短线 (H=10) |
 | **medium** | 0.193 | 0.193 | 0.258 | 0.184 | 0.092 | 0.08 | 中线 (H=20) |
 | **long** | 0.161 | 0.161 | 0.322 | 0.184 | 0.092 | 0.08 | 长线 (H=40) |
 
-### RSRS因子验证
+### Optimized预设回测结果
 
-| 市场环境 | 最佳RSRS参数 | ICIR | 对比最佳动量ICIR |
-|---------|:-----------:|:----:|:---------------:|
-| 淡季(熊市) | N=40, H=20 | 0.206 | 0.251 (mom_60) |
-| 旺季(牛市) | N=15, H=10 | **0.292** | 0.267 (mom_10) |
-| 全周期 | N=20, H=10 | 0.132 | 0.157 (mom_60) |
+32-ETF池滚动3月验证（3月训练+1月预测，步长1月，8个窗口）：
 
-**共线性检验**：所有RSRS/动量组合Pearson均值<0.23→极低共线性，RSRS提供完全独立的信息增量。
+| 指标 | 值 | 说明 |
+|------|:--:|------|
+| **ICIR** | **0.91** | 因子信号稳定性 |
+| **胜率** | **71.1%** | 方向正确率 |
+| **年化超额** | **22.5%** | 扣除0.10%单边成本后 |
+| **夏普比率** | **1.76** | 风险调整后收益 |
+| **月换手率** | **76%** | stickiness=1.0组合粘性 |
 
-**最优组合**（旺季）：RSRS(N=20) + 动量(M=10)，ICIR=**0.43**，远超单因子（RSRS 0.29, Mom 0.27）。
+因子归因（Top-5 vs Bottom-5 收益差）：RSRS +63%, Momentum +22%, Flow -15%, RSI_Mom -25%
 
 ### 数据处理
 
-- **Rank秩标准化** — 标准分排名替代Z-Score，更适应小样本(17只)截面
+- **Rank秩标准化** — 标准分排名替代Z-Score，更适应小样本(32只)截面
 - **横截面标准化** — 所有因子经Rank标准化后合成复合因子
-- **行业中性化** — 按行业分组去均值（预留）
+- **RSRS MA20趋势过滤** — 当MA20下降时，z_rsrs信号衰减50%
+- **组合粘性(Stickiness)** — 对非持仓ETF的因子得分施加惩罚，降低换手率
 
 ### 投资建议引擎
 
@@ -121,48 +124,6 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 | **前端** | Jinja2 · Tailwind CSS · vanilla JS | 服务端渲染 + 现代CSS |
 | **可视化** | ECharts 5 (bundled) | 无需CDN，离线可用 |
 | **数据源** | Tushare Pro | 专业金融数据接口 |
-
-## 📁 项目结构
-
-```
-ATMstockMarketSimple/
-├── src/
-│   ├── web/                         # FastAPI Web应用
-│   │   ├── app.py                   # 应用入口 (端口 5656)
-│   │   ├── routers/                 # API路由模块
-│   │   │   ├── analysis.py          # 因子分析 + 投资建议 + 市场择时端点
-│   │   │   ├── etf.py               # ETF详情、行业ETF（含信号标签对齐）
-│   │   │   ├── overview.py          # 首页/仪表盘
-│   │   │   ├── fetch.py             # 数据获取端点
-
-│   │   │   └── telemetry.py         # 匿名使用统计埋点
-│   │   ├── templates/               # Jinja2 HTML模板（6个页面）
-│   │   ├── static/
-│   │   │   ├── css/app.css          # 完整CSS设计系统 (Warm Sage)
-│   │   │   └── js/app.js            # 通用JS + 骨架屏 + 导航等
-│   │   └── services/
-│   │       └── cache.py             # Redis + 内存缓存
-│   ├── analysis/                    # 量化分析模块
-│   │   ├── factor_engine.py         # 六因子计算 (RSRS + Flow + Mom + Quality + Efficiency + RSI_Mom)
-│   │   ├── ic_analyzer.py           # IC/ICIR分析 + 象限收益
-│   │   ├── chart_builder.py         # ECharts数据转换
-│   │   ├── market_timing.py         # 中证500大盘择时
-│   │   ├── recommendation_engine.py # 投资建议引擎
-│   │   ├── rsi_factor.py            # RSI动量因子 (V6)
-│   │   └── presets.py               # 因子预设配置
-│   ├── core/                        # 数据库管理、交易日历
-│   └── data_fetchers/              # Tushare数据获取
-├── scripts/                         # 工具脚本（setup.sh / package.sh / publish.sh）
-├── config/                          # ETF定义、阈值配置
-├── data/                            # 本地数据缓存
-├── alembic/                         # 数据库迁移
-├── docs/                            # 设计文档
-│   ├── IMPROVEMENT_ROADMAP.md       # 改进路线图
-│   ├── INVESTMENT_RECOMMENDATION_DESIGN.md  # 投资建议设计评审
-│   └── ...                          # 其他技术文档
-├── docker-compose.yml               # Docker编排
-└── .env.example                     # 环境变量示例
-```
 
 ## 🚀 快速开始
 
@@ -216,23 +177,13 @@ pip install -r requirements.txt
 
 # 配置环境变量
 cp .env.example .env
-# 编辑 .env 文件
+# 编辑 .env 文件，填入 TUSHARE_TOKEN 和 DATABASE_URL
 
 # 初始化数据库
 alembic upgrade head
 
 # 获取ETF数据
 python3 -u src/data_fetchers/tushare_fetcher.py --etf
-
-# 计算因子和IC
-python3 -c "
-from src.core.db_manager_postgresql import init_db_manager
-from src.analysis import factor_engine, ic_analyzer
-import os; os.environ['DATABASE_URL'] = 'postgresql://...'
-init_db_manager(os.environ['DATABASE_URL'])
-factor_engine.compute_all_factors()
-ic_analyzer.compute_all_ic()
-"
 
 # 启动服务
 uvicorn src.web.app:app --reload --port 5656
@@ -242,12 +193,12 @@ uvicorn src.web.app:app --reload --port 5656
 
 | 路由 | 页面 | 功能描述 |
 |------|------|----------|
-| `/` | index.html | 首页 — 快速入门引导、行业板块数据、数据管理 |
+| `/` | index.html | 首页 — 快速入门引导、32行业板块数据、数据管理 |
 | `/etf` | etf.html | 指数ETF详情 — K线走势、份额分析、异常检测 |
-| `/sector` | sector.html | 行业ETF轮动 — 15行业对比、信号排序、份额趋势 |
+| `/sector` | sector.html | 行业ETF轮动 — 32行业对比、信号排序、份额趋势 |
 | `/analysis` | analysis.html | 因子分析 — 因子分布、IC序列、四象限模型、收益预测 |
-| `/analysis/investment-recommendation` | investment_recommendation.html | 📋 **投资建议** — ETF排名、仓位配置、风险提示 |
-| `/analysis/tech-notes` | tech_notes.html | 技术说明 — 因子模型文档 |
+| `/analysis/investment-recommendation` | investment_recommendation.html | 投资建议 — ETF排名、仓位配置、风险提示 |
+| `/analysis/tech-notes` | tech_notes.html | 技术说明 — 因子模型文档、泛化测试结论 |
 
 ## 🎯 监控ETF列表
 
@@ -261,7 +212,7 @@ uvicorn src.web.app:app --reload --port 5656
 | 512100.SH | 中证1000ETF | 小盘股代表 |
 | 588000.SH | 科创50ETF | 科技创新龙头 |
 
-### 行业ETF（17只）
+### 行业ETF（32只）
 
 | ETF代码 | 名称 | ETF代码 | 名称 |
 |---------|------|---------|------|
@@ -273,7 +224,14 @@ uvicorn src.web.app:app --reload --port 5656
 | 562500.SH | 机器人ETF | 512690.SH | 白酒ETF |
 | 159611.SZ | 电力ETF | 512980.SH | 传媒ETF |
 | 515210.SH | 钢铁ETF | 159870.SZ | 化工ETF |
-| 561360.SH | 石油ETF | - | - |
+| 561360.SH | 石油ETF | 512710.SH | 军工龙头ETF |
+| 515790.SH | 光伏ETF | 159934.SZ | 黄金ETF |
+| 159865.SZ | 养殖ETF | 159766.SZ | 旅游ETF |
+| 159852.SZ | 软件ETF | 159851.SZ | 金融科技ETF |
+| 512170.SH | 医疗ETF | 159869.SZ | 游戏ETF |
+| 159755.SZ | 电池ETF | 516150.SH | 稀土ETF |
+| 159638.SZ | 高端装备ETF | 159930.SZ | 能源ETF |
+| 515000.SH | 科技ETF | 159326.SZ | 电网设备ETF |
 
 ## 🔌 API 端点
 
@@ -299,40 +257,18 @@ uvicorn src.web.app:app --reload --port 5656
 | GET | `/api/analysis/quadrant-heatmap` | 四象限收益热力图 |
 | GET | `/api/analysis/group-returns` | 分组累计收益 |
 | GET | `/api/analysis/rolling-icir` | 滚动ICIR |
-| **GET** | **`/api/investment-recommendation`** | **📋 投资建议报告（含仓位配置）** |
-| **GET** | **`/api/market-timing`** | **📡 大盘择时信号** |
+| GET | `/api/investment-recommendation` | 投资建议报告（含仓位配置） |
+| GET | `/api/market-timing` | 大盘择时信号 |
 | POST | `/api/analysis/recompute` | 触发因子+IC重算 |
 
 ### 数据管理
 
 | 方法 | 路由 | 描述 |
 |------|------|------|
-| POST | `/api/fetch/all` | 一键更新+回测（获取数据→份额更新→因子计算→IC分析） |
+| POST | `/api/fetch/all` | 一键更新+回测 |
 | GET | `/api/fetch/status` | 数据获取+回测任务状态轮询 |
 | GET | `/api/etf-share/status` | ETF份额数据状态检查 |
 | POST | `/api/etf-share/update` | ETF份额智能更新 |
-
-## 📈 份额变化分析
-
-### 核心指标
-
-- **份额变化百分比**：每日份额变化 / 前一日份额 × 100%
-- **标准差**：近N日份额变化百分比的标准差
-- **Z-Score**：(最新变化 - 均值) / 标准差
-
-### 趋势判断逻辑
-
-| 判断结果 | 条件 |
-|----------|------|
-| 强势流入 | ZScore > 1.5 且趋势向上且量能放大 |
-| 持续流入 | ZScore > 1.5 且趋势向上 |
-| 温和流入 | ZScore > 0.5 且趋势向上 |
-| 强势流出 | ZScore < -1.5 且趋势向下且量能放大 |
-| 持续流出 | ZScore < -1.5 且趋势向下 |
-| 温和流出 | ZScore < -0.5 且趋势向下 |
-| 分歧加大 | ZScore > 0.5 但趋势向下 |
-| 企稳回升 | ZScore < -0.5 但趋势向上 |
-| 震荡整理 | 其他情况 |
 
 ## 🔬 因子分析术语
 
@@ -345,123 +281,38 @@ uvicorn src.web.app:app --reload --port 5656
 | **IC** | 信息系数，衡量因子预测力（>0.03为有效） |
 | **ICIR** | IC均值/标准差，衡量因子稳定性（>0.3为可用） |
 
-## 📋 v18.0.0 更新日志
+## 📋 v20.0.0 更新日志
 
-### 🔬 六因子模型升级 (V6)
-
-| 模块 | 改动 |
-|------|------|
-| **新增 RSI 动量因子** | RSI(5)-RSI(20) 差值经规模中性化后 Rank 标准化。单因子 IC=0.042, ICIR=0.144，与现有因子最大 \|Spearman\| < 0.22 |
-| **合成因子提升** | IC 从 0.143 → 0.160 (+12%)，ICIR 从 0.501 → 0.5545 (+9%) |
-| **权重重分配** | 现有五因子等比缩减释放 8% 给 RSI_Mom，总权重保持 1.0 |
-| **DB 迁移** | 新增 Alembic 007：`factor_daily` 表增加 `rsi_momentum` / `z_rsi_momentum` 列 |
-
-### 🛡️ 数据完整性保障
+### 🧪 模型泛化性验证 (V8)
 
 | 模块 | 改动 |
 |------|------|
-| **份额截面检查** | 一键更新流程在因子计算前检查最新交易日份额数据是否齐全。若截面不完整（T+1 数据未到齐），自动跳过因子计算和投资建议生成，避免不完整截面引入因子偏差 |
+| **ETF池扩充** | 从17只扩充至32只行业ETF，覆盖半导体、医药、军工、光伏、黄金、农业、旅游、软件等32个板块 |
+| **ETF筛选器** | 新增 `scripts/etf_screener.py` — 基于Tushare API自动筛选高流动性ETF，按行业/跨境/债券分类去重 |
+| **泛化测试** | 新增 `scripts/generalization_test.py` — 滚动3月训练+1月预测验证框架，8个窗口 |
+| **部署优化器** | 新增 `scripts/deployment_optimizer.py` — 换手率优化、极端窗口稳健性、因子归因三方向测试 |
+| **Optimized预设** | Quality/Efficiency因子权重归零（ICIR分别为-0.24/-0.19），RSRS MA20趋势过滤，组合粘性stickiness=1.0 |
+| **回测结果** | 32-ETF池ICIR=0.91，年化超额22.5%（扣0.10%成本），胜率71.1%，夏普1.76 |
 
-### 🎨 前端更新
-
-| 模块 | 改动 |
-|------|------|
-| **首页** | "Five-Factor Model" → "Six-Factor Model"；移除已删除的 RSRS Aggressive 预设；IC 表中过滤已废弃预设数据 |
-| **行业ETF页** | 图表配对等高修复（Recent Change / Share Change 同高，K-Line / Share Value 同高） |
-| **投资建议页** | 雷达图 4 维 → 5 维（新增 RSI）；表格显示 RSI 动量分数 |
-| **技术说明页** | 新增 RSI 动量因子说明段落；更新复合公式和权重表 |
-| **日志框定位** | Terminal 日志框从 Data Management 卡片移至首页独立区域，不再影响卡片高度 |
-
-### 🐳 Docker 优化
+### 📊 网站更新
 
 | 模块 | 改动 |
 |------|------|
-| **docker-compose.yml** | 移除外部网络依赖 `docker_network`，纯净 VPS 环境可直接 `docker compose up -d`；增加 `TZ=Asia/Shanghai` 时区设置 |
-| **README** | 重写 Docker 部署章节为一键部署流程 |
+| **技术文档** | 新增"模型泛化与回测结果"章节：完整回测指标、因子归因、W5分析 |
+| **投资建议** | 策略描述包含ICIR/超额/换手率指标；数据更新后自动重算因子+IC+建议 |
+| **首页** | "17 Sectors" → "32 Sectors"；热力图展示32个板块 |
+| **分析页** | Optimized preset作为默认；图表自动使用36-ETF数据 |
+| **IC重算** | 全部预设IC基于扩大ETF池重新计算 |
 
-### 🗑️ 清理
-- 移除 `rsrs_aggressive` 预设（代码、模板、文档、API 过滤、DB 查询）
-- IC 表中过滤已废弃预设的回测数据
+### 📝 新增脚本
 
----
-
-## 📋 v17.0.0 更新日志
-
-### 🎨 Brutalism设计系统重构
-
-| 模块 | 改动 |
+| 脚本 | 用途 |
 |------|------|
-| **导航优化** | 桌面端仅保留侧边栏导航，移除顶部导航栏；侧边栏边框从3px黑线改为1px灰色，hover/active状态改为灰底+蓝色下划线 |
-| **ETF页10日份额卡** | 10-Day Share Change卡片重设计：最大化空间利用、放大排版、玻璃态边框（3px→1px） |
-| **行业ETF页重构** | 删除17个ETF芯片卡片，改为排名表ETF名称可点击直达K线+份额详情；新增5个筛选按钮(ALL/TOP-3/BOTTOM-3/POSITIVE/NEGATIVE)，基于份额Z-Score筛选；修复K线3M/6M/1Y/ALL按钮无效问题 |
-| **分析页信息架构** | 重构为4段问题驱动叙事流：因子有效性→信号预测力→因子分布→策略收益；新增Section Banner、KPI标签Tooltip |
-| **投资建议可视化** | 新增4个ECharts图表：雷达图(因子得分)、散点图(Risk vs Return)、环形图(仓位分配)、置信度条；优化表格列宽与排版 |
-| **全局样式统一** | 所有卡片边框从`3px solid #000`统一为`1px solid var(--c-border)`；Section Banner从纯黑底改为`var(--c-bg-tertiary)`灰底 |
-| **图表尺寸统一** | 所有ECharts图表固定高度300px(桌面)/220px(手机)/160px(超小屏)，消除flex与固定高度冲突 |
-| **字体可读性** | `@font-face` + `unicode-range: U+0026` 技术为Playfair Display的&符号提供可读性覆盖(400/700/900三个字重) |
-| **Tooltip溢出修复** | ECharts tooltip添加`confine:true`+自定义`position`函数，防止行业页tooltip超出视口 |
-
-### 📝 文档与配置
-- 版本号更新至 `17.0.0`
-- 删除 `.github/workflows/`（CI配置）
-- 删除 `.trae/documents/`（旧设计文档）
-- 删除 `data/external/`（外部数据文件）
-
----
-
-## 📋 v16.0.0 更新日志
-
-### 📱 全端响应式重构
-
-| 模块 | 改动 |
-|------|------|
-| **断点统一** | 消除散乱的 400/480/600/640/720/768/1024 七个断点，统一为 640/1024 三阶布局 |
-| **导航系统** | bottom-nav 只在 <640px 显示，tablet-topbar 640–1023px，sidebar-nav ≥1024px，不再有导航重叠 |
-| **图表响应式** | K线图手机端高度从 400px 降至 280px，IC系列图降至 220px；canvas 溢出防护；`<details>` 折叠组展开时自动 resize |
-| **表格卡片降级** | 推荐表、行业排名表在 ≤640px 自动转为标签+值的卡片布局，隐藏低优先级列 |
-| **IC 汇总表** | ≤640px 只保留 4 个核心列（预设/周期/IC均值/ICIR），≤400px 精简至 3 列 |
-| **投资建议 KPI** | 6 列 → 3 列(≤640px) → 2 列(≤480px) |
-| **行业芯片网格** | 桌面 7 列 → 平板 4 列 → 手机 3 列 → 超小屏 2 列 |
-| **safe-area 适配** | tablet-topbar + bottom-nav 适配刘海屏/圆角屏安全区域 |
-| **页面标题** | 缩短为 `Analysis - ATM` / `Index ETF - ATM` 等，适配移动端浏览器 tab |
-| **`!important` 清理** | 移除 chart-container 移动端高度覆盖的 `!important` 依赖 |
-| **ECharts 触控** | 折叠图表组展开时自动 resize；orientation change 时 300ms 延迟重排 |
-
-### 📝 文档与项目文件
-- `AGENTS.md` — CodeGraph 索引知识图谱生成的全量项目地图（969 节点 / 878 边）
-- 版本号更新至 `16.0.0`
-
----
-
-## 📋 v15.0.0 更新日志
-
-### 🐛 BUG修复
-| 严重程度 | 问题 | 修复 |
-|----------|------|------|
-| 🔴 关键 | 黄金ETF(518880.SH)无成分股/商品标记，扭曲财务因子截面分布 | 加入商品ETF集合（`COMMODITY_ETF_CODES`） |
-| 🔴 关键 | 4个预设的 `factor_weights` 完全相同，策略切换失效 | 恢复差异化权重（按README规划重分配） |
-| 🔴 关键 | `health_check` 版本号 `13.0.0` 与 `pyproject.toml` 的 `15.0.0` 不一致 | 统一为 `15.0.0` |
-| 🔴 关键 | `app.py` 默认端口 8500 vs Docker/README 端口 8000 | 统一为 8000 |
-| 🟠 中等 | `_recent_quarters` 12月报告期写死 `30` 应为 `31` | 修正为 `31` if qm=12 |
-| 🟠 中等 | `_get_previous_trading_date` 简单减1天（可能跳到非交易日） | 改用交易日历查询 |
-| 🟡 低级 | `ic_analyzer._compute_preset_ic` 参数被函数体无条件覆盖 | 仅在未传入时重新计算 |
-| 🟡 低级 | `stock_concept` 全表删除不在事务中 | 包裹在 DELETE+INSERT 事务内 |
-
-### 📂 文件整理
-
-| 操作 | 文件 | 目标 |
-|------|------|------|
-| 移入 `scripts/` | `setup.sh` | 根目录 → `scripts/setup.sh` |
-| 移入 `scripts/` | `package.sh` | 根目录 → `scripts/package.sh` |
-| 移入 `scripts/` | `publish.sh` | 根目录 → `scripts/publish.sh` |
-| 删除 | `tweaks.html` | 未跟踪杂项文件 |
-| 删除 | `tweaks.zip` | 未跟踪杂项文件 |
-
-### 📝 文档更新
-- README 项目结构树新增 `scripts/` 目录
-- README 权重表更新为五因子模型（含 Quality + Efficiency）
-- `publish.sh` 内部过时路径修复
-- `docs/development/ProjectStructure.md` / `FILE_INDEX.md` 路径同步
+| `scripts/etf_screener.py` | Tushare ETF筛选器：流动性≥5000万/日，排除宽基，行业去重 |
+| `scripts/generalization_test.py` | 滚动验证框架：3月训练+1月预测，ICIR/WR/超额评估 |
+| `scripts/deployment_optimizer.py` | 部署优化器：换手率粘性、W5稳健性、因子归因 |
+| `scripts/goal_cost_generalize.py` | 成本侵蚀+泛化测试 |
+| `scripts/robustness_tests.py` | 稳健性压力测试 |
 
 ---
 

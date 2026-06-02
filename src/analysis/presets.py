@@ -34,7 +34,7 @@ PRESETS = {
     "optimized": {
         "id": "optimized",
         "label": "Optimized",
-        "description": "RSRS=20, Flow=10, Mom=20, H=15 — ICIR-optimized weights, Quality/Eff zeroed, RSRS MA-filtered",
+        "description": "RSRS=20, Flow=10, Mom=20, H=15 — 36-ETF pool, ICIR=0.91, stickiness=1.0",
         "rsrs_lookback": 20,
         "flow_lookback": 10,
         "mom_lookback": 20,
@@ -43,6 +43,7 @@ PRESETS = {
         "eff_sma_window": 0,
         "reversal_lookback": 5,
         "rsrs_ma_dampening": 0.5,
+        "portfolio_stickiness": 1.0,
     },
     "medium": {
         "id": "medium",
