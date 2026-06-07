@@ -17,6 +17,7 @@ import pandas as pd
 from src.analysis.presets import get_preset, all_preset_ids
 from src.analysis.intraday_efficiency import compute_efficiency_for_etf
 from src.analysis.rsi_factor import compute_rsi_momentum_for_etf
+from config.config import COMMODITY_ETF_CODES
 # BARRA neutralization available but disabled for small cross-section.
 # See src/analysis/barra_neutralization.py and comments in _compute_preset_factors.
 
@@ -26,11 +27,17 @@ logger = logging.getLogger(__name__)
 # ════════════════════════════════════════════════════════════
 #  RSRS: 阻力支撑相对强度 — vectorized per-ETF series
 # ════════════════════════════════════════════════════════════
-def _compute_rsrs_series(highs, lows, lookback: int) -> np.ndarray:
+def _compute_rsrs_series(highs, lows, lookback: int, zscore_window: int = 300) -> np.ndarray:
     """Compute RSRS for every valid index using a sliding OLS window.
 
     Returns an array of length n where entries 0..lookback-2 are NaN.
     RSRS = beta * R²  from  high ~ low  OLS regression.
+
+    After raw RSRS computation, applies rolling Z-score standardization
+    (time-series dimension, zscore_window=300 by default) so that each
+    RSRS value is interpreted relative to its own recent history.
+    Only outputs valid Z-scores when at least 20 non-NaN observations
+    are available within the rolling window.
     """
     n = len(highs)
     result = np.full(n, np.nan)
@@ -53,6 +60,29 @@ def _compute_rsrs_series(highs, lows, lookback: int) -> np.ndarray:
         beta = cov / (std_lo * std_lo)
         r2 = (cov / (std_lo * std_hi)) ** 2
         result[i] = beta * r2
+
+    # ── Rolling Z-score standardization (time-series dimension) ──
+    # Only produce valid values after lookback + zscore_window data points.
+    min_valid = 20
+    start_idx = lookback + zscore_window - 1
+    if start_idx >= n:
+        # Not enough data for standardization, leave raw result as-is
+        return result
+
+    for i in range(start_idx, n):
+        window = result[i - zscore_window + 1 : i + 1]
+        valid = window[~np.isnan(window)]
+        if len(valid) >= min_valid:
+            mean = np.mean(valid)
+            std = np.std(valid, ddof=0)
+            if std > 1e-12:
+                result[i] = (result[i] - mean) / std
+            else:
+                result[i] = 0.0
+        # Insufficient valid history → leave result[i] as NaN (already set)
+
+    # Entries before start_idx lack sufficient Z-score history → NaN
+    result[:start_idx] = np.nan
 
     return result
 
@@ -585,13 +615,7 @@ def _compute_preset_factors(pid: str, *,
                              + w_rsi * day_raw["z_rsi_momentum"])
 
         # Commodity ETF: redistribute quality weight to technical factors.
-        # 商品ETF（石油/黄金）无财务基本面，F_Quality=截面中位数（z≈0），
-        # 但中位数在股票基本面普遍偏弱/偏强时会产生虚假的相对优势。
-        # 处理方式：将 quality 权重等比例分摊到其余技术面因子。
-        try:
-            from src.analysis.financial_factor import COMMODITY_ETF_CODES
-        except ImportError:
-            COMMODITY_ETF_CODES = set()
+        # 商品ETF：将 quality 权重等比例分摊到其余技术面因子
         commodity_mask = day_raw["ts_code"].isin(COMMODITY_ETF_CODES)
         if commodity_mask.any():
             technical_weight = 1.0 - w_quality

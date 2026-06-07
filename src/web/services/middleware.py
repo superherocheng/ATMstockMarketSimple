@@ -6,16 +6,48 @@ from fastapi.responses import JSONResponse
 
 
 class RateLimiter:
-    """简单的速率限制器（基于IP地址）"""
+    """简单的速率限制器（基于IP地址），带定期过期IP清理"""
 
     def __init__(self, requests_per_minute: int = 60):
         self.rpm = requests_per_minute
         self.requests = {}
         self.lock = threading.Lock()
+        self._check_count = 0
+        self._cleanup_interval = 100  # 每100次检查触发一次清理
+        self._start_periodic_cleanup()
+
+    def _start_periodic_cleanup(self):
+        """启动定时清理任务（每5分钟清理一次过期IP）"""
+        timer = threading.Timer(300.0, self._periodic_cleanup)
+        timer.daemon = True
+        timer.start()
+
+    def _periodic_cleanup(self):
+        """定时清理所有过期IP记录"""
+        self._cleanup()
+        # 重新启动定时器
+        timer = threading.Timer(300.0, self._periodic_cleanup)
+        timer.daemon = True
+        timer.start()
+
+    def _cleanup(self):
+        """清理所有过期IP记录（超过60秒无请求的条目）"""
+        now = _time.time()
+        with self.lock:
+            expired_keys = [
+                k for k, timestamps in list(self.requests.items())
+                if all(now - t >= 60 for t in timestamps)
+            ]
+            for k in expired_keys:
+                del self.requests[k]
 
     def is_allowed(self, client_id: str) -> bool:
         now = _time.time()
         with self.lock:
+            self._check_count += 1
+            if self._check_count % self._cleanup_interval == 0:
+                self._cleanup()
+
             if client_id in self.requests:
                 self.requests[client_id] = [
                     t for t in self.requests[client_id]

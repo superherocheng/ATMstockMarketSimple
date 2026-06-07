@@ -382,6 +382,12 @@ ATMTheme.init = function() {
     document.documentElement.dataset.theme = theme;
     this._updateIcon(theme);
 
+    /* Restore market color preference */
+    var marketColor = localStorage.getItem('atm-market-color');
+    if (marketColor === 'a-share') {
+        document.documentElement.setAttribute('data-market-color', 'a-share');
+    }
+
     var self = this;
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
         if (!localStorage.getItem('atm-theme')) {
@@ -424,6 +430,21 @@ ATMTheme._updateIcon = function(theme) {
 
 ATMTheme._notifyCharts = function() {
     window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: this.get() } }));
+};
+
+ATMTheme.toggleMarketColor = function() {
+    var current = document.documentElement.getAttribute('data-market-color') || '';
+    var next = current === 'a-share' ? '' : 'a-share';
+    if (next) {
+        document.documentElement.setAttribute('data-market-color', next);
+    } else {
+        document.documentElement.removeAttribute('data-market-color');
+    }
+    localStorage.setItem('atm-market-color', next);
+};
+
+ATMTheme.getMarketColor = function() {
+    return document.documentElement.getAttribute('data-market-color') || '';
 };
 
 ATMTheme.init();
@@ -1450,6 +1471,191 @@ ATMChart.setupResponsiveChart = function(containerId, baseHeight, option) {
     }
     
     return chart;
+};
+
+ATMChart.exportImage = function(containerId, filename) {
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    var chart = this._instances.get(el);
+    if (!chart || chart.isDisposed()) return;
+    var url = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename || 'chart.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+};
+
+/**
+ * Calculate moving average for K-line data.
+ * @param {number} dayCount - MA period (e.g. 5, 10, 20, 60)
+ * @param {Array} data - K-line data array, each item as [date, open, close, low, high, volume, ...]
+ * @returns {Array} MA values (strings for insufficient data, numbers otherwise)
+ */
+ATMChart.calculateMA = function(dayCount, data) {
+    var result = [];
+    for (var i = 0, len = data.length; i < len; i++) {
+        if (i < dayCount - 1) {
+            result.push('-');
+            continue;
+        }
+        var sum = 0;
+        for (var j = i - dayCount + 1; j <= i; j++) {
+            sum += data[j][1]; // close price
+        }
+        result.push(+(sum / dayCount).toFixed(2));
+    }
+    return result;
+};
+
+/**
+ * Build a complete K-line chart option with overlayed moving averages.
+ * @param {Array} klineData - K-line data array, each item as [date, open, close, low, high, volume, ...]
+ * @param {Array} maDays - MA periods to display (default [5, 10, 20, 60])
+ * @returns {Object} ECharts option
+ */
+ATMChart.buildKlineOption = function(klineData, maDays) {
+    maDays = maDays || [5, 10, 20, 60];
+    var theme = ATMChart.getChartTheme();
+    var maColors = ['#2563EB', '#D97735', '#777777', '#16A34A'];
+    var dateData = klineData.map(function(item) { return item[0]; });
+    var ohlcData = klineData.map(function(item) {
+        return [item[1], item[3], item[4], item[2]]; // [open, close, low, high]
+    });
+    var volumeData = klineData.map(function(item) { return item[5] || 0; });
+
+    var series = [
+        {
+            name: 'K-Line',
+            type: 'candlestick',
+            data: ohlcData,
+            itemStyle: {
+                color: theme.upColor,
+                color0: theme.downColor,
+                borderColor: theme.upColor,
+                borderColor0: theme.downColor
+            },
+            markLine: {
+                silent: true,
+                symbol: 'none',
+                lineStyle: { color: '#999', type: 'dashed', width: 1 }
+            }
+        }
+    ];
+
+    // Add MA lines
+    maDays.forEach(function(day, idx) {
+        series.push({
+            name: 'MA' + day,
+            type: 'line',
+            data: ATMChart.calculateMA(day, klineData),
+            smooth: true,
+            lineStyle: { width: 1.5, color: maColors[idx % maColors.length] },
+            symbol: 'none',
+            connectNulls: false,
+            z: 2
+        });
+    });
+
+    return {
+        backgroundColor: theme.backgroundColor,
+        animation: true,
+        legend: {
+            data: ['K-Line'].concat(maDays.map(function(d) { return 'MA' + d; })),
+            top: 3,
+            left: 'center',
+            textStyle: theme.legend.textStyle,
+            icon: 'rect',
+            itemWidth: 14,
+            itemHeight: 8
+        },
+        grid: [
+            {
+                left: '6%',
+                right: '6%',
+                top: '12%',
+                height: '55%',
+                containLabel: true
+            },
+            {
+                left: '6%',
+                right: '6%',
+                top: '75%',
+                height: '16%',
+                containLabel: true
+            }
+        ],
+        xAxis: [
+            {
+                type: 'category',
+                data: dateData,
+                axisLine: { lineStyle: { color: theme.axisLineColor } },
+                axisLabel: { color: theme.axisLabelColor, fontSize: 10 },
+                splitLine: { show: false },
+                min: 'dataMin',
+                max: 'dataMax',
+                boundaryGap: true
+            },
+            {
+                type: 'category',
+                gridIndex: 1,
+                data: dateData,
+                axisLabel: { show: false },
+                axisLine: { show: false },
+                axisTick: { show: false },
+                splitLine: { show: false }
+            }
+        ],
+        yAxis: [
+            {
+                type: 'value',
+                scale: true,
+                axisLine: { lineStyle: { color: theme.axisLineColor } },
+                axisLabel: { color: theme.axisLabelColor, fontSize: 10 },
+                splitLine: { lineStyle: { color: theme.splitLineColor, type: 'solid' } }
+            },
+            {
+                type: 'value',
+                gridIndex: 1,
+                scale: true,
+                axisLabel: { show: false },
+                splitLine: { show: false }
+            }
+        ],
+        dataZoom: [
+            { type: 'inside', xAxisIndex: [0, 1], start: 50, end: 100 },
+            { type: 'slider', xAxisIndex: [0, 1], start: 50, end: 100, height: 10, bottom: 2 }
+        ],
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: { type: 'cross' },
+            backgroundColor: theme.tooltip.backgroundColor,
+            borderColor: theme.tooltip.borderColor,
+            borderWidth: theme.tooltip.borderWidth,
+            textStyle: theme.tooltip.textStyle,
+            extraCssText: theme.tooltip.extraCssText,
+            formatter: function(params) {
+                var candlestick = params[0];
+                if (!candlestick) return '';
+                var d = candlestick.value || candlestick.data;
+                var html = '<strong>' + candlestick.axisValue + '</strong><br/>';
+                if (d && d.length >= 4) {
+                    html += 'Open: ' + d[0].toFixed(2) + '<br/>';
+                    html += 'Close: ' + d[1].toFixed(2) + '<br/>';
+                    html += 'Low: ' + d[2].toFixed(2) + '<br/>';
+                    html += 'High: ' + d[3].toFixed(2) + '<br/>';
+                }
+                params.slice(1).forEach(function(p) {
+                    if (p.value && p.value !== '-') {
+                        html += p.marker + ' ' + p.seriesName + ': ' + p.value + '<br/>';
+                    }
+                });
+                return html;
+            }
+        },
+        series: series
+    };
 };
 
 })();

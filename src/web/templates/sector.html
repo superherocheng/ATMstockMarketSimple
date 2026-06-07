@@ -55,39 +55,71 @@
             </nav>
         </div>
         <div class="sidebar-nav-footer">
-            <p>Data Source</p>
+            <p>Display</p>
+            <div style="display:flex;gap:6px;margin-top:6px;">
+                <button id="theme-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggle()" title="Toggle theme" type="button">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                </button>
+                <button id="market-color-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggleMarketColor()" title="Toggle A-share red/green convention" type="button">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+                </button>
+            </div>
+            <p style="margin-top:12px;">Data Source</p>
             <span>Tushare · AKShare</span>
         </div>
     </aside>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 stagger-children">
 
-        <div class="flex gap-2 flex-wrap">
+        <div class="flex gap-2 flex-wrap" style="align-items:center;">
             <button class="tab-btn active" data-filter="all" onclick="setFilter(this)">ALL</button>
             <button class="tab-btn" data-filter="top3" onclick="setFilter(this)">TOP-3</button>
             <button class="tab-btn" data-filter="bottom3" onclick="setFilter(this)">BOTTOM-3</button>
             <button class="tab-btn" data-filter="positive" onclick="setFilter(this)">POSITIVE</button>
             <button class="tab-btn" data-filter="negative" onclick="setFilter(this)">NEGATIVE</button>
+            <button class="tab-btn" id="collapse-all-btn" onclick="toggleCollapseAll()" style="margin-left:auto;" title="Collapse/Expand all sections">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="collapse-all-icon"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                <span id="collapse-all-label">Collapse</span>
+            </button>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="glass p-4 sm:p-6 chart-pair" style="display:flex;flex-direction:column;">
-                <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
-                    Recent Change Comparison
-                </h3>
-                <div id="compare-chart" class="chart-main">
-                    <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
+        <!-- Collapsible Sections Wrapper -->
+        <div id="collapsible-sections">
+
+        <details class="chart-group-details">
+            <summary class="chart-group-summary">
+                <span class="chart-group-title">Sector Cards</span>
+                <span class="chart-group-chevron"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></span>
+            </summary>
+            <div id="sector-cards" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3" style="margin-top:var(--space-3);">
+                <!-- Rendered by JS -->
+            </div>
+        </details>
+
+        <details class="chart-group-details" open>
+            <summary class="chart-group-summary">
+                <span class="chart-group-title">Comparison Charts</span>
+                <span class="chart-group-chevron"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></span>
+            </summary>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" style="margin-top:var(--space-3);">
+                <div class="glass p-4 sm:p-6 chart-pair" style="display:flex;flex-direction:column;">
+                    <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
+                        Recent Change Comparison
+                    </h3>
+                    <div id="compare-chart" class="chart-main">
+                        <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
+                    </div>
+                </div>
+                <div class="glass p-4 sm:p-6 chart-pair" style="display:flex;flex-direction:column;">
+                    <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
+                        Share Change Trends
+                    </h3>
+                    <div id="share-compare-chart" class="chart-main">
+                        <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
+                    </div>
                 </div>
             </div>
-            <div class="glass p-4 sm:p-6 chart-pair" style="display:flex;flex-direction:column;">
-                <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
-                    Share Change Trends
-                </h3>
-                <div id="share-compare-chart" class="chart-main">
-                    <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
-                </div>
-            </div>
-        </div>
+        </details>
 
         <div id="detail-section" class="hidden">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -106,15 +138,19 @@
             </div>
         </div>
 
-        <div class="glass p-4 sm:p-6">
-            <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
-                Sector ETF Share Change Ranking
-                <span class="text-xs font-normal" style="color:var(--c-text-tertiary);">Latest trading day share change std dev ranking</span>
-            </h3>
-            <div id="share-rank-table" class="overflow-x-auto">
-                <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
+        <details class="chart-group-details" open>
+            <summary class="chart-group-summary">
+                <span class="chart-group-title">Share Change Ranking</span>
+                <span class="chart-group-chevron"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></span>
+            </summary>
+            <div style="margin-top:var(--space-3);">
+                <div id="share-rank-table" class="overflow-x-auto">
+                    <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
+                </div>
             </div>
-        </div>
+        </details>
+
+        </div><!-- /collapsible-sections -->
     </main>
     </div><!-- /page-layout -->
 
@@ -157,8 +193,33 @@
     var selectedCode = null;
     var filterMode = 'all';
 
+    // Reusable: compute Z-score of latest daily share change % (same logic as Share Change Ranking)
+    function computeShareZScore(s) {
+        var shares = s.shares || [];
+        if (shares.length < 2) return null;
+        var values = shares.map(function(sh) { return parseFloat(sh.fd_share || 0); });
+        var pctChanges = [];
+        for (var i = 1; i < values.length; i++) {
+            if (values[i-1] > 0) {
+                pctChanges.push((values[i] - values[i-1]) / values[i-1] * 100);
+            }
+        }
+        if (pctChanges.length < 10) return null;
+        var mean = pctChanges.reduce(function(a, b) { return a + b; }, 0) / pctChanges.length;
+        var variance = pctChanges.reduce(function(a, b) { return a + Math.pow(b - mean, 2); }, 0) / pctChanges.length;
+        var std = Math.sqrt(variance) || 1;
+        var latestChange = pctChanges[pctChanges.length - 1];
+        var zScore = (latestChange - mean) / std;
+        return { sector: s, zScore: zScore, latestChange: latestChange };
+    }
+
     function getFilteredSectors() {
-        if (filterMode === 'all') return allSectors;
+        if (filterMode === 'all') {
+            // Same ordering as Share Change Ranking: sort by Z-score of latest share change % descending
+            var scored = allSectors.map(computeShareZScore).filter(function(d) { return d !== null; });
+            scored.sort(function(a, b) { return b.zScore - a.zScore; });
+            return scored.map(function(d) { return d.sector; });
+        }
 
         // Find the latest trade date where ALL sectors have share data
         var latestDates = allSectors.map(function(s) {
@@ -207,11 +268,56 @@
         document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
         btn.classList.add('active');
         filterMode = btn.getAttribute('data-filter');
+        renderSectorCards();
         renderCompareChart();
         renderShareCompare();
     }
 
     window.setFilter = setFilter;
+
+    var collapsed = false;
+    function toggleCollapseAll() {
+        collapsed = !collapsed;
+        var details = document.querySelectorAll('#collapsible-sections details.chart-group-details');
+        details.forEach(function(d) { d.open = !collapsed; });
+        var btn = document.getElementById('collapse-all-btn');
+        var label = document.getElementById('collapse-all-label');
+        var icon = document.getElementById('collapse-all-icon');
+        label.textContent = collapsed ? 'Expand' : 'Collapse';
+        if (icon) icon.style.transform = collapsed ? 'rotate(-90deg)' : '';
+    }
+    window.toggleCollapseAll = toggleCollapseAll;
+
+    function renderSectorCards() {
+        var el = document.getElementById('sector-cards');
+        if (!el) return;
+        var sectors = getFilteredSectors();
+        var html = '';
+        sectors.forEach(function(s) {
+            var signalTag = (s.signal && s.signal.tag) || 'none';
+            var signalLabel = (s.signal && s.signal.label) || '--';
+            var cardClass = 'sector-card';
+            if (signalTag !== 'none' && ['strong','lurk','exit','risk'].indexOf(signalTag) !== -1) {
+                cardClass += ' ' + signalTag;
+            }
+            var kline = s.kline || [];
+            var lastClose = kline.length > 0 ? parseFloat(kline[kline.length-1].close || 0) : 0;
+            var lastPct = kline.length > 0 ? parseFloat(kline[kline.length-1].pct_chg || 0) : 0;
+            var pctColor = lastPct >= 0 ? 'var(--c-up)' : 'var(--c-down)';
+            html += '<div class="' + cardClass + '" onclick="selectSector(\'' + s.ts_code + '\');return false;" data-code="' + s.ts_code + '">' +
+                '<div class="font-semibold text-sm truncate">' + s.name + '</div>' +
+                '<div class="flex items-center gap-2 mt-1">' +
+                '<span class="font-mono text-xs" style="color:' + pctColor + ';">' +
+                (lastClose > 0 ? lastClose.toFixed(2) : '--') + '</span>' +
+                '<span class="font-mono text-xs" style="color:' + pctColor + ';">' +
+                (lastPct >= 0 ? '+' : '') + lastPct.toFixed(2) + '%</span>' +
+                '</div>' +
+                '<div class="mt-1"><span class="text-xs px-1.5 py-0.5" style="background:var(--c-bg-tertiary);color:var(--c-text-secondary);">' + signalLabel + '</span></div>' +
+                '</div>';
+        });
+        el.innerHTML = html;
+    }
+
     var compareChart = null;
     var shareCompareChart = null;
     var detailChart = null;
@@ -231,10 +337,12 @@
             requestAnimationFrame(function() {
                 try {
                     if (typeof echarts !== 'undefined') {
+                        renderSectorCards();
                         renderCompareChart();
                         renderShareCompare();
                         renderShareRankTable();
                     } else {
+                        renderSectorCards();
                         console.warn('echarts not available, skipping initial chart render');
                     }
                 } catch(e) { console.error('Chart render error:', e); }
@@ -262,6 +370,10 @@
 
     function selectSector(code) {
         selectedCode = code;
+        // Update URL so cards behave like navigation to /sector?code=XXX
+        var url = new URL(window.location);
+        url.searchParams.set('code', code);
+        window.history.replaceState({}, '', url);
         var sector = allSectors.find(function(s) { return s.ts_code === code; });
         if (sector) showDetail(sector);
     }
@@ -484,6 +596,8 @@
         if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
         var sectors = getFilteredSectors();
         if (sectors.length === 0) { el.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--c-text-tertiary);">No matching ETFs</div>'; return; }
+        // Only show top 3 and bottom 3 (6 total)
+        if (sectors.length > 6) sectors = sectors.slice(0, 3).concat(sectors.slice(-3));
         requestAnimationFrame(function() {
         compareChart = echarts.init(el);
         var th = ATM.getChartTheme();
@@ -540,6 +654,8 @@
         if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
         var sectors = getFilteredSectors();
         if (sectors.length === 0) { el.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--c-text-tertiary);">No matching ETFs</div>'; return; }
+        // Only show top 3 and bottom 3 (6 total)
+        if (sectors.length > 6) sectors = sectors.slice(0, 3).concat(sectors.slice(-3));
         requestAnimationFrame(function() {
         shareCompareChart = echarts.init(el);
         var th = ATM.getChartTheme();
@@ -616,11 +732,13 @@
         var el = document.getElementById('share-rank-table');
         
         var rankData = allSectors.map(function(s) {
+            var base = computeShareZScore(s);
+            if (!base) return null;
+            var zScore = base.zScore;
+            var latestChange = base.latestChange;
+            
             var shares = s.shares || [];
-            if (shares.length < 2) return null;
-            
             var values = shares.map(function(sh) { return parseFloat(sh.fd_share || 0); });
-            
             var pctChanges = [];
             for (var i = 1; i < values.length; i++) {
                 if (values[i-1] > 0) {
@@ -628,14 +746,9 @@
                 }
             }
             
-            if (pctChanges.length < 10) return null;
-            
             var mean = pctChanges.reduce(function(a, b) { return a + b; }, 0) / pctChanges.length;
             var variance = pctChanges.reduce(function(a, b) { return a + Math.pow(b - mean, 2); }, 0) / pctChanges.length;
             var std = Math.sqrt(variance) || 1;
-            
-            var latestChange = pctChanges[pctChanges.length - 1];
-            var zScore = (latestChange - mean) / std;
             
             var recentChanges = pctChanges.slice(-5);
             var trendSum = recentChanges.reduce(function(a, b) { return a + b; }, 0);

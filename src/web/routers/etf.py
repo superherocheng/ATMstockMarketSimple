@@ -309,7 +309,7 @@ def _compute_signal(kline_df, share_df, window=10, quadrant=None):
 
 @router.get("/api/sector-etf")
 async def api_sector_etf_all():
-    return _cached_persistent("sector_etf_all", _compute_sector_etf_all, max_age_hours=4)
+    return _cached_persistent("sector_etf_all_list", _compute_sector_etf_all, max_age_hours=4)
 
 
 def _compute_sector_etf_one(ts_code):

@@ -52,7 +52,16 @@
             </nav>
         </div>
         <div class="sidebar-nav-footer">
-            <p>Data Source</p>
+            <p>Display</p>
+            <div style="display:flex;gap:6px;margin-top:6px;">
+                <button id="theme-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggle()" title="Toggle theme" type="button">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                </button>
+                <button id="market-color-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggleMarketColor()" title="Toggle A-share red/green convention" type="button">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+                </button>
+            </div>
+            <p style="margin-top:12px;">Data Source</p>
             <span>Tushare · AKShare</span>
         </div>
     </aside>
@@ -200,7 +209,13 @@
     async function loadData(code) {
         try {
             var resp = await fetch('/api/index-etf/' + code);
+            if (!resp.ok) {
+                throw new Error('API returned ' + resp.status);
+            }
             var data = await resp.json();
+            if (!data || !data.kline) {
+                throw new Error('Invalid API response');
+            }
             updateInfo(data);
             try { await ATMChart.load(); } catch(e) { console.warn('ECharts load failed:', e); }
             window._etfCachedData = data;
@@ -210,6 +225,12 @@
             loadShareStd(code);
         } catch(e) {
             console.error('Loading failed:', e);
+            document.getElementById('etf-name').textContent = 'Data Unavailable';
+            document.getElementById('etf-price').textContent = '--';
+            document.getElementById('etf-pct').textContent = '--';
+            document.getElementById('etf-vol').textContent = '--';
+            document.getElementById('kline-chart').innerHTML = '<div class="hard-skeleton"><span class="hard-skeleton-text">[ LOAD FAILED ]</span></div>';
+            document.getElementById('share-value-chart').innerHTML = '<div class="hard-skeleton"><span class="hard-skeleton-text">[ LOAD FAILED ]</span></div>';
         }
     }
 
@@ -235,7 +256,7 @@
             var pctEl = document.getElementById('etf-pct');
             pctEl.textContent = ATM.pctText(pct);
             pctEl.style.color = ATM.pctColor(pct);
-            document.getElementById('etf-vol').textContent = ATM.formatNum((parseFloat(last.amount || 0) / 10000).toFixed(0), 0) + '0K';
+            document.getElementById('etf-vol').textContent = ATM.formatNum((parseFloat(last.amount || 0) / 10000).toFixed(0), 0) + 'W';
         } else {
             document.getElementById('etf-price').textContent = '--';
             document.getElementById('etf-pct').textContent = '--';
@@ -506,7 +527,7 @@
         var shareAnom = (data.anomalies && data.anomalies.share) || [];
 
         if (shareAnom.length === 0) {
-            shareEl.innerHTML = '<div style="color:var(--c-text-tertiary);">No share anomalies</div>';
+            shareEl.innerHTML = '<div class="empty-state" style="padding:var(--space-3);"><span class="empty-state-title" style="font-size:var(--text-sm);">No share anomalies</span></div>';
         } else {
             shareEl.innerHTML = shareAnom.slice(-10).reverse().map(function(a) {
                 var chgPct = parseFloat(a.chg_pct || 0);

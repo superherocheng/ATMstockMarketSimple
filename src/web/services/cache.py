@@ -23,26 +23,49 @@ logger = logging.getLogger(__name__)
 # ── 可选 Redis 客户端 ───────────────────────────────────────
 _redis_client = None
 _redis_available = False
+_last_redis_check = 0.0
+_REDIS_CHECK_INTERVAL = 30  # 每30秒检查一次Redis连接
+
+
+def _ensure_redis():
+    """尝试建立或恢复 Redis 连接，失败时不抛出异常"""
+    global _redis_client, _redis_available, _last_redis_check
+    now = _time.time()
+    if now - _last_redis_check < _REDIS_CHECK_INTERVAL:
+        return _redis_client if _redis_available else None
+    _last_redis_check = now
+
+    if _redis_client is not None:
+        try:
+            _redis_client.ping()
+            _redis_available = True
+            return _redis_client
+        except Exception:
+            # 连接已断开，尝试重连
+            _redis_client = None
+            _redis_available = False
+            logger.warning("Redis 连接断开，尝试重连...")
+
+    try:
+        import redis
+        _redis_client = redis.Redis(
+            host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB,
+            socket_connect_timeout=1, socket_timeout=2,
+            decode_responses=True,
+        )
+        _redis_client.ping()
+        _redis_available = True
+        logger.info("Redis 缓存已连接 %s:%s/%s", REDIS_HOST, REDIS_PORT, REDIS_DB)
+    except Exception as e:
+        _redis_client = None
+        _redis_available = False
+        logger.warning("Redis 不可用，回退到内存缓存: %s", e)
+    return _redis_client if _redis_available else None
 
 
 def _get_redis():
-    global _redis_client, _redis_available
-    if _redis_client is None:
-        try:
-            import redis
-            _redis_client = redis.Redis(
-                host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB,
-                socket_connect_timeout=1, socket_timeout=2,
-                decode_responses=True,
-            )
-            _redis_client.ping()
-            _redis_available = True
-            logger.info("Redis 缓存已连接 %s:%s/%s", REDIS_HOST, REDIS_PORT, REDIS_DB)
-        except Exception as e:
-            _redis_client = None
-            _redis_available = False
-            logger.warning("Redis 不可用，回退到内存缓存: %s", e)
-    return _redis_client if _redis_available else None
+    """获取 Redis 客户端（带健康检查，30秒间隔）"""
+    return _ensure_redis()
 
 
 def _redis_key(key):

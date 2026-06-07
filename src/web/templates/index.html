@@ -44,7 +44,16 @@
             </nav>
         </div>
         <div class="sidebar-nav-footer">
-            <p>Data Source</p>
+            <p>Display</p>
+            <div style="display:flex;gap:6px;margin-top:6px;">
+                <button id="theme-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggle()" title="Toggle theme" type="button">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                </button>
+                <button id="market-color-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggleMarketColor()" title="Toggle A-share red/green convention" type="button">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+                </button>
+            </div>
+            <p style="margin-top:12px;">Data Source</p>
             <span>Tushare · AKShare</span>
         </div>
     </aside>
@@ -53,7 +62,7 @@
 
         <!-- Market Timing Banner -->
         <div id="market-banner" class="market-banner mb-4">
-            <div class="hard-skeleton hard-skeleton-sm"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
+            <div class="skeleton-pulse" style="height:80px;width:100%;"></div>
         </div>
 
         <!-- Bento Grid -->
@@ -102,7 +111,7 @@
                     <span class="home-card-subtitle">Six-Factor Model</span>
                 </div>
                 <div id="ic-summary-table">
-                    <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
+                    <div class="skeleton-pulse" style="height:200px;width:100%;"></div>
                 </div>
             </div>
 
@@ -114,14 +123,14 @@
                     <span class="home-card-subtitle" id="share-status" style="margin-left:auto;font-size:var(--text-xs);color:var(--c-text-tertiary);"></span>
                 </div>
                 <div id="data-status">
-                    <div class="hard-skeleton hard-skeleton-sm"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
+                    <div class="skeleton-pulse" style="height:56px;width:100%;"></div>
                 </div>
                 <div style="margin-top:var(--space-2);display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);">
                     <button id="btn-update" class="btn btn-primary" onclick="oneClickUpdate()">Update + Backtest</button>
                 </div>
             </div>
 
-        </div><!-- /home-grid -->
+            </div><!-- /home-grid -->
 
         <!-- Fetch progress & log (between grid and quick-strip) -->
         <div id="fetch-progress" class="hidden glass" style="margin-top:var(--space-4);padding:var(--space-3);">
@@ -400,10 +409,12 @@
 
     function renderIcSummary(data) {
         var el = document.getElementById('ic-summary-table');
+        // Only show Optimized preset
         if (!data || !data.presets || data.presets.length === 0) {
-            el.innerHTML = '<div class="empty-state"><div class="empty-state-title">No data</div><div class="empty-state-detail">Generated after running Update + Backtest</div></div>';
+            el.innerHTML = '<div class="empty-state"><div class="empty-state-title">No Optimized data</div><div class="empty-state-detail">Generated after running Update + Backtest</div></div>';
             return;
         }
+        data.presets = data.presets.filter(function(p) { return p.preset_id === 'optimized'; });
         var html = '<div class="table-scroll"><table class="w-full text-sm zebra-table">';
         html += '<thead><tr>' +
             '<th class="px-3 py-2 text-left whitespace-nowrap">Preset</th>' +
@@ -460,7 +471,7 @@
 
     function renderMarketBanner(d) {
         var el = document.getElementById('market-banner');
-        if (!el) return;
+        if (!el || !d) return;
         var adj = (d.adjustment || 0) * 100;
         var sign = adj > 0 ? '+' : '';
         var sc = adj > 0 ? 'var(--c-up)' : (adj < 0 ? 'var(--c-down)' : 'var(--c-text-tertiary)');
@@ -482,35 +493,6 @@
         updateShareStatus();
         loadIcSummary();
         loadMarketTiming();
-        try {
-            var resp = await fetch('/api/overview');
-            if (!resp.ok) {
-                throw new Error('HTTP ' + resp.status);
-            }
-            var data = await resp.json();
-            renderHeatmap(data.sector_summary);
-        } catch(e) { console.warn('Overview data load failed:', e.message); }
-    }
-
-    function renderHeatmap(sectors) {
-        var c = document.getElementById('heatmap');
-        if (!sectors || sectors.length === 0) {
-            c.innerHTML = '<div class="col-span-2 sm:col-span-5 empty-state"><div class="empty-state-title">No sector data</div></div>';
-            return;
-        }
-        var sortedSectors = sectors.slice().sort(function(a, b) {
-            return parseFloat(b.pct_chg || 0) - parseFloat(a.pct_chg || 0);
-        });
-        c.innerHTML = sortedSectors.map(function(s) {
-            var pct = parseFloat(s.pct_chg || 0);
-            var intensity = Math.min(Math.abs(pct) / 3, 1);
-            var bg = pct > 0 ? 'rgba(220, 38, 38, ' + (0.06 + intensity * 0.10) + ')'
-                    : pct < 0 ? 'rgba(22, 163, 74, ' + (0.06 + intensity * 0.10) + ')'
-                    : 'var(--c-bg-tertiary)';
-            return '<div class="heat-cell p-2 sm:p-4 cursor-pointer" style="background:' + bg + '" onclick="location.href=\'/sector?code=' + s.ts_code + '\'" title="' + s.name + ': ' + ATM.pctText(pct) + '">' +
-                '<div class="font-medium text-xs sm:text-sm mb-0.5 sm:mb-1">' + s.name + '</div>' +
-                '<div class="text-base sm:text-lg font-bold font-mono" style="color:' + ATM.pctColor(pct) + '">' + ATM.pctText(pct) + '</div></div>';
-        }).join('');
     }
 
     ATMPerf.VisibilityManager.register(

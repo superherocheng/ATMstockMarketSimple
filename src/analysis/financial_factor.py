@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import text
 
-from config.config import SECTOR_ETF
+from config.config import COMMODITY_ETF_CODES, SECTOR_ETF
 
 logger = logging.getLogger(__name__)
 
@@ -147,10 +147,96 @@ SECTOR_CONSTITUENTS: Dict[str, List[str]] = {
             "600546", "600348", "601898", "600395", "600123",
         ]
     ],
+    "512710.SH": [  # 军工龙头ETF
+        _stock_code_to_tushare(c) for c in [
+            "600893", "600760", "002179", "000768", "600765",
+            "600862", "600879", "688281", "300034", "600372",
+        ]
+    ],
+    "515790.SH": [  # 光伏ETF
+        _stock_code_to_tushare(c) for c in [
+            "601012", "600438", "300274", "002129", "002459",
+            "688599", "300763", "688390", "601615", "605117",
+        ]
+    ],
+    "159934.SZ": [  # 黄金ETF — 商品类，无成分股
+    ],
+    "159865.SZ": [  # 养殖ETF
+        _stock_code_to_tushare(c) for c in [
+            "002714", "300498", "002311", "000876", "002385",
+            "600873", "000895", "002567", "603345", "002746",
+        ]
+    ],
+    "159766.SZ": [  # 旅游ETF
+        _stock_code_to_tushare(c) for c in [
+            "601888", "600754", "600258", "600138", "600054",
+            "000888", "002059", "300144", "603099", "300178",
+        ]
+    ],
+    "159852.SZ": [  # 软件ETF
+        _stock_code_to_tushare(c) for c in [
+            "688111", "600588", "600570", "002410", "002230",
+            "300454", "688568", "688188", "300496", "600536",
+        ]
+    ],
+    "159851.SZ": [  # 金融科技ETF
+        _stock_code_to_tushare(c) for c in [
+            "300059", "600570", "300033", "300803", "688318",
+            "002152", "300229", "600446", "600571", "300377",
+        ]
+    ],
+    "512170.SH": [  # 医疗ETF
+        _stock_code_to_tushare(c) for c in [
+            "300760", "603259", "300015", "300347", "300759",
+            "300529", "300003", "300832", "688981", "688301",
+        ]
+    ],
+    "159869.SZ": [  # 游戏ETF
+        _stock_code_to_tushare(c) for c in [
+            "002555", "002602", "002624", "603444", "300418",
+            "300315", "002174", "600633", "603258", "300052",
+        ]
+    ],
+    "159755.SZ": [  # 电池ETF
+        _stock_code_to_tushare(c) for c in [
+            "300750", "300014", "002074", "300207", "603659",
+            "300438", "002709", "300037", "002850", "688005",
+        ]
+    ],
+    "516150.SH": [  # 稀土ETF
+        _stock_code_to_tushare(c) for c in [
+            "600010", "000831", "600392", "600549", "600259",
+            "600111", "000970", "002340", "600516", "300748",
+        ]
+    ],
+    "159638.SZ": [  # 高端装备ETF
+        _stock_code_to_tushare(c) for c in [
+            "300124", "300450", "300751", "300724", "300316",
+            "688169", "688012", "002371", "601100", "603338",
+        ]
+    ],
+    "159930.SZ": [  # 能源ETF
+        _stock_code_to_tushare(c) for c in [
+            "601088", "601225", "600188", "600985", "000983",
+            "600028", "601857", "600546", "600395", "600123",
+        ]
+    ],
+    "515000.SH": [  # 科技ETF
+        _stock_code_to_tushare(c) for c in [
+            "002415", "000725", "002475", "603501", "688981",
+            "000063", "300760", "002230", "688256", "300124",
+        ]
+    ],
+    "159326.SZ": [  # 电网设备ETF
+        _stock_code_to_tushare(c) for c in [
+            "600406", "600089", "601877", "600517", "000400",
+            "601567", "300274", "600312", "603606", "002028",
+        ]
+    ],
 }
 
 # 商品类 ETF — 不计算财务因子，赋值为截面中位数
-COMMODITY_ETF_CODES = {"561360.SH", "518880.SH"}  # 石油ETF, 黄金ETF
+# 使用 config.COMMODITY_ETF_CODES 定义（当前：石油ETF 561360.SH, 黄金ETF 159934.SZ）
 
 
 # ────────────────────────────────────────────────────────────
@@ -160,6 +246,25 @@ COMMODITY_ETF_CODES = {"561360.SH", "518880.SH"}  # 石油ETF, 黄金ETF
 def _get_conn():
     from src.core.db_manager_postgresql import get_conn
     return get_conn()
+
+
+def _fetch_etf_constituents_from_tushare(etf_code: str) -> list:
+    """【预留接口】通过 Tushare API 动态获取ETF成分股列表。
+
+    当前系统使用硬编码的 SECTOR_CONSTITUENTS 字典。
+    后续可改用此函数实时获取成分股，支持增量更新。
+
+    Args:
+        etf_code: ETF代码，如 "512710.SH"
+
+    Returns:
+        list[str]: Tushare格式的成分股代码列表（如 ["600893.SH", ...]）
+    """
+    logger.warning(
+        f"_fetch_etf_constituents_from_tushare({etf_code}) 尚未实现，"
+        f"请配置 Tushare Pro 权限后启用 fund_portfolio 接口。"
+    )
+    return []
 
 
 # 复用 factor_engine 的 Z-Score 实现，避免重复

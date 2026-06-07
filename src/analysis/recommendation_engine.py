@@ -11,6 +11,7 @@ Every recommendation includes confidence level, rationale, and risk warnings.
 """
 import logging
 from datetime import datetime
+from typing import List, Optional
 
 import numpy as np
 import pandas as pd
@@ -29,11 +30,16 @@ def _safe_dict(d):
     return safe_dict(d)
 
 
-def build_investment_recommendation(preset_id: str = "short") -> dict:
+def build_investment_recommendation(preset_id: str = "short",
+                                    existing_positions: Optional[List[str]] = None) -> dict:
     """Generate a professional investment recommendation report.
 
     Args:
         preset_id: Factor preset to use ("short", "medium", "long")
+        existing_positions: List of ETF codes currently held. If provided,
+                            candidates highly correlated (>0.6) with any
+                            existing position will have their score penalized
+                            by 0.5 to reduce concentration risk.
 
     Returns:
         dict matching the investment_recommendation.html frontend schema.
@@ -399,6 +405,25 @@ def build_investment_recommendation(preset_id: str = "short") -> dict:
 
             # Penalize the lower-ranked ETF (j > i, so lower initial score)
             penalty_map[code_j] = min(penalty_map[code_j], p)
+
+    # ── Phase 2b: Existing positions correlation penalty ──
+    # If the user already holds some ETFs, penalize candidates that are
+    # highly correlated with those positions to reduce concentration risk.
+    if existing_positions:
+        for c, _ in pool:
+            code = c["code"]
+            for held_code in existing_positions:
+                if code == held_code:
+                    continue
+                if code not in etf_corr.index or held_code not in etf_corr.columns:
+                    continue
+                corr_val = abs(etf_corr.loc[code, held_code])
+                if np.isnan(corr_val):
+                    continue
+                if corr_val > 0.6:
+                    # Apply 0.5 penalty when correlation exceeds threshold
+                    penalty_map[code] = min(penalty_map[code], 0.5)
+                    break
 
     # Apply penalties and re-sort
     penalized_scored = []

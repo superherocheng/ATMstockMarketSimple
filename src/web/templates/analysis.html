@@ -46,7 +46,16 @@
             </nav>
         </div>
         <div class="sidebar-nav-footer">
-            <p>Data Source</p>
+            <p>Display</p>
+            <div style="display:flex;gap:6px;margin-top:6px;">
+                <button id="theme-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggle()" title="Toggle theme" type="button">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                </button>
+                <button id="market-color-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggleMarketColor()" title="Toggle A-share red/green convention" type="button">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+                </button>
+            </div>
+            <p style="margin-top:12px;">Data Source</p>
             <span>Tushare · AKShare</span>
         </div>
     </aside>
@@ -56,9 +65,6 @@
     <!-- Preset selector bar -->
     <div class="preset-bar">
         <button class="preset-btn active" onclick="switchPreset('optimized')" data-preset="optimized" title="H=15, ICIR-optimized weights — Quality/Eff zeroed, Rolling ICIR=0.76">Optimized</button>
-        <button class="preset-btn" onclick="switchPreset('short')" data-preset="short" title="N=10, M=20 — suited for short-term factor validation">Short-term</button>
-        <button class="preset-btn" onclick="switchPreset('medium')" data-preset="medium" title="N=20, M=60 — suited for medium-term holding reference">Medium-term</button>
-        <button class="preset-btn" onclick="switchPreset('long')" data-preset="long" title="N=40, M=120 — suited for long-cycle trend judgment">Long-term</button>
         <a href="/analysis/investment-recommendation" class="rec-btn">Investment Advice</a>
         <a href="/analysis/tech-notes" class="tech-btn">Tech Notes</a>
         <span class="preset-freshness" id="freshness-label">--</span>
@@ -272,6 +278,7 @@
     try {
 
     var currentPreset = 'optimized';
+    loadAllData(currentPreset);
 
     // Chart instances
     var chartInstances = {};
@@ -363,11 +370,15 @@
     }
 
     function renderKPIs(summary) {
-        if (!summary || summary.error === 'no_data') {
+        if (!summary || summary.error === 'no_data' || summary.error === 'fetch_failed') {
             document.getElementById('kpi-ic-mean').textContent = '--';
             document.getElementById('kpi-icir').textContent = '--';
             document.getElementById('kpi-ic-win').textContent = '--';
             document.getElementById('kpi-strong').textContent = '--';
+            document.getElementById('kpi-ic-mean-sub').textContent = '';
+            document.getElementById('kpi-icir-sub').textContent = '';
+            document.getElementById('kpi-ic-win-sub').textContent = '';
+            document.getElementById('kpi-strong-sub').textContent = '';
             return;
         }
 
@@ -404,8 +415,10 @@
 
     function renderSummary(summary) {
         var el = document.getElementById('summary-text');
-        if (!summary || summary.error === 'no_data') {
-            el.textContent = 'No analysis data available. Please run data collection and factor calculation first.';
+        if (!summary || summary.error === 'no_data' || summary.error === 'fetch_failed') {
+            el.innerHTML = summary && summary.error === 'fetch_failed'
+                ? 'Failed to load analysis data. Please try again later.'
+                : 'No analysis data available. Please run data collection and factor calculation first.';
             return;
         }
 

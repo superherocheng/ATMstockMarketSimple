@@ -15,7 +15,7 @@ from pathlib import Path
 # ============================================================
 #   在这里填入你的 Token（或通过环境变量 TUSHARE_TOKEN 设置）
 # ============================================================
-TUSHARE_TOKEN = os.environ.get("TUSHARE_TOKEN", "30cf620b8617ca66aa5217ca56b8ed22c8f42063d4076d53340fa17e")
+TUSHARE_TOKEN = os.environ.get("TUSHARE_TOKEN")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
@@ -83,6 +83,9 @@ SECTOR_ETF = {
     "159326.SZ": "电网设备ETF",
 }
 
+# 商品类ETF（无基本面财务因子，仅技术面计算）
+COMMODITY_ETF_CODES = {"561360.SH", "159934.SZ"}
+
 # 回溯交易日数（约一年）
 LOOKBACK_DAYS = 260
 
@@ -115,13 +118,11 @@ REDIS_PREFIX = os.environ.get("REDIS_PREFIX", "atm:")
 
 def get_pro():
     """获取 tushare pro 接口"""
-    if not TUSHARE_TOKEN or TUSHARE_TOKEN == "你的Token":
+    if not TUSHARE_TOKEN:
         raise ValueError(
             "请先配置 Tushare Token！\n"
-            "1. 复制 config.py.example 为 config.py\n"
-            "2. 在 config.py 中填入你的 Token\n"
-            "3. 或设置环境变量 TUSHARE_TOKEN\n"
-            "4. 获取 Token: https://tushare.pro/register"
+            "请设置环境变量 TUSHARE_TOKEN\n"
+            "获取 Token: https://tushare.pro/register"
         )
 
     ts.set_token(TUSHARE_TOKEN)
