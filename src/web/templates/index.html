@@ -49,9 +49,6 @@
                 <button id="theme-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggle()" title="Toggle theme" type="button">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
                 </button>
-                <button id="market-color-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggleMarketColor()" title="Toggle A-share red/green convention" type="button">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
-                </button>
             </div>
             <p style="margin-top:12px;">Data Source</p>
             <span>Tushare · AKShare</span>
@@ -112,6 +109,12 @@
                 </div>
                 <div id="ic-summary-table">
                     <div class="skeleton-pulse" style="height:200px;width:100%;"></div>
+                </div>
+                <div id="rec-summary-section" style="margin-top:12px;border-top:1px solid var(--c-border);padding-top:12px;">
+                    <div style="font-size:11px;font-weight:600;color:var(--c-text-secondary);margin-bottom:8px;">推荐配置</div>
+                    <div id="rec-summary-content">
+                        <div class="skeleton-pulse" style="height:60px;width:100%;"></div>
+                    </div>
                 </div>
             </div>
 
@@ -404,6 +407,7 @@
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             var data = await resp.json();
             renderIcSummary(data);
+            loadRecSummary();
         } catch(e) { console.warn('IC overview load failed:', e.message); }
     }
 
@@ -458,6 +462,36 @@
         el.innerHTML = html;
     }
 
+    async function loadRecSummary() {
+        try {
+            var resp = await fetch('/api/investment-recommendation?preset_id=optimized');
+            if (!resp.ok) return;
+            var data = await resp.json();
+            renderRecSummary(data);
+        } catch(e) { /* quiet */ }
+    }
+
+    function renderRecSummary(data) {
+        var el = document.getElementById('rec-summary-content');
+        if (!el) return;
+        if (!data || !data.recommendations || data.recommendations.length === 0) {
+            el.innerHTML = '<div style="color:var(--c-text-tertiary);font-size:12px;padding:4px 0;">暂无推荐</div>';
+            return;
+        }
+        var totalWeight = data.recommendations.reduce(function(sum, r) { return sum + (r.position_ratio || 0); }, 0);
+        var html = '';
+        data.recommendations.forEach(function(r) {
+            var pct = (r.position_ratio || 0) * 100;
+            var barPct = totalWeight > 0 ? ((r.position_ratio || 0) / totalWeight * 100) : 0;
+            html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
+                '<span style="font-size:12px;font-weight:500;min-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--c-text);">' + (r.etf_name || r.ts_code || 'Unknown') + '</span>' +
+                '<div style="flex:1;height:16px;background:var(--c-bg-secondary);border-radius:8px;overflow:hidden;">' +
+                '<div style="height:100%;width:' + barPct + '%;background:var(--c-accent);border-radius:8px;transition:width 0.3s;"></div></div>' +
+                '<span style="font-size:12px;font-family:var(--font-mono);color:var(--c-text-secondary);min-width:50px;text-align:right;">' + pct.toFixed(1) + '%</span></div>';
+        });
+        el.innerHTML = html;
+    }
+
     async function loadMarketTiming() {
         try {
             var resp = await fetch('/api/market-timing');
@@ -492,6 +526,7 @@
         loadFetchStatus();
         updateShareStatus();
         loadIcSummary();
+        loadRecSummary();
         loadMarketTiming();
     }
 

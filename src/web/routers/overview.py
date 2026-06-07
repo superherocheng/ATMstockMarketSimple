@@ -277,6 +277,24 @@ def _compute_data_range():
                     "count": 0, "min_date": None, "max_date": None, "error": str(e),
                 }
 
+        # Cap etf_share max_date at last trading day
+        if "etf_share" in tables_info and tables_info["etf_share"].get("max_date"):
+            try:
+                trading_row = conn.execute(text(
+                    "SELECT MAX(trade_date) FROM sector_etf_daily"
+                )).fetchone()
+                if trading_row and trading_row[0]:
+                    last_trading_date = str(trading_row[0])
+                    share_max = str(tables_info["etf_share"]["max_date"])
+                    if share_max > last_trading_date:
+                        tables_info["etf_share"]["max_date"] = last_trading_date
+                        import logging
+                        logging.getLogger(__name__).info(
+                            f"Capped etf_share max_date from {share_max} to {last_trading_date}"
+                        )
+            except Exception:
+                pass
+
         return tables_info
     finally:
         if conn:

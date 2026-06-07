@@ -335,7 +335,12 @@ def _compute_preset_factors(pid: str, *,
     from sqlalchemy import text
     from src.core.db_manager_postgresql import get_conn, get_db_manager
 
-    preset = get_preset(pid)
+    # Task 4.1: Exception isolation guard
+    try:
+        preset = get_preset(pid)
+    except Exception as e:
+        logger.error(f"Failed to load preset {pid}: {e}", exc_info=True)
+        return 0
     rsrs_lb = preset.get("rsrs_lookback", 20)
     flow_lb = preset["flow_lookback"]
     mom_lb = preset["mom_lookback"]

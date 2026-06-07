@@ -82,3 +82,17 @@ def get_preset(preset_id: str) -> dict:
 def all_preset_ids() -> list:
     """Return all preset IDs in display order."""
     return ["short", "optimized", "medium", "long"]
+
+
+def get_active_factors(preset_id: str) -> dict:
+    """Return dict of factor_name -> bool indicating if weight > 0."""
+    preset = get_preset(preset_id)
+    weights = preset.get("factor_weights", {})
+    return {
+        "quality_active": weights.get("quality", 0) > 0,
+        "efficiency_active": weights.get("efficiency", 0) > 0,
+        "rsi_momentum_active": weights.get("rsi_momentum", 0) > 0,
+        "rsrs_active": weights.get("rsrs", 0) > 0,
+        "flow_active": weights.get("flow", 0) > 0,
+        "mom_active": weights.get("mom", 0) > 0,
+    }

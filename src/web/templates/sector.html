@@ -25,6 +25,50 @@
             #share-rank-table th:nth-child(5),
             #share-rank-table td:nth-child(5) { display: none; }
         }
+        /* ── Category grouping styles ── */
+        .category-header {
+            cursor: pointer;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--c-border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+            border-radius: 6px;
+            transition: background 0.15s;
+        }
+        .category-header:hover {
+            background: var(--c-bg-secondary);
+        }
+        .category-name {
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--c-text);
+        }
+        .category-count {
+            font-size: 11px;
+            color: var(--c-text-tertiary);
+            background: var(--c-bg-tertiary);
+            padding: 1px 6px;
+            border-radius: 8px;
+        }
+        .category-chevron {
+            margin-left: auto;
+            font-size: 10px;
+            color: var(--c-text-tertiary);
+            transition: transform 0.2s;
+        }
+        .category-body {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 8px;
+            padding: 8px 0;
+        }
+        @media (max-width: 480px) {
+            .category-body {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            }
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -60,9 +104,6 @@
                 <button id="theme-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggle()" title="Toggle theme" type="button">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
                 </button>
-                <button id="market-color-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggleMarketColor()" title="Toggle A-share red/green convention" type="button">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
-                </button>
             </div>
             <p style="margin-top:12px;">Data Source</p>
             <span>Tushare · AKShare</span>
@@ -71,7 +112,12 @@
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 stagger-children">
 
-        <div class="flex gap-2 flex-wrap" style="align-items:center;">
+        <div style="margin-bottom:8px;">
+                <input type="text" id="sectorSearch" placeholder="搜索 ETF 名称或代码..."
+                       style="width:100%;max-width:320px;padding:8px 12px;border:1px solid var(--c-border);border-radius:6px;background:var(--c-card);color:var(--c-text);font-size:13px;">
+            </div>
+
+            <div class="flex gap-2 flex-wrap" style="align-items:center;">
             <button class="tab-btn active" data-filter="all" onclick="setFilter(this)">ALL</button>
             <button class="tab-btn" data-filter="top3" onclick="setFilter(this)">TOP-3</button>
             <button class="tab-btn" data-filter="bottom3" onclick="setFilter(this)">BOTTOM-3</button>
@@ -91,8 +137,12 @@
                 <span class="chart-group-title">Sector Cards</span>
                 <span class="chart-group-chevron"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></span>
             </summary>
-            <div id="sector-cards" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3" style="margin-top:var(--space-3);">
+            <div id="sector-cards" style="margin-top:var(--space-3);">
                 <!-- Rendered by JS -->
+            </div>
+            <div id="pagination-bar" style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:16px;">
+              <button id="loadMoreBtn" class="tab-btn" onclick="loadMore()">加载更多</button>
+              <span id="paginationInfo" style="font-size:12px;color:var(--c-text-tertiary);"></span>
             </div>
         </details>
 
@@ -192,6 +242,26 @@
     var allSectors = [];
     var selectedCode = null;
     var filterMode = 'all';
+    var searchQuery = '';
+    var currentPage = 1;
+    var pageSize = 10;
+
+    var SECTOR_CATEGORIES = {
+        '半导体': '科技', '通信': '科技', '软件': '科技', '科技': '科技', '机器人': '科技',
+        '军工': '科技', '卫星': '科技', '高端装备': '科技', '电网设备': '科技',
+        '银行': '金融', '证券': '金融', '金融科技': '金融',
+        '消费': '消费', '白酒': '消费', '旅游': '消费', '传媒': '消费', '游戏': '消费', '养殖': '消费',
+        '医药': '医药', '医疗': '医药',
+        '有色': '周期', '煤炭': '周期', '钢铁': '周期', '化工': '周期', '稀土': '周期',
+        '新能源车': '新能源', '光伏': '新能源', '电池': '新能源',
+        '电力': '能源/公用', '能源': '能源/公用', '石油': '能源/公用', '黄金': '商品',
+    };
+    function getCategory(name) {
+        for (var key in SECTOR_CATEGORIES) {
+            if (name.indexOf(key) !== -1) return SECTOR_CATEGORIES[key];
+        }
+        return '其他';
+    }
 
     // Reusable: compute Z-score of latest daily share change % (same logic as Share Change Ranking)
     function computeShareZScore(s) {
@@ -268,12 +338,20 @@
         document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
         btn.classList.add('active');
         filterMode = btn.getAttribute('data-filter');
+        currentPage = 1;
         renderSectorCards();
         renderCompareChart();
         renderShareCompare();
     }
 
     window.setFilter = setFilter;
+
+    function filterSectorCards(query) {
+        searchQuery = query;
+        currentPage = 1;
+        renderSectorCards();
+    }
+    window.filterSectorCards = filterSectorCards;
 
     var collapsed = false;
     function toggleCollapseAll() {
@@ -288,12 +366,70 @@
     }
     window.toggleCollapseAll = toggleCollapseAll;
 
+    /* ── Category toggle (collapse/expand) ── */
+    function toggleCategory(header) {
+        var body = header.nextElementSibling;
+        if (!body) return;
+        var isHidden = body.style.display === 'none';
+        body.style.display = isHidden ? 'grid' : 'none';
+        var chevron = header.querySelector('.category-chevron');
+        if (chevron) chevron.innerHTML = isHidden ? '&#9660;' : '&#9660;';
+    }
+    window.toggleCategory = toggleCategory;
+
+    /* ── Load more pagination ── */
+    function loadMore() {
+        currentPage++;
+        renderSectorCards();
+    }
+    window.loadMore = loadMore;
+
+    /* ── Update pagination bar visibility and info ── */
+    function updatePagination(total, visible) {
+        var bar = document.getElementById('pagination-bar');
+        var btn = document.getElementById('loadMoreBtn');
+        var info = document.getElementById('paginationInfo');
+        if (!bar || !btn || !info) return;
+        if (total <= pageSize) {
+            bar.style.display = 'none';
+            return;
+        }
+        bar.style.display = 'flex';
+        info.textContent = '显示 ' + Math.min(visible, total) + ' / ' + total + ' 只';
+        if (visible >= total) {
+            btn.style.display = 'none';
+        } else {
+            btn.style.display = '';
+            btn.textContent = '加载更多 (' + (total - visible) + ')';
+        }
+    }
+
+    /* ── Render sector cards with category grouping and pagination ── */
     function renderSectorCards() {
         var el = document.getElementById('sector-cards');
         if (!el) return;
         var sectors = getFilteredSectors();
-        var html = '';
-        sectors.forEach(function(s) {
+
+        // Apply search filter
+        var searchQ = searchQuery.toLowerCase().trim();
+        if (searchQ) {
+            sectors = sectors.filter(function(s) {
+                return (s.name || '').toLowerCase().indexOf(searchQ) !== -1 ||
+                       (s.ts_code || '').toLowerCase().indexOf(searchQ) !== -1;
+            });
+        }
+
+        // Empty state
+        if (sectors.length === 0) {
+            el.style.display = 'block';
+            el.innerHTML = '<div class="glass p-3 text-center" style="grid-column:1/-1;color:var(--c-text-tertiary);">' + (searchQ ? '未找到匹配的 ETF' : 'No data available') + '</div>';
+            var bar = document.getElementById('pagination-bar');
+            if (bar) bar.style.display = 'none';
+            return;
+        }
+
+        // Card HTML builder
+        function cardHtml(s) {
             var signalTag = (s.signal && s.signal.tag) || 'none';
             var signalLabel = (s.signal && s.signal.label) || '--';
             var cardClass = 'sector-card';
@@ -304,7 +440,7 @@
             var lastClose = kline.length > 0 ? parseFloat(kline[kline.length-1].close || 0) : 0;
             var lastPct = kline.length > 0 ? parseFloat(kline[kline.length-1].pct_chg || 0) : 0;
             var pctColor = lastPct >= 0 ? 'var(--c-up)' : 'var(--c-down)';
-            html += '<div class="' + cardClass + '" onclick="selectSector(\'' + s.ts_code + '\');return false;" data-code="' + s.ts_code + '">' +
+            return '<div class="' + cardClass + '" onclick="selectSector(\'' + s.ts_code + '\');return false;" data-code="' + s.ts_code + '">' +
                 '<div class="font-semibold text-sm truncate">' + s.name + '</div>' +
                 '<div class="flex items-center gap-2 mt-1">' +
                 '<span class="font-mono text-xs" style="color:' + pctColor + ';">' +
@@ -314,8 +450,84 @@
                 '</div>' +
                 '<div class="mt-1"><span class="text-xs px-1.5 py-0.5" style="background:var(--c-bg-tertiary);color:var(--c-text-secondary);">' + signalLabel + '</span></div>' +
                 '</div>';
+        }
+
+        // Group sectors by category
+        var groups = {};
+        sectors.forEach(function(s) {
+            var cat = getCategory(s.name);
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push(s);
         });
+
+        // Ordered category list for consistent output
+        var categoryOrder = ['科技', '金融', '消费', '医药', '周期', '新能源', '能源/公用', '商品', '其他'];
+
+        // Flatten all cards (with category) for pagination slicing
+        var allCards = [];
+        categoryOrder.forEach(function(cat) {
+            if (groups[cat]) {
+                groups[cat].forEach(function(s) {
+                    allCards.push({ sector: s, category: cat });
+                });
+            }
+        });
+        // Append leftover categories not in the ordered list
+        for (var cat in groups) {
+            if (categoryOrder.indexOf(cat) === -1) {
+                groups[cat].forEach(function(s) {
+                    allCards.push({ sector: s, category: cat });
+                });
+            }
+        }
+
+        // Pagination: slice visible set
+        var totalCards = allCards.length;
+        var maxVisible = currentPage * pageSize;
+        var visibleCards = allCards.slice(0, maxVisible);
+
+        // Re-group visible cards by category
+        var visibleGroups = {};
+        visibleCards.forEach(function(item) {
+            if (!visibleGroups[item.category]) visibleGroups[item.category] = [];
+            visibleGroups[item.category].push(item.sector);
+        });
+
+        // Render grouped HTML
+        el.style.display = 'block';
+        var html = '';
+
+        // Helper: render one category group
+        function renderCategory(cat, sectors) {
+            var h = '<div class="sector-category-group">' +
+                '<div class="category-header" onclick="toggleCategory(this)">' +
+                '<span class="category-name">' + cat + '</span>' +
+                '<span class="category-count">' + sectors.length + '</span>' +
+                '<span class="category-chevron">&#9660;</span>' +
+                '</div>' +
+                '<div class="category-body">';
+            sectors.forEach(function(s) { h += cardHtml(s); });
+            h += '</div></div>';
+            return h;
+        }
+
+        // Ordered categories first
+        categoryOrder.forEach(function(cat) {
+            var catSectors = visibleGroups[cat];
+            if (!catSectors || catSectors.length === 0) return;
+            html += renderCategory(cat, catSectors);
+        });
+        // Leftover categories
+        for (var cat in visibleGroups) {
+            if (categoryOrder.indexOf(cat) === -1) {
+                html += renderCategory(cat, visibleGroups[cat]);
+            }
+        }
+
         el.innerHTML = html;
+
+        // Update pagination controls
+        updatePagination(totalCards, maxVisible);
     }
 
     var compareChart = null;
@@ -874,6 +1086,11 @@
     requestAnimationFrame(function() {
         loadSectors();
     });
+    // Search input event listener
+    document.getElementById('sectorSearch')?.addEventListener('input', function(e) {
+        filterSectorCards(e.target.value);
+    });
+
     window.__atmPageReady();
     
     // Expose for JS-generated onclick handlers

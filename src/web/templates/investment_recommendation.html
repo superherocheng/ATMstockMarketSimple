@@ -177,9 +177,6 @@
                 <button id="theme-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggle()" title="Toggle theme" type="button">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
                 </button>
-                <button id="market-color-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggleMarketColor()" title="Toggle A-share red/green convention" type="button">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
-                </button>
             </div>
             <p style="margin-top:12px;">Data Source</p>
             <span>Tushare · AKShare</span>
@@ -224,6 +221,10 @@
                 <div class="vis-cell">
                     <h3 class="vis-title">Factor Scoring Radar</h3>
                     <div id="chart-radar" class="vis-chart"></div>
+                    <!-- Quality factor status note -->
+                    <div id="quality-status-note" style="display:none;text-align:center;font-size:11px;color:#999;padding:4px 0;">
+                      Quality 因子当前权重为 0（基于回测表现），不影响推荐评分
+                    </div>
                 </div>
                 <div class="vis-cell">
                     <h3 class="vis-title">Risk vs. Return Quadrant</h3>
@@ -369,6 +370,11 @@
             // Preset badge
             badges.innerHTML += '<span class="badge badge-neutral"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:2px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Short-term Preset</span>';
 
+            // Quality weight badge
+            if (data.weight_allocation && data.weight_allocation.quality_active === false) {
+                badges.innerHTML += '<span class="badge badge-neutral" title="Quality 因子经回测验证 ICIR 为负，已从本预设中移除">Quality 0%</span>';
+            }
+
             // ── KPI row ──
             var kpiRow = document.getElementById('kpi-row');
             var kpis = [
@@ -408,6 +414,11 @@
                     r._shortName = r.name.replace(/ETF/i, '').trim();
                 });
 
+                // Detect if quality factor is inactive
+                var qualityActive = data.weight_allocation && data.weight_allocation.quality_active;
+                var allQualityZero = recs.every(function(r) { return r._quality === 0; });
+                var qualityDisabled = !qualityActive || allQualityZero;
+
                 // --- Radar Chart ---
                 requestAnimationFrame(function() {
                     var radarEl = document.getElementById('chart-radar');
@@ -422,7 +433,12 @@
                         var min = Math.min.apply(null, vals);
                         var max = Math.max.apply(null, vals);
                         var range = max - min || 1;
-                        norm[d] = vals.map(function(v) { return Math.round((v - min) / range * 100); });
+                        // If all values are zero (e.g., inactive factor), set to 0
+                        if (max === 0 && min === 0) {
+                            norm[d] = vals.map(function() { return 0; });
+                        } else {
+                            norm[d] = vals.map(function(v) { return Math.round((v - min) / range * 100); });
+                        }
                     });
 
                     var radarData = recs.map(function(r, i) {
@@ -446,7 +462,14 @@
                             icon: 'rect', itemWidth: 10, itemHeight: 10, itemGap: 14
                         },
                         radar: {
-                            indicator: dimLabels.map(function(l) { return { name: l, max: 100 }; }),
+                            indicator: dimLabels.map(function(l, i) {
+                                var isQuality = l === 'Quality';
+                                return {
+                                    name: isQuality && qualityDisabled ? 'Quality (已停用)' : l,
+                                    max: 100,
+                                    nameTextStyle: isQuality && qualityDisabled ? { color: '#999' } : { color: '#111' }
+                                };
+                            }),
                             shape: 'polygon',
                             splitNumber: 4,
                             radius: '58%',
@@ -458,6 +481,9 @@
                         },
                         series: [{ type: 'radar', data: radarData }]
                     });
+                    // Show/hide quality status note
+                    var qNote = document.getElementById('quality-status-note');
+                    if (qNote) qNote.style.display = qualityDisabled ? 'block' : 'none';
                 });
 
                 // --- Scatter Plot ---

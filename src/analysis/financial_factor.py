@@ -604,6 +604,18 @@ def compute_financial_factors(calc_date: Optional[str] = None) -> dict:
 
         logger.info(f"Financial factors computed for {len(result)} ETFs "
                      f"(median_quality={median_quality:.4f})")
+
+        # Task 3.4: Check SECTOR_CONSTITUENTS vs SECTOR_ETF sync
+        missing_from_constituents = [
+            code for code in SECTOR_ETF
+            if code not in SECTOR_CONSTITUENTS and code not in COMMODITY_ETF_CODES
+        ]
+        if missing_from_constituents:
+            logger.warning(
+                f"SECTOR_CONSTITUENTS missing mappings for {len(missing_from_constituents)} ETFs: "
+                f"{missing_from_constituents}. These ETFs will use cross-sectional median as fallback."
+            )
+
         return result
     finally:
         conn.close()
@@ -674,6 +686,18 @@ def load_latest_financial_factors(calc_date: str = None) -> dict:
                 "num_constituents": int(r[6]) if r[6] is not None else 0,
                 "missing_constituents": int(r[7]) if r[7] is not None else 0,
             }
+
+        # Task 2.2/3.1: Health check logging
+        non_zero_quality = sum(1 for v in result.values() if abs(v.get("f_quality", 0)) > 1e-10)
+        logger.info(f"Quality factor health check: loaded {len(result)} ETFs, "
+                    f"{non_zero_quality} with non-zero f_quality")
+        if len(result) > 0 and non_zero_quality == 0:
+            logger.warning(
+                f"ALL {len(result)} ETFs have zero f_quality. "
+                f"The financial_factor table may be empty or contain only default values. "
+                f"Run compute_and_persist() or fetch stock fundamental data via Tushare API."
+            )
+
         return result
     finally:
         conn.close()

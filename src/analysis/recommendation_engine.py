@@ -310,6 +310,26 @@ def build_investment_recommendation(preset_id: str = "short",
     except Exception:
         latest_etf_count = 0
 
+    # If data coverage is insufficient, return empty state
+    if latest_etf_count < total_tracked_etfs * 0.5:
+        logger.warning(
+            f"ETF data coverage too low ({latest_etf_count}/{total_tracked_etfs}), "
+            f"skipping recommendation. Share data may be T+1 incomplete."
+        )
+        return {
+            "date": str(latest_date) if 'latest_date' in dir() else str(datetime.now().date()),
+            "recommendations": [],
+            "strategy": {
+                "name": f"ETF Multi-Factor Rotation Strategy ({preset['label']})",
+                "description": "数据不完整：ETF 份额数据覆盖不足，等待下一个交易日数据更新后自动恢复",
+                "holding_period": "",
+            },
+            "reasons": ["ETF 份额数据不完整，因子计算已跳过，请等待数据更新"],
+            "risk_warning": [f"⚠️ ETF份额数据覆盖不足（{latest_etf_count}/{total_tracked_etfs}），当前建议不适用"],
+            "stats": {},
+            "data_incomplete": True,
+        }
+
     # ── Select and rank candidates ──
     # Standard: Q1 (strong) and Q2 (lurk) are always recommended.
     # RSRS override: Q3 (exit) ETFs with strong RSRS (z_rsrs > 0.3)

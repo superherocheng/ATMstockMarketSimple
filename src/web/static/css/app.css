@@ -309,21 +309,6 @@
 }
 
 /* ══════════════════════════════════════════════════
-   A股惯例涨跌色 (红跌绿涨) — 通过 data-market-color 切换
-   ══════════════════════════════════════════════════ */
-
-[data-market-color="a-share"] {
-    --c-up: #16A34A;
-    --c-up-bg: rgba(22, 163, 74, 0.08);
-    --c-up-bg-strong: rgba(22, 163, 74, 0.12);
-    --c-down: #DC2626;
-    --c-down-bg: rgba(220, 38, 38, 0.08);
-    --c-down-bg-strong: rgba(220, 38, 38, 0.12);
-    --c-success: #16A34A;
-    --c-error: #DC2626;
-}
-
-/* ══════════════════════════════════════════════════
    ATMstockMarket — Brutalist Base Styles
    ══════════════════════════════════════════════════ */
 
@@ -1110,14 +1095,29 @@ textarea::placeholder {
 
 /* ─── 页脚 ─────────────────────────────── */
 footer {
-    padding: var(--space-5) var(--space-3);
+    padding: 8px var(--space-3);
     text-align: center;
     font-size: var(--text-xs);
     color: var(--c-text-tertiary);
     border-top: 1px solid var(--c-border);
-    margin-top: var(--space-8);
     background: var(--c-bg-secondary);
     line-height: 1.6;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 99;
+}
+body {
+    padding-bottom: 60px;
+}
+@media (max-width: 639px) {
+    footer {
+        bottom: 56px;
+    }
+    body {
+        padding-bottom: calc(60px + 56px + env(safe-area-inset-bottom, 0));
+    }
 }
 
 /* ─── 响应式工具 ─────────────────────────────── */
@@ -1993,10 +1993,15 @@ blockquote p {
         flex-direction: column;
         width: 260px;
         flex-shrink: 0;
-        position: sticky;
+        position: fixed;
         top: 0;
+        left: 0;
         height: 100vh;
         overflow-y: auto;
+        z-index: 100;
+    }
+    .page-layout > main {
+        margin-left: 260px;
     }
 }
 @media (max-width: 1023px) {

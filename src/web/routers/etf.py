@@ -308,7 +308,13 @@ def _compute_signal(kline_df, share_df, window=10, quadrant=None):
 
 
 @router.get("/api/sector-etf")
-async def api_sector_etf_all():
+async def api_sector_etf_all(fields: str = "full"):
+    if fields == "metadata":
+        return _cached_persistent(
+            "sector_etf_metadata",
+            lambda: [{"ts_code": code, "name": name} for code, name in SECTOR_ETF.items()],
+            max_age_hours=24,
+        )
     return _cached_persistent("sector_etf_all_list", _compute_sector_etf_all, max_age_hours=4)
 
 

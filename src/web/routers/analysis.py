@@ -138,11 +138,29 @@ async def api_summary(preset_id: str = "optimized"):
 
 @router.get("/api/investment-recommendation")
 async def api_investment_recommendation(preset_id: str = "optimized"):
-    return _cached_persistent(
+    result = _cached_persistent(
         f"investment_rec_v2_{preset_id}",
         lambda: recommendation_engine.build_investment_recommendation(preset_id),
         max_age_hours=4,
     )
+
+    # Task 2.2/3.1: Inject quality warnings
+    if "error" not in result and "recommendations" in result:
+        try:
+            from src.analysis.financial_factor import load_latest_financial_factors
+            qf = load_latest_financial_factors()
+            non_zero = sum(1 for v in qf.values() if abs(v.get("f_quality", 0)) > 1e-10)
+            if len(qf) > 0 and non_zero == 0:
+                if "warnings" not in result:
+                    result["warnings"] = []
+                result["warnings"].append(
+                    "Quality 因子数据为空：financial_factor 表无有效数据。"
+                    "请先运行财务数据提取或触发 recompute-financial API。"
+                )
+        except Exception as exc:
+            pass
+
+    return result
 
 
 @router.get("/api/market-timing")

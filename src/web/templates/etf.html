@@ -57,9 +57,6 @@
                 <button id="theme-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggle()" title="Toggle theme" type="button">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
                 </button>
-                <button id="market-color-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggleMarketColor()" title="Toggle A-share red/green convention" type="button">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
-                </button>
             </div>
             <p style="margin-top:12px;">Data Source</p>
             <span>Tushare · AKShare</span>
@@ -80,6 +77,10 @@
                     data-code="512100.SH" onclick="switchETF(this)">中证1000ETF</button>
             <button class="tab-btn" style="min-height:44px;"
                     data-code="588000.SH" onclick="switchETF(this)">科创50ETF</button>
+        </div>
+
+        <div id="share-zscore-summary" class="flex gap-2 sm:gap-3 flex-wrap" style="margin-top:6px;font-size:11px;">
+            <!-- dynamically filled -->
         </div>
 
         <div id="etf-info" class="glass p-4 sm:p-6">
@@ -242,6 +243,52 @@
         } catch(e) {
             console.error('Loading share std dev failed:', e);
             document.getElementById('share-std-card').innerHTML = '<div style="color:var(--c-text-tertiary);">Loading failed</div>';
+        }
+    }
+
+    /* 5 ETF Z-score summary row below tab buttons */
+    var ZSCORE_CODES = [
+        { ts: '510300.SH', name: '沪深300' },
+        { ts: '510500.SH', name: '中证500' },
+        { ts: '510050.SH', name: '上证50' },
+        { ts: '512100.SH', name: '中证1000' },
+        { ts: '588000.SH', name: '科创50' }
+    ];
+
+    async function loadShareZscoreSummary() {
+        var container = document.getElementById('share-zscore-summary');
+        try {
+            var results = await Promise.all(
+                ZSCORE_CODES.map(function(etf) {
+                    return fetch('/api/share-std/' + etf.ts)
+                        .then(function(r) { return r.ok ? r.json() : null; })
+                        .catch(function() { return null; });
+                })
+            );
+            var allFailed = results.every(function(r) { return r === null || r.error; });
+            if (allFailed) {
+                container.style.display = 'none';
+                return;
+            }
+            container.style.display = '';
+            container.innerHTML = results.map(function(data, i) {
+                var etf = ZSCORE_CODES[i];
+                var z = (data && !data.error) ? data.z_score : null;
+                if (z === null) {
+                    return '<div style="flex:1;min-width:80px;text-align:center;padding:4px 6px;border-radius:4px;background:var(--c-bg-tertiary);">' +
+                        '<div style="font-size:10px;color:var(--c-text-tertiary);">' + etf.name + '</div>' +
+                        '<div style="font-weight:700;font-family:var(--font-mono);font-size:13px;color:var(--c-text-tertiary);">--</div></div>';
+                }
+                var color = z > 0 ? 'var(--c-up)' : z < 0 ? 'var(--c-down)' : 'var(--c-text-tertiary)';
+                var sign = z >= 0 ? '+' : '';
+                return '<div style="flex:1;min-width:80px;text-align:center;padding:4px 6px;border-radius:4px;background:var(--c-bg-tertiary);">' +
+                    '<div style="font-size:10px;color:var(--c-text-tertiary);">' + etf.name + '</div>' +
+                    '<div style="font-weight:700;font-family:var(--font-mono);font-size:13px;color:' + color + ';">' +
+                    sign + z.toFixed(2) + 'σ</div></div>';
+            }).join('');
+        } catch(e) {
+            console.error('Z-score summary load failed:', e);
+            container.style.display = 'none';
         }
     }
 
@@ -564,25 +611,25 @@
         var positiveDays = data.positive_days;
         var negativeDays = data.negative_days;
 
-        var INC = '#16A34A';
-        var DEC = '#DC2626';
-        var INC_BG = 'rgba(22,163,74,0.07)';
-        var DEC_BG = 'rgba(220,38,38,0.07)';
+        var UP_COLOR = 'var(--c-up)';    // red
+        var DOWN_COLOR = 'var(--c-down)'; // green
+        var UP_BG = 'var(--c-up-bg)';
+        var DOWN_BG = 'var(--c-down-bg)';
 
         var zScoreColor = '#888';
         var zScoreLabel = 'Normal';
         if (Math.abs(zScore) >= 2) {
-            zScoreColor = zScore > 0 ? DEC : INC;
+            zScoreColor = zScore > 0 ? UP_COLOR : DOWN_COLOR;
             zScoreLabel = zScore > 0 ? 'Significant Increase' : 'Significant Decrease';
         } else if (Math.abs(zScore) >= 1) {
             zScoreColor = zScore > 0 ? '#10b981' : '#f59e0b';
             zScoreLabel = zScore > 0 ? 'Slight Increase' : 'Slight Decrease';
         }
 
-        var latestColor = latestChange >= 0 ? DEC : INC;
-        var totalColor = totalChange >= 0 ? DEC : INC;
+        var latestColor = latestChange >= 0 ? UP_COLOR : DOWN_COLOR;
+        var totalColor = totalChange >= 0 ? UP_COLOR : DOWN_COLOR;
         var direction = latestChange >= 0 ? '↑ INFLOW' : '↓ OUTFLOW';
-        var dirColor = latestChange >= 0 ? DEC : INC;
+        var dirColor = latestChange >= 0 ? UP_COLOR : DOWN_COLOR;
 
         var zInterp = '';
         if (zScore > 1.5) zInterp = 'Significantly high';
@@ -615,21 +662,21 @@
                 '</div>' +
             '</div>' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;">' +
-                '<div style="padding:24px 20px;border-right:1px solid var(--c-border);border-bottom:1px solid var(--c-border);background:' + INC_BG + ';">' +
-                    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.25em;color:' + INC + ';">Increase Days</div>' +
-                    '<div style="font-size:52px;font-weight:900;font-family:var(--font-mono);color:' + INC + ';line-height:1;margin-top:8px;">' + positiveDays + '</div>' +
+                '<div style="padding:24px 20px;border-right:1px solid var(--c-border);border-bottom:1px solid var(--c-border);background:' + UP_BG + ';">' +
+                    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.25em;color:' + UP_COLOR + ';">Increase Days</div>' +
+                    '<div style="font-size:52px;font-weight:900;font-family:var(--font-mono);color:' + UP_COLOR + ';line-height:1;margin-top:8px;">' + positiveDays + '</div>' +
                 '</div>' +
-                '<div style="padding:24px 20px;border-bottom:1px solid var(--c-border);background:' + DEC_BG + ';">' +
-                    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.25em;color:' + DEC + ';">Decrease Days</div>' +
-                    '<div style="font-size:52px;font-weight:900;font-family:var(--font-mono);color:' + DEC + ';line-height:1;margin-top:8px;">' + negativeDays + '</div>' +
+                '<div style="padding:24px 20px;border-bottom:1px solid var(--c-border);background:' + DOWN_BG + ';">' +
+                    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.25em;color:' + DOWN_COLOR + ';">Decrease Days</div>' +
+                    '<div style="font-size:52px;font-weight:900;font-family:var(--font-mono);color:' + DOWN_COLOR + ';line-height:1;margin-top:8px;">' + negativeDays + '</div>' +
                 '</div>' +
-                '<div style="padding:24px 20px;border-right:1px solid var(--c-border);background:' + INC_BG + ';">' +
-                    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.25em;color:' + INC + ';">Max Increase</div>' +
-                    '<div style="font-size:36px;font-weight:900;font-family:var(--font-mono);color:' + INC + ';line-height:1;margin-top:8px;">' + (data.max_change >= 0 ? '+' : '') + data.max_change.toFixed(4) + '%</div>' +
+                '<div style="padding:24px 20px;border-right:1px solid var(--c-border);background:' + UP_BG + ';">' +
+                    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.25em;color:' + UP_COLOR + ';">Max Increase</div>' +
+                    '<div style="font-size:36px;font-weight:900;font-family:var(--font-mono);color:' + UP_COLOR + ';line-height:1;margin-top:8px;">' + (data.max_change >= 0 ? '+' : '') + data.max_change.toFixed(4) + '%</div>' +
                 '</div>' +
-                '<div style="padding:24px 20px;background:' + DEC_BG + ';">' +
-                    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.25em;color:' + DEC + ';">Max Decrease</div>' +
-                    '<div style="font-size:36px;font-weight:900;font-family:var(--font-mono);color:' + DEC + ';line-height:1;margin-top:8px;">' + (data.min_change >= 0 ? '+' : '') + data.min_change.toFixed(4) + '%</div>' +
+                '<div style="padding:24px 20px;background:' + DOWN_BG + ';">' +
+                    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.25em;color:' + DOWN_COLOR + ';">Max Decrease</div>' +
+                    '<div style="font-size:36px;font-weight:900;font-family:var(--font-mono);color:' + DOWN_COLOR + ';line-height:1;margin-top:8px;">' + (data.min_change >= 0 ? '+' : '') + data.min_change.toFixed(4) + '%</div>' +
                 '</div>' +
             '</div>';
     }
@@ -661,6 +708,7 @@
     // Defer data fetch one frame so skeleton paints first
     requestAnimationFrame(function() {
         loadData(currentCode);
+        loadShareZscoreSummary();
     });
     window.__atmPageReady();
     

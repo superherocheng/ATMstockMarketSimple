@@ -382,12 +382,6 @@ ATMTheme.init = function() {
     document.documentElement.dataset.theme = theme;
     this._updateIcon(theme);
 
-    /* Restore market color preference */
-    var marketColor = localStorage.getItem('atm-market-color');
-    if (marketColor === 'a-share') {
-        document.documentElement.setAttribute('data-market-color', 'a-share');
-    }
-
     var self = this;
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
         if (!localStorage.getItem('atm-theme')) {
@@ -430,21 +424,6 @@ ATMTheme._updateIcon = function(theme) {
 
 ATMTheme._notifyCharts = function() {
     window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: this.get() } }));
-};
-
-ATMTheme.toggleMarketColor = function() {
-    var current = document.documentElement.getAttribute('data-market-color') || '';
-    var next = current === 'a-share' ? '' : 'a-share';
-    if (next) {
-        document.documentElement.setAttribute('data-market-color', next);
-    } else {
-        document.documentElement.removeAttribute('data-market-color');
-    }
-    localStorage.setItem('atm-market-color', next);
-};
-
-ATMTheme.getMarketColor = function() {
-    return document.documentElement.getAttribute('data-market-color') || '';
 };
 
 ATMTheme.init();

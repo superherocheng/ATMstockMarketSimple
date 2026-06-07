@@ -153,10 +153,10 @@ def _compute_cross_sectional_dispersion(conn, latest_date: str) -> float:
         rows = conn.execute(text("""
             SELECT trade_date, pct_chg
             FROM sector_etf_daily
-            WHERE trade_date >= (
-                SELECT MIN(trade_date) FROM sector_etf_daily
-                WHERE trade_date >= (
-                    SELECT MAX(trade_date) FROM sector_etf_daily
+            WHERE trade_date::date >= (
+                SELECT MIN(trade_date::date) FROM sector_etf_daily
+                WHERE trade_date::date >= (
+                    SELECT MAX(trade_date::date) FROM sector_etf_daily
                 ) - INTERVAL '60 days'
             )
               AND pct_chg IS NOT NULL
