@@ -207,8 +207,8 @@ async def health_check():
     }
 
     try:
-        conn = get_conn()
-        conn.execute(text("SELECT 1")).fetchone()
+        with get_conn() as conn:
+            conn.execute(text("SELECT 1")).fetchone()
         checks["checks"]["database"] = {"status": "ok"}
     except Exception as e:
         checks["checks"]["database"] = {"status": "error", "message": str(e)}
