@@ -150,12 +150,17 @@ def _compute_preset_ic(pid: str, *,
     factor_dates = sorted(factor_df["trade_date"].unique())
 
     total_upserted = 0
+    total_dates = len(factor_dates)
+    log_interval = max(1, total_dates // 10)  # 每 10% 日志一次
 
     for h in forward_periods:
         ic_rows = []
         quadrant_rows = []
+        logger.info(f"IC preset={pid}, H={h}: starting with {total_dates} trade dates")
 
-        for t in factor_dates:
+        for i, t in enumerate(factor_dates):
+            if i > 0 and i % log_interval == 0:
+                logger.info(f"IC preset={pid}, H={h}: {i}/{total_dates} dates processed ({len(ic_rows)} IC values so far)")
             if t not in date_idx:
                 continue
             idx = date_idx[t]
