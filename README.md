@@ -318,6 +318,22 @@ uvicorn src.web.app:app --reload --port 5656
 | `scripts/goal_cost_generalize.py` | 成本侵蚀+泛化测试 |
 | `scripts/robustness_tests.py` | 稳健性压力测试 |
 
+## 📋 v21.1.0 更新日志
+
+### 🐛 修复：数据库连接泄露导致网站崩溃
+
+| 模块 | 改动 |
+|------|------|
+| **fetch.py** | 修复 `份额完整性检查` 中 `conn = get_conn()` 未关闭导致的数据库连接泄露，改为 `with get_conn() as conn:` 确保连接自动归还连接池 |
+| **db_manager_postgresql.py** | 连接池优化，增强稳定性 |
+| **CSS** | 移动端底部导航栏高度调整 |
+
+**问题现象**：容器运行一段时间后，数据库连接池被耗尽，健康检查 `/health` 阻塞超时，Docker 标记容器为 `unhealthy`，导致 `https://stock.gaodeqingchuda.icu/` 无法访问。
+
+**修复验证**：重启后容器立即恢复 `healthy` 状态，首页 `/` 返回 HTTP 200，健康检查通过。
+
+---
+
 ## 📋 v21.0.0 更新日志
 
 ### 🎨 UI/UX 全面优化

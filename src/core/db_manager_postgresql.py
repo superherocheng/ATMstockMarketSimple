@@ -55,10 +55,10 @@ class PostgreSQLConnectionManager:
         self._engine = create_engine(
             self._db_url,
             poolclass=pool.QueuePool,
-            pool_size=10,
-            max_overflow=20,
+            pool_size=20,
+            max_overflow=30,
             pool_pre_ping=True,
-            pool_recycle=3600,
+            pool_recycle=1800,
             echo=False
         )
     
