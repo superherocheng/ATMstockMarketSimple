@@ -94,7 +94,8 @@ def _fetch_ic_price_data():
 def _compute_preset_ic(pid: str, *,
                        price_df: pd.DataFrame = None,
                        all_dates: list = None,
-                       date_idx: dict = None) -> int:
+                       date_idx: dict = None,
+                       log_func: callable = None) -> int:
     """Compute IC analysis for a single preset.
 
     When called from ``compute_all_ic`` (multi‑preset path), the caller
@@ -156,11 +157,17 @@ def _compute_preset_ic(pid: str, *,
     for h in forward_periods:
         ic_rows = []
         quadrant_rows = []
-        logger.info(f"IC preset={pid}, H={h}: starting with {total_dates} trade dates")
+        msg = f"IC preset={pid}, H={h}: starting with {total_dates} trade dates"
+        logger.info(msg)
+        if log_func:
+            log_func(msg)
 
         for i, t in enumerate(factor_dates):
             if i > 0 and i % log_interval == 0:
-                logger.info(f"IC preset={pid}, H={h}: {i}/{total_dates} dates processed ({len(ic_rows)} IC values so far)")
+                msg = f"IC preset={pid}, H={h}: {i}/{total_dates} dates processed ({len(ic_rows)} IC values so far)"
+                logger.info(msg)
+                if log_func:
+                    log_func(msg)
             if t not in date_idx:
                 continue
             idx = date_idx[t]
@@ -245,12 +252,15 @@ def _compute_preset_ic(pid: str, *,
             db.insert_dataframe(pd.DataFrame([summary]), "ic_summary", if_exists="append")
             total_upserted += 1
 
-        logger.info(f"IC analysis done for preset={pid}, H={h}: {len(ic_rows)} IC values")
+        h_msg = f"IC preset={pid}, H={h}: done ({len(ic_rows)} IC values)"
+        logger.info(h_msg)
+        if log_func:
+            log_func(h_msg)
 
     return total_upserted
 
 
-def compute_all_ic(preset_id: str = None) -> int:
+def compute_all_ic(preset_id: str = None, log_func: callable = None) -> int:
     """Compute IC analysis for all presets, running them in parallel.
 
     If *preset_id* is given, computes only that preset (standalone DB
@@ -263,7 +273,7 @@ def compute_all_ic(preset_id: str = None) -> int:
     preset_ids = [preset_id] if preset_id else all_preset_ids()
 
     if len(preset_ids) == 1:
-        return _compute_preset_ic(preset_ids[0])
+        return _compute_preset_ic(preset_ids[0], log_func=log_func)
 
     # ── Fetch price data once for all presets ──
     price_df, all_dates, date_idx = _fetch_ic_price_data()
@@ -276,7 +286,8 @@ def compute_all_ic(preset_id: str = None) -> int:
     with ThreadPoolExecutor(max_workers=min(len(preset_ids), 4)) as pool:
         futures = {
             pool.submit(_compute_preset_ic, pid,
-                        price_df=price_df, all_dates=all_dates, date_idx=date_idx): pid
+                        price_df=price_df, all_dates=all_dates, date_idx=date_idx,
+                        log_func=log_func): pid
             for pid in preset_ids
         }
         for fut in as_completed(futures):

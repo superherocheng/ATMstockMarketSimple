@@ -205,7 +205,7 @@ def _run_fetch(task_type):
             _fetch_status["progress"] = 90
 
         try:
-            ic_rows = ic_analyzer.compute_all_ic()
+            ic_rows = ic_analyzer.compute_all_ic(log_func=_add_log)
             _add_log(f"[OK] IC分析完成: {ic_rows} 行")
         except Exception as e:
             _add_log(f"[ERROR] IC分析失败: {e}")
