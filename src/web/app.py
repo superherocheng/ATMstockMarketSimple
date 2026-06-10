@@ -31,6 +31,32 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ── Suppress 404 scanner noise from uvicorn access logs ──
+# External bots hit the public domain thousands of times/day.
+# Filter out 4xx to keep logs clean for real debugging.
+import re
+_SCANNER_PATTERNS = re.compile(
+    r'GET /(static/|api/|health|docs|redoc|openapi\.json)|'
+    r'HEAD / HTTP'
+)
+class _AccessFilter(logging.Filter):
+    def filter(self, record):
+        msg = record.getMessage()
+        if '"GET' in msg or '"POST' in msg or '"HEAD' in msg:
+            # Allow API calls, health checks, and static files
+            if _SCANNER_PATTERNS.search(msg):
+                return True
+            # Filter out 4xx responses
+            if ' 4' in msg and '" "' in msg:
+                return False
+        return True
+
+# Apply filter to uvicorn access logger
+for name in ('uvicorn.access', 'uvicorn'):
+    access_logger = logging.getLogger(name)
+    access_logger.addFilter(_AccessFilter())
+    access_logger.setLevel(logging.INFO)
+
 from src.core.db_manager_postgresql import _ensure_db, close_db_manager
 from starlette.middleware.gzip import GZipMiddleware
 from src.web.services.middleware import rate_limit_middleware, add_cache_headers

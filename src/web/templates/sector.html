@@ -690,6 +690,8 @@
         var chartData = shares.slice(-120);
         var dates = chartData.map(function(sh) {
             var d = sh.trade_date;
+            // Date comes as ISO "2026-06-09" from safe_json after DATE migration
+            if (d && d.indexOf('-') > 0) return d;
             return d ? d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8) : d;
         });
         var values = chartData.map(function(sh) { return parseFloat(sh.fd_share || 0); });
@@ -879,6 +881,11 @@
             var sl = firstSector.shares.slice(-6);
             dates = sl.map(function(sh) {
                 var d = sh.trade_date;
+                // Date comes as ISO "2026-06-09"; extract MM/DD
+                if (d && d.indexOf('-') > 0) {
+                    var parts = d.split('-');
+                    return parts[1] + '/' + parts[2];
+                }
                 return d ? d.slice(4,6) + '/' + d.slice(6,8) : d;
             });
         }

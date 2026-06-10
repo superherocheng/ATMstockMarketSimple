@@ -452,7 +452,8 @@
         var chartData = shares.slice(-120);
         var dates = chartData.map(function(sh) {
             var d = sh.trade_date;
-            return d ? d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8) : d;
+            // Date comes as ISO "2026-06-09" from safe_json after DATE migration
+            return d || '';
         });
         var values = chartData.map(function(sh) { return parseFloat(sh.fd_share || 0); });
 
@@ -593,6 +594,9 @@
 
     function fmtDate(d) {
         if (!d) return '-';
+        // Date comes as ISO "2026-06-09" from safe_json after DATE migration
+        // If it contains dashes, it's already formatted; otherwise slice YYYYMMDD
+        if (d.indexOf('-') > 0) return d;
         return d.substring(0,4) + '-' + d.substring(4,6) + '-' + d.substring(6,8);
     }
 

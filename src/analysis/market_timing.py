@@ -146,19 +146,23 @@ def _compute_cross_sectional_dispersion(conn, latest_date: str) -> float:
     date relative to the historical median.  A high ratio (>1.5) signals
     market divergence, which reduces confidence in macro timing signals.
 
+    Rewrote with CTE to eliminate nested subquery + interval issues
+    and reduce the "operator does not exist: text - interval" error.
+
     Returns the dispersion ratio (current_std / historical_median_std).
     Defaults to 1.0 (neutral) on failure.
     """
     try:
         rows = conn.execute(text("""
-            SELECT trade_date, pct_chg
-            FROM sector_etf_daily
-            WHERE trade_date::date >= (
-                SELECT MIN(trade_date::date) FROM sector_etf_daily
-                WHERE trade_date::date >= (
-                    SELECT MAX(trade_date::date) FROM sector_etf_daily
-                ) - INTERVAL '60 days'
+            WITH max_date AS (
+                SELECT MAX(trade_date) AS md FROM sector_etf_daily
+            ),
+            date_range AS (
+                SELECT md - INTERVAL '60 days' AS start_dt FROM max_date
             )
+            SELECT trade_date, pct_chg
+            FROM sector_etf_daily, date_range
+            WHERE trade_date >= date_range.start_dt
               AND pct_chg IS NOT NULL
             ORDER BY trade_date
         """)).fetchall()
@@ -167,8 +171,9 @@ def _compute_cross_sectional_dispersion(conn, latest_date: str) -> float:
             return 1.0
 
         df = pd.DataFrame(rows, columns=["trade_date", "pct_chg"])
+        # Convert to string YYYYMMDD for groupby
         df["trade_date"] = df["trade_date"].apply(
-            lambda d: str(d).replace("-", "") if hasattr(d, "strftime") else str(d)
+            lambda d: d.strftime("%Y%m%d") if hasattr(d, "strftime") else str(d).replace("-", "")
         )
 
         daily_std = df.groupby("trade_date")["pct_chg"].std()

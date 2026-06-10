@@ -218,12 +218,17 @@ async def health_check():
         latest = get_latest_trading_date()
         db_max = query("SELECT MAX(trade_date) as max_date FROM stock_daily")
         if len(db_max) > 0:
-            db_max_date = db_max.iloc[0]['max_date']
-            is_fresh = db_max_date and latest and db_max_date >= latest
+            db_max_val = db_max.iloc[0]['max_date']
+            # Convert to YYYYMMDD string for safe string comparison
+            if hasattr(db_max_val, 'strftime'):
+                db_max_str = db_max_val.strftime("%Y%m%d")
+            else:
+                db_max_str = str(db_max_val).replace("-", "")
+            is_fresh = db_max_str and latest and db_max_str >= latest
             checks["checks"]["data_freshness"] = {
                 "status": "ok" if is_fresh else "stale",
                 "latest_trading_date": latest,
-                "db_max_date": db_max_date
+                "db_max_date": db_max_str
             }
         else:
             checks["checks"]["data_freshness"] = {"status": "no_data"}
@@ -267,9 +272,12 @@ def _compute_data_range():
                     except Exception:
                         pass
 
+                # Normalise date values to strings for JSON safety
+                min_date_str = str(min_date) if min_date else None
+                max_date_str = str(max_date) if max_date else None
                 tables_info[table_name] = {
                     "display_name": display_name, "exists": True,
-                    "count": count, "min_date": min_date, "max_date": max_date,
+                    "count": count, "min_date": min_date_str, "max_date": max_date_str,
                 }
             except Exception as e:
                 tables_info[table_name] = {

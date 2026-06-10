@@ -355,6 +355,39 @@ uvicorn src.web.app:app --reload --port 5656
 
 ---
 
+## 📋 v21.2.0 更新日志
+
+### 🐛 修复：Migration 008 DATE类型转换导致数据获取全面崩溃
+
+#### 问题描述
+
+Alembic Migration 008（`008_convert_trade_date_to_date.py`）将 `trade_date` 列从 `VARCHAR` 转换为 PostgreSQL 原生 `DATE` 类型。然而，Python 代码中多处日期比较逻辑未同步适配，导致**所有数据获取流程全面崩溃**：
+
+- **`tushare_fetcher.py`** — `_get_max_date()` 返回 `datetime.date` 对象，而 `_is_fresh()` 将其与 `str` 类型比较，引发 `TypeError: '>=' not supported between instances of 'datetime.date' and 'str'`
+- **`fetch.py`** — `api_etf_share_status()` 和 `api_etf_share_update()` 中存在同样的 `datetime.date` vs `str` 比较问题
+
+**影响范围**：
+- `POST /api/fetch/{task_type}` — Update按钮不可用
+- `GET /api/etf-share/status` — 份额状态检查失败
+- `POST /api/etf-share/update` — 份额更新失败
+- 命令行 `tushare_fetcher.py --etf` — 全部数据获取失败
+
+#### 修复内容
+
+| 模块 | 改动 |
+|------|------|
+| **`tushare_fetcher.py`** | `_get_max_date()` 增加日期规范化：检测 `datetime.date` 返回值时自动转换为 `YYYYMMDD` 字符串（`strftime`），与 `trading_calendar.get_db_max_date()` 的处理方式保持一致 |
+| **`fetch.py`** | 新增 `_normalise_date()` 工具函数，修复 `api_etf_share_status()` 和 `api_etf_share_update()` 中数据库 DATE 值与字符串的比较逻辑 |
+
+**修复验证**：
+- 数据获取：37/37 只ETF的6月9日份额数据全部成功写入 ✅
+- 因子计算：5857 行 ✅
+- IC分析：599 行 ✅
+- ETF份额状态API：正常返回 ✅
+- 完整 Update+Backtest 流程：正常运行，耗时约16秒 ✅
+
+---
+
 ## 📄 License
 
 MIT License

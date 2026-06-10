@@ -167,7 +167,10 @@ def get_latest_trading_date():
 
 
 def get_db_max_date(table, ts_code=None, date_column="trade_date"):
-    """查询某张表的 MAX(date_column)。"""
+    """查询某张表的 MAX(date_column)。
+    
+    Returns YYYYMMDD string (consistent regardless of DB column type).
+    """
     try:
         from src.core.db_manager_postgresql import get_db_manager
         from sqlalchemy import text
@@ -180,7 +183,13 @@ def get_db_max_date(table, ts_code=None, date_column="trade_date"):
             else:
                 sql = f"SELECT MAX({date_column}) FROM {table}"
                 result = conn.execute(text(sql)).fetchone()
-            return result[0] if result and result[0] else None
+            val = result[0] if result and result[0] else None
+            # Normalise date/datetime to YYYYMMDD string
+            if val is not None:
+                if hasattr(val, 'strftime'):
+                    return val.strftime("%Y%m%d")
+                return str(val).replace("-", "")
+            return None
     except Exception:
         return None
 

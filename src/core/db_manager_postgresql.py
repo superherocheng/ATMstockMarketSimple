@@ -10,17 +10,59 @@ ATMstockMarket PostgreSQL 数据库连接管理模块
 import logging
 import os
 import threading
+import time
+import datetime as dt
+from functools import wraps
 from pathlib import Path
-from typing import Optional, Any, Dict, List
+from typing import Optional, Any, Dict, List, Callable
 import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine, text, pool
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, OperationalError
 # psycopg2 is used indirectly via SQLAlchemy
 
 
 logger = logging.getLogger(__name__)
+
+
+# ── Retry decorator for transient DB failures ──
+def _retry_on_disconnect(max_retries: int = 3, base_delay: float = 0.5):
+    """Decorator: retry DB operations that fail due to connection issues.
+
+    Catches OperationalError (connection lost, server restart, etc.)
+    and retries with exponential backoff.
+    """
+    def decorator(func: Callable):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            last_exc = None
+            for attempt in range(1, max_retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except OperationalError as e:
+                    last_exc = e
+                    if attempt < max_retries:
+                        delay = base_delay * (2 ** (attempt - 1))
+                        logger.warning(
+                            f"DB connection lost (attempt {attempt}/{max_retries}), "
+                            f"retrying in {delay:.1f}s: {e}"
+                        )
+                        time.sleep(delay)
+                        # Force pool reconnection by disposing engine
+                        mgr = PostgreSQLConnectionManager._instance
+                        if mgr and mgr._engine:
+                            mgr._engine.dispose()
+                            logger.info("DB engine pool disposed, will create fresh connections")
+                    else:
+                        logger.error(f"DB operation failed after {max_retries} retries: {e}")
+                except SQLAlchemyError as e:
+                    # Non-transient SQL errors — don't retry
+                    last_exc = e
+                    raise
+            raise last_exc
+        return wrapper
+    return decorator
 
 
 class PostgreSQLConnectionManager:
@@ -68,6 +110,7 @@ class PostgreSQLConnectionManager:
             raise RuntimeError("Database engine not initialized")
         return self._engine.connect()
     
+    @_retry_on_disconnect()
     def execute(self, sql: str, params: Optional[tuple] = None) -> Any:
         """执行SQL语句
         
@@ -106,6 +149,7 @@ class PostgreSQLConnectionManager:
         params_dict = dict(zip(param_names, params))
         return conn.execute(text(converted_sql), params_dict)
     
+    @_retry_on_disconnect()
     def query(self, sql: str, params: Optional[tuple] = None) -> pd.DataFrame:
         """执行查询并返回DataFrame
         
@@ -272,6 +316,7 @@ def close_db_manager():
             _db_manager = None
 
 
+@_retry_on_disconnect()
 def query(sql: str, params: Optional[tuple] = None) -> pd.DataFrame:
     """执行查询（兼容旧代码）"""
     return get_db_manager().query(sql, params)
@@ -293,6 +338,31 @@ def _ensure_db():
 
 
 
+def _json_safe_value(value):
+    """Convert a single value to a JSON-safe type.
+    Handles date/datetime objects that arise from DATE columns in PostgreSQL."""
+    if value is None:
+        return None
+    # Handle pandas NaT/NaN
+    try:
+        if pd.isna(value):
+            return None
+    except Exception:
+        pass
+    # Handle infinities
+    if isinstance(value, (int, float, np.floating, np.integer)):
+        try:
+            if not np.isfinite(value):
+                return None
+        except Exception:
+            pass
+        return value
+    # Handle date/time -> ISO string
+    if isinstance(value, (dt.date, dt.datetime, pd.Timestamp)):
+        return value.isoformat() if hasattr(value, 'isoformat') else str(value)
+    return value
+
+
 def safe_json(df):
     """Safely convert DataFrame to JSON-serializable list of dicts"""
     if df is None or len(df) == 0:
@@ -305,8 +375,10 @@ def safe_json(df):
             try:
                 if pd.isna(value):
                     record[key] = None
+                    continue
             except Exception:
                 pass
+            record[key] = _json_safe_value(value)
     return records
 
 
@@ -325,6 +397,10 @@ def safe_value(value):
                 return None
         except Exception:
             pass
+        return value
+    # Handle date/time -> ISO string
+    if isinstance(value, (dt.date, dt.datetime, pd.Timestamp)):
+        return value.isoformat() if hasattr(value, 'isoformat') else str(value)
     return value
 
 

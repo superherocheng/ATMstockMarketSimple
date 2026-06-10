@@ -223,7 +223,7 @@ def _start_date():
 
 
 def _get_max_date(conn, table, ts_code=None):
-    """获取表中最大 trade_date"""
+    """获取表中最大 trade_date，返回 YYYYMMDD 字符串"""
     try:
         if ts_code:
             row = conn.execute(
@@ -232,7 +232,13 @@ def _get_max_date(conn, table, ts_code=None):
             ).fetchone()
         else:
             row = conn.execute(text(f"SELECT MAX(trade_date) FROM {table}")).fetchone()
-        return row[0] if row and row[0] else None
+        val = row[0] if row and row[0] else None
+        if val is not None:
+            # Normalise date/datetime to YYYYMMDD string (DB column may be DATE type since migration 008)
+            if hasattr(val, 'strftime'):
+                return val.strftime("%Y%m%d")
+            return str(val).replace("-", "")
+        return None
     except Exception:
         return None
 
@@ -985,15 +991,8 @@ def main():
         if args.etf:
             fetch_index_etf()
             fetch_sector_etf()
-            # After sector ETF data is fetched, compute analysis
-            try:
-                from src.analysis import factor_engine, ic_analyzer
-                print("Computing factor analysis...")
-                factor_engine.compute_all_factors()
-                ic_analyzer.compute_all_ic()
-                print("[OK] Analysis computation complete")
-            except Exception as e:
-                print(f"[SKIP] Analysis computation failed: {e}")
+            # 因子计算由 fetch.py 在份额数据更新后统一执行
+            # 不要在子进程中提前计算，否则份额数据还是旧的
             _invalidate_web_cache()
             return
         if args.stocks:
@@ -1009,15 +1008,7 @@ def main():
         # 默认：全部获取（自动跳过已是最新）
         fetch_index_etf()
         fetch_sector_etf()
-        # After sector ETF data is fetched, compute analysis
-        try:
-            from src.analysis import factor_engine, ic_analyzer
-            print("Computing factor analysis...")
-            factor_engine.compute_all_factors()
-            ic_analyzer.compute_all_ic()
-            print("[OK] Analysis computation complete")
-        except Exception as e:
-            print(f"[SKIP] Analysis computation failed: {e}")
+        # 因子计算由 fetch.py 在份额数据更新后统一执行
         _invalidate_web_cache()
         fetch_stock_list()
         fetch_stock_daily()

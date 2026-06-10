@@ -22,6 +22,15 @@ logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+def _normalise_date(val):
+    """将数据库 DATE 值规范化为 YYYYMMDD 字符串"""
+    if val is None:
+        return None
+    if hasattr(val, 'strftime'):
+        return val.strftime("%Y%m%d")
+    return str(val).replace("-", "")
+
 router = APIRouter()
 
 _fetch_lock = threading.Lock()
@@ -139,6 +148,33 @@ def _run_fetch(task_type):
 
         _add_log("[DONE] 数据获取完成！")
 
+        # ── 份额更新后清理旧因子数据 ──
+        # 如果份额数据刚刚更新，factor_daily 中可能已有用旧份额数据计算的结果
+        # 跳过清理会导致因子引擎复用旧数据，Flow 因子仍不准确
+        try:
+            _ensure_db()
+            from src.core.db_manager_postgresql import get_conn
+            from sqlalchemy import text
+            # 找到最新的份额日期，删除该日期的所有因子数据（4个预设）
+            with get_conn() as cleanup_conn:
+                share_max = cleanup_conn.execute(text(
+                    "SELECT MAX(trade_date) FROM etf_share"
+                )).fetchone()[0]
+                if share_max:
+                    deleted = cleanup_conn.execute(text(
+                        "DELETE FROM factor_daily WHERE trade_date >= :d"
+                    ), {"d": share_max})
+                    cleanup_conn.commit()
+                # 同时清理 IC 数据（仅清理同日期范围的，IC 分析会重新计算）
+                if share_max:
+                    ic_deleted = cleanup_conn.execute(text(
+                        "DELETE FROM ic_daily WHERE trade_date >= :d"
+                    ), {"d": share_max})
+                    cleanup_conn.commit()
+                _add_log(f"[OK] 已清理旧因子数据，将用最新份额数据重新计算")
+        except Exception as cleanup_err:
+            _add_log(f"[WARN] 因子数据清理可选，跳过: {cleanup_err}")
+
         # ── 检查份额数据截面完整性 ──
         # 因子计算依赖完整的截面数据。份额数据通常T+1才公布，
         # 如果最新交易日只有部分ETF有份额数据，说明截面不完整，
@@ -172,8 +208,8 @@ def _run_fetch(task_type):
                 _add_log(f"[INFO] 份额截面: {share_count}/{total_sector} 只ETF有数据")
 
                 if share_count < total_sector:
-                    _add_log(f"[INFO] 份额数据不完整（{share_count}/{total_sector}），因子子进程已运行，继续执行回测")
-                    _add_log("[INFO] 份额数据通常T+1公布，此提示不影响因子计算结果")
+                    _add_log(f"[INFO] 份额数据不完整（{share_count}/{total_sector}），继续执行回测")
+                    _add_log("[INFO] 份额数据通常T+1公布，Flow 因子将使用可用数据计算")
         except Exception as e:
             _add_log(f"[WARN] 份额完整性检查失败: {e}，继续执行回测")
 
@@ -307,7 +343,10 @@ async def api_etf_share_status():
             GROUP BY ts_code
         """
         results = conn.execute(text(sql), params).fetchall()
-        db_dates = {row[0]: {"max_date": row[1], "count": row[2]} for row in results}
+        db_dates = {}
+        for row in results:
+            max_date_str = _normalise_date(row[1])
+            db_dates[row[0]] = {"max_date": max_date_str, "count": row[2]}
         conn.close()
         
         index_etf_status = []
@@ -315,7 +354,7 @@ async def api_etf_share_status():
         
         for code, name in INDEX_ETF.items():
             info = db_dates.get(code, {"max_date": None, "count": 0})
-            is_fresh = info["max_date"] and info["max_date"] >= latest_td
+            is_fresh = info["max_date"] is not None and info["max_date"] >= latest_td
             index_etf_status.append({
                 "code": code,
                 "name": name,
@@ -327,7 +366,7 @@ async def api_etf_share_status():
         
         for code, name in SECTOR_ETF.items():
             info = db_dates.get(code, {"max_date": None, "count": 0})
-            is_fresh = info["max_date"] and info["max_date"] >= latest_td
+            is_fresh = info["max_date"] is not None and info["max_date"] >= latest_td
             sector_etf_status.append({
                 "code": code,
                 "name": name,
@@ -419,7 +458,9 @@ async def api_etf_share_update():
             GROUP BY ts_code
         """
         results = conn.execute(text(sql), params).fetchall()
-        db_dates = {row[0]: row[1] for row in results}
+        db_dates = {}
+        for row in results:
+            db_dates[row[0]] = _normalise_date(row[1])
         
         need_update = []
         for code in all_codes:
