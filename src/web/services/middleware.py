@@ -11,7 +11,7 @@ class RateLimiter:
     def __init__(self, requests_per_minute: int = 60):
         self.rpm = requests_per_minute
         self.requests = {}
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self._check_count = 0
         self._cleanup_interval = 100  # 每100次检查触发一次清理
         self._start_periodic_cleanup()
@@ -67,11 +67,7 @@ _rate_limiter = RateLimiter(requests_per_minute=200)
 async def rate_limit_middleware(request: Request, call_next):
     """速率限制中间件"""
     if request.url.path.startswith("/api/"):
-        client_id = request.headers.get("X-Forwarded-For", "")
-        if client_id:
-            client_id = client_id.split(",")[0].strip()
-        if not client_id:
-            client_id = request.client.host if request.client else "unknown"
+        client_id = request.client.host if request.client else "unknown"
         if not _rate_limiter.is_allowed(client_id):
             return JSONResponse(
                 {"error": "请求过于频繁，请稍后再试", "retry_after": 60},

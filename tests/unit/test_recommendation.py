@@ -80,6 +80,9 @@ def _make_side_effect(defaults=None):
                 return MockResult([MockRow([col_name])])
             return MockResult([])
 
+        if "COUNT(*) as cnt" in sql_text:
+            return MockResult([MockRow([latest_date, cov_count])])
+
         if "MAX(trade_date) FROM factor_daily" in sql_text:
             return MockResult([MockRow([latest_date])])
 
@@ -97,9 +100,6 @@ def _make_side_effect(defaults=None):
 
         if "FROM sector_etf_daily" in sql_text:
             return MockResult(close_rows)
-
-        if "COUNT(*) as cnt" in sql_text:
-            return MockResult([MockRow([latest_date, cov_count])])
 
         return MockResult([])
 
@@ -294,7 +294,7 @@ class TestBuildInvestmentRecommendation:
             "latest_date": latest,
             "factor_rows": factor_rows,
             "close_rows": close_rows,
-            "cov_count": 8,
+            "cov_count": 20,
         }))
         mock_get_conn.return_value = conn
 
@@ -430,7 +430,7 @@ class TestBuildInvestmentRecommendation:
             "latest_date": latest,
             "factor_rows": factor_rows,
             "close_rows": close_rows,
-            "cov_count": 4,
+            "cov_count": 20,
         }))
         mock_get_conn.return_value = conn
 

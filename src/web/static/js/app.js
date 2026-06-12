@@ -319,21 +319,22 @@ ATM.downloadCSV = function(rows, filename) {
 };
 
 ATM.getChartTheme = function() {
+    var dark = typeof ATMTheme !== 'undefined' && ATMTheme.isDark && ATMTheme.isDark();
     return {
         backgroundColor: 'transparent',
         textStyle: {
-            color: '#111111',
+            color: dark ? '#E8E8E8' : '#111111',
             fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
         },
         title: {
             textStyle: {
-                color: '#000000',
+                color: dark ? '#E8E8E8' : '#000000',
                 fontWeight: 700
             }
         },
         legend: {
             textStyle: {
-                color: '#444444',
+                color: dark ? '#CCCCCC' : '#444444',
                 fontSize: 12
             },
             icon: 'rect',
@@ -341,29 +342,28 @@ ATM.getChartTheme = function() {
             itemHeight: 8
         },
         tooltip: {
-            backgroundColor: '#FFFFFF',
-            borderColor: '#000000',
+            backgroundColor: dark ? '#2A2A2A' : '#FFFFFF',
+            borderColor: dark ? '#555555' : '#000000',
             borderWidth: 1,
             textStyle: {
-                color: '#000000',
+                color: dark ? '#E8E8E8' : '#000000',
                 fontSize: 12,
                 fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
             },
-            extraCssText: 'box-shadow:none;border-radius:0;'
+            extraCssText: 'box-shadow:0 4px 16px rgba(0,0,0,0.12);border-radius:6px;'
         },
-        splitLineColor: '#E5E5E5',
-        axisLabelColor: '#777777',
-        axisLineColor: '#000000',
+        splitLineColor: dark ? '#333333' : '#E5E5E5',
+        axisLabelColor: dark ? '#AAAAAA' : '#777777',
+        axisLineColor: dark ? '#555555' : '#000000',
         upColor: '#DC2626',
         upColor0: 'rgba(220, 38, 38, 0.15)',
         downColor: '#16A34A',
         downColor0: 'rgba(22, 163, 74, 0.15)',
         accentColor: '#2563EB',
         accentLight: 'rgba(37, 99, 235, 0.15)',
-        seriesColors: [
-            '#000000', '#2563EB', '#777777', '#BBBBBB',
-            '#DC2626', '#16A34A', '#D97735', '#444444'
-        ]
+        seriesColors: dark
+            ? ['#E8E8E8', '#60A5FA', '#AAAAAA', '#666666', '#F87171', '#4ADE80', '#FBBF24', '#CCCCCC']
+            : ['#000000', '#2563EB', '#777777', '#BBBBBB', '#DC2626', '#16A34A', '#D97735', '#444444']
     };
 };
 
@@ -1140,6 +1140,19 @@ ATMChart.setupThemeHandler = function() {
     window.addEventListener('theme-changed', function() {
         setTimeout(function() {
             ATMChart.resizeAll();
+            document.querySelectorAll('[_echarts_instance_]').forEach(function(el) {
+                var instance = echarts.getInstanceByDom(el);
+                if (instance) {
+                    var theme = ATMChart.getChartTheme();
+                    instance.setOption({
+                        textStyle: theme.textStyle,
+                        title: theme.title,
+                        legend: theme.legend,
+                        tooltip: theme.tooltip,
+                        color: theme.color
+                    });
+                }
+            });
         }, 100);
     });
 };
@@ -1272,7 +1285,7 @@ ATMChart.getChartTheme = function() {
                 color: '#000000',
                 fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
             },
-            extraCssText: 'border-radius:0;box-shadow:none;'
+            extraCssText: 'border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.12);'
         },
         legend: {
             textStyle: {
@@ -1314,7 +1327,148 @@ ATMChart.getChartTheme = function() {
     };
 };
 
-ATMChart.getChartThemeDark = ATMChart.getChartTheme;
+ATMChart.getChartThemeDark = function() {
+    return {
+        backgroundColor: 'transparent',
+        textStyle: {
+            fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif",
+            fontSize: 12,
+            color: '#E8E8E8'
+        },
+        title: {
+            textStyle: {
+                color: '#E8E8E8',
+                fontWeight: 700,
+                fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+            },
+            subtextStyle: {
+                color: '#AAAAAA'
+            }
+        },
+        line: {
+            itemStyle: {
+                borderWidth: 2
+            },
+            lineStyle: {
+                width: 2
+            },
+            symbolSize: 4,
+            symbol: 'rect',
+            smooth: false
+        },
+        bar: {
+            itemStyle: {
+                barBorderRadius: [0, 0, 0, 0]
+            }
+        },
+        pie: {
+            itemStyle: {
+                borderRadius: 0,
+                borderColor: '#2A2A2A',
+                borderWidth: 2
+            }
+        },
+        categoryAxis: {
+            axisLine: {
+                lineStyle: {
+                    color: '#555555',
+                    width: 1
+                }
+            },
+            axisTick: {
+                lineStyle: {
+                    color: '#555555'
+                }
+            },
+            axisLabel: {
+                color: '#AAAAAA',
+                fontFamily: "'IBM Plex Mono', 'JetBrains Mono', monospace"
+            },
+            splitLine: {
+                lineStyle: {
+                    color: '#333333',
+                    type: 'solid'
+                }
+            },
+            splitArea: {
+                show: false
+            }
+        },
+        valueAxis: {
+            axisLine: {
+                lineStyle: {
+                    color: '#555555',
+                    width: 1
+                }
+            },
+            axisTick: {
+                lineStyle: {
+                    color: '#555555'
+                }
+            },
+            axisLabel: {
+                color: '#AAAAAA',
+                fontFamily: "'IBM Plex Mono', 'JetBrains Mono', monospace"
+            },
+            splitLine: {
+                lineStyle: {
+                    color: '#333333',
+                    type: 'solid'
+                }
+            },
+            splitArea: {
+                show: false
+            }
+        },
+        tooltip: {
+            backgroundColor: '#2A2A2A',
+            borderColor: '#555555',
+            borderWidth: 1,
+            textStyle: {
+                color: '#E8E8E8',
+                fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+            },
+            extraCssText: 'border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.12);'
+        },
+        legend: {
+            textStyle: {
+                color: '#CCCCCC',
+                fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+            },
+            pageTextStyle: {
+                color: '#AAAAAA'
+            }
+        },
+        color: [
+            '#E8E8E8',
+            '#60A5FA',
+            '#AAAAAA',
+            '#666666',
+            '#F87171',
+            '#4ADE80',
+            '#FBBF24',
+            '#CCCCCC',
+            '#888888',
+            '#555555'
+        ],
+        watercolorColors: {
+            blue: '#E8E8E8',
+            blueLight: '#CCCCCC',
+            green: '#60A5FA',
+            greenLight: '#93C5FD',
+            terracotta: '#FBBF24',
+            terracottaLight: '#FCD34D',
+            lavender: '#AAAAAA',
+            lavenderLight: '#CCCCCC',
+            peach: '#F87171',
+            peachLight: '#FCA5A5',
+            up: '#F87171',
+            upLight: '#FCA5A5',
+            down: '#4ADE80',
+            downLight: '#86EFAC'
+        }
+    };
+};
 
 ATMChart.getResponsiveHeight = function(baseHeight) {
     var width = window.innerWidth;

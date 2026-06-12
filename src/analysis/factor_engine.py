@@ -117,7 +117,10 @@ def _compute_flow_series(shares, lookback: int, halflife: int = 3) -> np.ndarray
 
         x_w = x - (x * weights).sum()
         y_w = y - (y * weights).sum()
-        slope = (weights * x_w * y_w).sum() / (weights * x_w * x_w).sum()
+        denom = (weights * x_w * x_w).sum()
+        if denom == 0:
+            continue
+        slope = (weights * x_w * y_w).sum() / denom
         result[i] = float(slope)
 
     return result
@@ -294,7 +297,7 @@ def _get_adjusted_weights(base_weights: dict) -> dict:
         return dict(base_weights)
 
     # Distribute the delta proportionally among other factors
-    other_keys = ["rsrs", "flow", "mom", "efficiency"]
+    other_keys = ["rsrs", "flow", "mom", "efficiency", "rsi_momentum"]
     other_total = sum(base_weights.get(k, 0.0) for k in other_keys)
     if other_total <= 0:
         return dict(base_weights)
@@ -345,8 +348,8 @@ def _compute_preset_factors(pid: str, *,
     flow_lb = preset["flow_lookback"]
     mom_lb = preset["mom_lookback"]
     weights = preset.get("factor_weights", {"rsrs": 0.25, "flow": 0.25, "mom": 0.25, "quality": 0.25})
-    # S1: Dynamic quality weight based on market regime
-    weights = _get_adjusted_weights(weights)
+    # S1: Dynamic quality weight based on market regime (base weights for historical dates)
+    weights = dict(weights) if isinstance(weights, dict) else dict(preset.get("factor_weights", {"rsrs": 0.25, "flow": 0.25, "mom": 0.25, "quality": 0.25}))
     lookback_needed = max(rsrs_lb, flow_lb, mom_lb) + 1
 
     # ── Fetch data if caller didn't provide it (standalone path) ──
@@ -359,12 +362,14 @@ def _compute_preset_factors(pid: str, *,
     all_dates = sorted(kline_df["trade_date"].unique())
     date_idx_map = {d: i for i, d in enumerate(all_dates)}
 
+    # Pre-group kline by ts_code for O(1) lookups instead of repeated filtering
+    kline_groups = {code: group.sort_values("trade_date") for code, group in kline_df.groupby("ts_code")}
+
     # V7: Pre-compute MA20 trend filter per (ETF_code, date_index)
     rsrs_ma_damp = preset.get("rsrs_ma_dampening", 0.0)
     _ma_trend_lookup = {}
     if rsrs_ma_damp > 0:
-        for code in kline_df["ts_code"].unique():
-            ek = kline_df[kline_df["ts_code"] == code].sort_values("trade_date")
+        for code, ek in kline_groups.items():
             closes = ek["close"].values.astype(float)
             ek_dates = ek["trade_date"].values
             ma20 = np.full(len(closes), np.nan)
@@ -380,8 +385,8 @@ def _compute_preset_factors(pid: str, *,
 
     # ── Step 1: pre-compute raw factor series per ETF ──
     raw_dfs = []
-    for code in kline_df["ts_code"].unique():
-        ek = kline_df[kline_df["ts_code"] == code].sort_values("trade_date").copy()
+    for code, ek in kline_groups.items():
+        ek = ek.copy()
         es = share_df[share_df["ts_code"] == code].sort_values("trade_date").copy()
 
         if len(ek) < lookback_needed:
@@ -415,6 +420,7 @@ def _compute_preset_factors(pid: str, *,
         flow_df = pd.DataFrame({"trade_date": es["trade_date"].values,
                                 "flow": flow_arr})
         df = df.merge(flow_df, on="trade_date", how="left")
+        df["flow"] = df["flow"].ffill()
 
         raw_dfs.append(df)
 
@@ -479,13 +485,17 @@ def _compute_preset_factors(pid: str, *,
     # Filter raw_all to dates we care about (speeds up lookups)
     raw_new = raw_all[raw_all["trade_date"].isin(new_dates)].copy()
 
-    # Fetch market regime once for weight adjustment + reversal mode detection
+    # Fetch market regime once for weight adjustment + reversal mode detection.
+    # INV-014 fix: market-timing adjustments are only applied to the latest date
+    # to avoid look-ahead bias on historical factor computation.
     try:
         from src.analysis.market_timing import compute_market_timing
         _timing = compute_market_timing()
         _market_score = _timing.get("score", 0.0)
     except Exception:
         _market_score = 0.0
+    _latest_date = new_dates[-1] if new_dates else None
+    _latest_weights = _get_adjusted_weights(weights)
 
     batch_rows = []
     for d in new_dates:
@@ -493,17 +503,25 @@ def _compute_preset_factors(pid: str, *,
         if len(day_raw) < 2:
             continue
 
-        # Drop rows with any NaN factor
-        day_raw = day_raw.dropna(subset=["rsrs", "flow", "mom", "efficiency", "rsi_momentum"])
+        # Softer NaN handling: fill missing factors with 0 instead of dropping entire rows.
+        # Weight redistribution (below) will detect columns that are all-zero and
+        # redistribute their weight to active factors.
+        for _col in ["rsrs", "flow", "mom", "efficiency", "rsi_momentum"]:
+            if _col in day_raw.columns:
+                day_raw[_col] = day_raw[_col].fillna(0.0)
+        # Only drop rows where ALL core factors are missing (no signal at all)
+        day_raw = day_raw.dropna(subset=["rsrs", "flow", "mom", "efficiency", "rsi_momentum"], how="all")
 
         if len(day_raw) < 2:
             continue
 
-        # ── Weak-market reversal mode ──
+        # ── Weak-market reversal mode (latest date only) ──
         # In bearish/overheated regime, replace trend momentum with short-term reversal.
         # This flips the mom sign: stocks that fell recently get positive reversal scores,
         # making the quadrant model capture mean-reversion opportunities.
-        if _market_score < -0.3 and "mom_rev" in day_raw.columns:
+        # INV-014 fix: only apply to the latest date to avoid look-ahead bias.
+        _is_latest = (d == _latest_date)
+        if _is_latest and _market_score < -0.3 and "mom_rev" in day_raw.columns:
             day_raw["mom"] = day_raw["mom_rev"]
 
         # Cross-sectional Z-scores for RSRS/Flow/Mom/Efficiency
@@ -567,12 +585,14 @@ def _compute_preset_factors(pid: str, *,
         # Detect which factors are actually contributing (have non-zero Z-scores
         # in the current cross-section). Dead factors get their weight
         # redistributed proportionally to the remaining active factors.
-        w_rsrs = weights.get("rsrs", 0.20)
-        w_flow = weights.get("flow", 0.20)
-        w_mom = weights.get("mom", 0.20)
-        w_quality = weights.get("quality", 0.20)
-        w_efficiency = weights.get("efficiency", 0.20)
-        w_rsi = weights.get("rsi_momentum", 0.08)
+        # INV-014 fix: use market-timing-adjusted weights only for the latest date.
+        _w = _latest_weights if _is_latest else weights
+        w_rsrs = _w.get("rsrs", 0.20)
+        w_flow = _w.get("flow", 0.20)
+        w_mom = _w.get("mom", 0.20)
+        w_quality = _w.get("quality", 0.20)
+        w_efficiency = _w.get("efficiency", 0.20)
+        w_rsi = _w.get("rsi_momentum", 0.08)
 
         quality_active = (
             has_quality

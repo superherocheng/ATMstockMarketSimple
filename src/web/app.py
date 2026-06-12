@@ -131,9 +131,9 @@ def _check_csrf(request: Request) -> bool:
     origin = request.headers.get("Origin", "")
     referer = request.headers.get("Referer", "")
 
-    # 如果既没有 Origin 也没有 Referer，可能是内网工具调用，跳过
+    # 如果既没有 Origin 也没有 Referer，拒绝请求以防止 CSRF 绕过
     if not origin and not referer:
-        return True
+        return False
 
     allowed = _get_allowed_origins(request)
 
@@ -204,7 +204,6 @@ async def auth_middleware(request: Request, call_next):
                     error="CSRF 验证失败：缺少或无效的 Origin/Referer header",
                     timestamp=datetime.now(timezone.utc).isoformat(),
                 ).model_dump(),
-                headers={"Access-Control-Allow-Origin": "*"},
             )
 
         # 检查认证

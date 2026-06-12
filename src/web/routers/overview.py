@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from src.web.services.cache import _cached_persistent, _api_cache
 from src.core.db_manager_postgresql import get_conn, query, safe_json
 from config.config import INDEX_ETF, SECTOR_ETF, DATA_DIR
 from src.core.trading_calendar import now_beijing, get_latest_trading_date
+from src.data_fetchers.tushare_fetcher import _apply_etf_adj
 
 logger = logging.getLogger(__name__)
 
@@ -20,11 +22,15 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 router = APIRouter()
 
 
+async def _async_cached(cache_key, compute_fn, max_age_hours):
+    """Run sync _cached_persistent in a thread to avoid blocking the event loop."""
+    return await asyncio.to_thread(_cached_persistent, cache_key, compute_fn, max_age_hours)
+
+
 def _compute_overview():
-    conn = get_conn()
     result = {"index_etf": [], "sector_summary": []}
     cols = ["ts_code", "trade_date", "open", "high", "low", "close", "vol", "amount", "pre_close", "pct_chg"]
-    try:
+    with get_conn() as conn:
         # ── Single query for all index ETFs ──
         index_codes = list(INDEX_ETF.keys())
         if index_codes:
@@ -44,11 +50,15 @@ def _compute_overview():
                 """),
                 params,
             ).fetchall()
-            for row in rows_idx:
-                d = dict(zip(cols, row))
-                d["name"] = INDEX_ETF.get(d["ts_code"], d["ts_code"])
-                d["pct_chg"] = d.get("pct_chg", 0) or 0
-                result["index_etf"].append(d)
+            if rows_idx:
+                df_idx = pd.DataFrame(rows_idx, columns=cols)
+                for ts_code, group in df_idx.groupby("ts_code"):
+                    adj_group = _apply_etf_adj(group, ts_code)
+                    for _, row in adj_group.iterrows():
+                        d = row.to_dict()
+                        d["name"] = INDEX_ETF.get(d["ts_code"], d["ts_code"])
+                        d["pct_chg"] = d.get("pct_chg", 0) or 0
+                        result["index_etf"].append(d)
 
         # ── Single query for all sector ETFs ──
         sector_codes = list(SECTOR_ETF.keys())
@@ -69,20 +79,21 @@ def _compute_overview():
                 """),
                 params,
             ).fetchall()
-            for row in rows_sec:
-                d = dict(zip(cols, row))
-                d["name"] = SECTOR_ETF.get(d["ts_code"], d["ts_code"])
-                d["pct_chg"] = d.get("pct_chg", 0) or 0
-                result["sector_summary"].append(d)
-    finally:
-        conn.close()
+            if rows_sec:
+                df_sec = pd.DataFrame(rows_sec, columns=cols)
+                for ts_code, group in df_sec.groupby("ts_code"):
+                    adj_group = _apply_etf_adj(group, ts_code)
+                    for _, row in adj_group.iterrows():
+                        d = row.to_dict()
+                        d["name"] = SECTOR_ETF.get(d["ts_code"], d["ts_code"])
+                        d["pct_chg"] = d.get("pct_chg", 0) or 0
+                        result["sector_summary"].append(d)
     return result
 
 
 def _compute_heatmap():
-    conn = get_conn()
     result = []
-    try:
+    with get_conn() as conn:
         sector_codes = list(SECTOR_ETF.keys())
         if sector_codes:
             placeholders = ",".join([f":c_{i}" for i in range(len(sector_codes))])
@@ -107,72 +118,66 @@ def _compute_heatmap():
                     "ts_code": code,
                     "pct_chg": round(float(pct), 2)
                 })
-    finally:
-        conn.close()
     return result
 
 
 def validate_analysis_data():
     """验证分析数据的完整性"""
-    conn = None
     try:
-        conn = get_conn()
+        with get_conn() as conn:
+            checks = {}
 
-        checks = {}
+            try:
+                stock_count = conn.execute(text("SELECT COUNT(*) FROM stock_basic")).fetchone()[0]
+                checks["stock_basic"] = {"exists": True, "count": stock_count}
+            except Exception:
+                checks["stock_basic"] = {"exists": False, "count": 0}
 
-        try:
-            stock_count = conn.execute(text("SELECT COUNT(*) FROM stock_basic")).fetchone()[0]
-            checks["stock_basic"] = {"exists": True, "count": stock_count}
-        except Exception:
-            checks["stock_basic"] = {"exists": False, "count": 0}
+            try:
+                concept_count = conn.execute(text("SELECT COUNT(*) FROM concept_dict")).fetchone()[0]
+                stock_concept_count = conn.execute(text("SELECT COUNT(*) FROM stock_concept")).fetchone()[0]
+                checks["concept"] = {
+                    "exists": True,
+                    "concept_count": concept_count,
+                    "relation_count": stock_concept_count
+                }
+            except Exception:
+                checks["concept"] = {"exists": False, "concept_count": 0, "relation_count": 0}
 
-        try:
-            concept_count = conn.execute(text("SELECT COUNT(*) FROM concept_dict")).fetchone()[0]
-            stock_concept_count = conn.execute(text("SELECT COUNT(*) FROM stock_concept")).fetchone()[0]
-            checks["concept"] = {
-                "exists": True,
-                "concept_count": concept_count,
-                "relation_count": stock_concept_count
+            try:
+                industry_count = conn.execute(text("""
+                    SELECT COUNT(DISTINCT sw_level1) FROM stock_info
+                    WHERE sw_level1 IS NOT NULL AND sw_level1 != ''
+                """)).fetchone()[0]
+                checks["industry"] = {"exists": True, "industry_count": industry_count}
+            except Exception:
+                checks["industry"] = {"exists": False, "industry_count": 0}
+
+            try:
+                latest_trade = conn.execute(text("SELECT MAX(trade_date) FROM stock_daily")).fetchone()[0]
+                checks["stock_daily"] = {"exists": True, "latest_date": latest_trade}
+            except Exception:
+                checks["stock_daily"] = {"exists": False, "latest_date": None}
+
+            overall_status = "OK"
+            if not checks["stock_basic"]["exists"] or checks["stock_basic"]["count"] == 0:
+                overall_status = "ERROR"
+            elif not checks["stock_daily"]["exists"]:
+                overall_status = "ERROR"
+            elif not checks["concept"]["exists"] and not checks["industry"]["exists"]:
+                overall_status = "WARNING"
+
+            return {
+                "status": overall_status,
+                "checks": checks
             }
-        except Exception:
-            checks["concept"] = {"exists": False, "concept_count": 0, "relation_count": 0}
-
-        try:
-            industry_count = conn.execute(text("""
-                SELECT COUNT(DISTINCT sw_level1) FROM stock_info
-                WHERE sw_level1 IS NOT NULL AND sw_level1 != ''
-            """)).fetchone()[0]
-            checks["industry"] = {"exists": True, "industry_count": industry_count}
-        except Exception:
-            checks["industry"] = {"exists": False, "industry_count": 0}
-
-        try:
-            latest_trade = conn.execute(text("SELECT MAX(trade_date) FROM stock_daily")).fetchone()[0]
-            checks["stock_daily"] = {"exists": True, "latest_date": latest_trade}
-        except Exception:
-            checks["stock_daily"] = {"exists": False, "latest_date": None}
-
-        overall_status = "OK"
-        if not checks["stock_basic"]["exists"] or checks["stock_basic"]["count"] == 0:
-            overall_status = "ERROR"
-        elif not checks["stock_daily"]["exists"]:
-            overall_status = "ERROR"
-        elif not checks["concept"]["exists"] and not checks["industry"]["exists"]:
-            overall_status = "WARNING"
-
-        return {
-            "status": overall_status,
-            "checks": checks
-        }
     except Exception as e:
+        logger.error("Validation failed: %s", e, exc_info=True)
         return {
             "status": "ERROR",
-            "error": str(e),
+            "error": "Internal validation error",
             "checks": {}
         }
-    finally:
-        if conn:
-            conn.close()
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -182,23 +187,28 @@ async def page_index(request: Request):
 
 @router.get("/api/overview")
 async def api_overview():
-    return _cached_persistent("overview", _compute_overview, max_age_hours=4)
+    return await _async_cached("overview", _compute_overview, max_age_hours=4)
 
 
 @router.get("/api/heatmap")
 async def api_heatmap():
-    return _cached_persistent("heatmap", _compute_heatmap, max_age_hours=4)
+    return await _async_cached("heatmap", _compute_heatmap, max_age_hours=4)
 
 
 @router.get("/api/analysis/validate")
 async def api_validate_analysis():
     """验证分析数据的完整性"""
-    return validate_analysis_data()
+    return await asyncio.to_thread(validate_analysis_data)
 
 
 @router.get("/health")
 async def health_check():
     """健康检查端点"""
+    return await asyncio.to_thread(_health_check_sync)
+
+
+def _health_check_sync():
+    """Sync implementation of health check, run in a thread."""
     checks = {
         "status": "healthy",
         "timestamp": now_beijing().isoformat(),
@@ -211,7 +221,8 @@ async def health_check():
             conn.execute(text("SELECT 1")).fetchone()
         checks["checks"]["database"] = {"status": "ok"}
     except Exception as e:
-        checks["checks"]["database"] = {"status": "error", "message": str(e)}
+        logger.error("Database health check failed: %s", e, exc_info=True)
+        checks["checks"]["database"] = {"status": "error", "message": "Database connection failed"}
         checks["status"] = "unhealthy"
 
     try:
@@ -233,7 +244,8 @@ async def health_check():
         else:
             checks["checks"]["data_freshness"] = {"status": "no_data"}
     except Exception as e:
-        checks["checks"]["data_freshness"] = {"status": "error", "message": str(e)}
+        logger.error("Data freshness check failed: %s", e, exc_info=True)
+        checks["checks"]["data_freshness"] = {"status": "error", "message": "Data freshness check failed"}
 
     checks["checks"]["cache"] = {
         "status": "ok",
@@ -247,10 +259,7 @@ async def health_check():
 
 def _compute_data_range():
     """查询数据库中各数据表的日期范围和记录数"""
-    conn = None
-    try:
-        conn = get_conn()
-
+    with get_conn() as conn:
         tables_info = {}
         table_configs = [
             ("index_etf_daily", "指数ETF日线", True, "trade_date"),
@@ -304,13 +313,9 @@ def _compute_data_range():
                 pass
 
         return tables_info
-    finally:
-        if conn:
-            conn.close()
 
 
 @router.get("/api/data-range")
 async def api_data_range():
     """查询数据库中各数据表的日期范围和记录数（缓存5分钟）"""
-    from src.web.services.cache import _cached_persistent
-    return _cached_persistent("data_range", _compute_data_range, max_age_hours=0.083)
+    return await _async_cached("data_range", _compute_data_range, max_age_hours=0.083)

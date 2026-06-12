@@ -244,12 +244,13 @@ def _compute_preset_ic(pid: str, *,
                 conn.execute(text(
                     "DELETE FROM ic_summary WHERE preset_id = :pid AND forward_days = :h"
                 ), {"pid": pid, "h": h})
+                pd.DataFrame([summary]).to_sql(
+                    "ic_summary", conn, if_exists="append", index=False,
+                    method="multi", chunksize=10000,
+                )
                 conn.commit()
             finally:
                 conn.close()
-
-            db = get_db_manager()
-            db.insert_dataframe(pd.DataFrame([summary]), "ic_summary", if_exists="append")
             total_upserted += 1
 
         h_msg = f"IC preset={pid}, H={h}: done ({len(ic_rows)} IC values)"

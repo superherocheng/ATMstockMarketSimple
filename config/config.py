@@ -15,7 +15,7 @@ from pathlib import Path
 # ============================================================
 #   在这里填入你的 Token（或通过环境变量 TUSHARE_TOKEN 设置）
 # ============================================================
-TUSHARE_TOKEN = os.environ.get("TUSHARE_TOKEN")
+TUSHARE_TOKEN = os.environ.get("TUSHARE_TOKEN", "")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data"

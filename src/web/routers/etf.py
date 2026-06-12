@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from pathlib import Path
 
@@ -15,6 +16,11 @@ from src.core.trading_calendar import now_beijing
 from src.data_fetchers.tushare_fetcher import _apply_etf_adj
 
 logger = logging.getLogger(__name__)
+
+
+async def _async_cached(cache_key, compute_fn, max_age_hours):
+    """Run sync _cached_persistent in a thread to avoid blocking the event loop."""
+    return await asyncio.to_thread(_cached_persistent, cache_key, compute_fn, max_age_hours)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -93,7 +99,7 @@ def _compute_index_etf(ts_code):
 
 @router.get("/api/index-etf/{ts_code}")
 async def api_index_etf(ts_code: str):
-    return _cached_persistent(f"index_etf_{ts_code}", lambda: _compute_index_etf(ts_code), max_age_hours=4)
+    return await _async_cached(f"index_etf_{ts_code}", lambda: _compute_index_etf(ts_code), max_age_hours=4)
 
 
 def _compute_sector_etf_all():
@@ -139,50 +145,49 @@ def _compute_sector_etf_all():
     try:
         from src.core.db_manager_postgresql import get_conn
         from sqlalchemy import text
-        conn = get_conn()
-        row = conn.execute(text(
-            "SELECT MAX(trade_date) FROM factor_daily WHERE preset_id = 'short'"
-        )).fetchone()
-        if row and row[0]:
-            latest_fdate = row[0]
-            frows = conn.execute(text(
-                "SELECT etf_code, quadrant FROM factor_daily "
-                "WHERE preset_id = 'short' AND trade_date = :d",
-            ), {"d": latest_fdate}).fetchall()
-            for fr in frows:
-                factor_quadrants[fr[0]] = int(fr[1])
-            # V4: Load financial quality data for sector display
-            # Primary source: financial_factor table (all 17 ETFs, latest calc_date)
-            try:
-                ffrows = conn.execute(text("""
-                    SELECT f.ts_code, f.f_roe, f.f_pb_pct, f.f_earnings_yoy, f.f_quality
-                    FROM financial_factor f
-                    WHERE f.calc_date = (SELECT MAX(calc_date) FROM financial_factor)
-                """)).fetchall()
-                for ffr in ffrows:
-                    financial_quality[ffr[0]] = {
-                        "z_quality": float(ffr[4]) if ffr[4] else 0,
-                        "f_quality": float(ffr[4]) if ffr[4] else 0,
-                        "f_roe": float(ffr[1]) if ffr[1] else 0,
-                        "f_pb_pct": float(ffr[2]) if ffr[2] else 0,
-                        "f_earnings_yoy": float(ffr[3]) if ffr[3] else 0,
-                    }
-                # Override z_quality from factor_daily (cross-sectionally Z-scored) when available
+        with get_conn() as conn:
+            row = conn.execute(text(
+                "SELECT MAX(trade_date) FROM factor_daily WHERE preset_id = 'short'"
+            )).fetchone()
+            if row and row[0]:
+                latest_fdate = row[0]
+                frows = conn.execute(text(
+                    "SELECT etf_code, quadrant FROM factor_daily "
+                    "WHERE preset_id = 'short' AND trade_date = :d",
+                ), {"d": latest_fdate}).fetchall()
+                for fr in frows:
+                    factor_quadrants[fr[0]] = int(fr[1])
+                # V4: Load financial quality data for sector display
+                # Primary source: financial_factor table (all 17 ETFs, latest calc_date)
                 try:
-                    qrows = conn.execute(text("""
-                        SELECT etf_code, z_quality FROM factor_daily
-                        WHERE preset_id = 'short' AND trade_date = :d AND z_quality IS NOT NULL
-                    """), {"d": latest_fdate}).fetchall()
-                    for qr in qrows:
-                        if qr[0] in financial_quality:
-                            financial_quality[qr[0]]["z_quality"] = float(qr[1]) if qr[1] else 0
-                except Exception:
-                    pass
-            except Exception:
-                pass  # financial_factor table may not exist yet
-        conn.close()
-    except Exception:
-        pass  # Factor data may not exist yet — fallback only
+                    ffrows = conn.execute(text("""
+                        SELECT f.ts_code, f.f_roe, f.f_pb_pct, f.f_earnings_yoy, f.f_quality
+                        FROM financial_factor f
+                        WHERE f.calc_date = (SELECT MAX(calc_date) FROM financial_factor)
+                    """)).fetchall()
+                    for ffr in ffrows:
+                        financial_quality[ffr[0]] = {
+                            "z_quality": float(ffr[4]) if ffr[4] else 0,
+                            "f_quality": float(ffr[4]) if ffr[4] else 0,
+                            "f_roe": float(ffr[1]) if ffr[1] else 0,
+                            "f_pb_pct": float(ffr[2]) if ffr[2] else 0,
+                            "f_earnings_yoy": float(ffr[3]) if ffr[3] else 0,
+                        }
+                    # Override z_quality from factor_daily (cross-sectionally Z-scored) when available
+                    try:
+                        qrows = conn.execute(text("""
+                            SELECT etf_code, z_quality FROM factor_daily
+                            WHERE preset_id = 'short' AND trade_date = :d AND z_quality IS NOT NULL
+                        """), {"d": latest_fdate}).fetchall()
+                        for qr in qrows:
+                            if qr[0] in financial_quality:
+                                financial_quality[qr[0]]["z_quality"] = float(qr[1]) if qr[1] else 0
+                    except Exception as exc:
+                        logger.warning("Failed to load z_quality overrides: %s", exc)
+                except Exception as exc:
+                    logger.warning("Failed to load financial_factor data: %s", exc)
+    except Exception as exc:
+        logger.warning("Failed to load factor quadrant data: %s", exc)
 
     result = []
     for code, name in SECTOR_ETF.items():
@@ -310,12 +315,12 @@ def _compute_signal(kline_df, share_df, window=10, quadrant=None):
 @router.get("/api/sector-etf")
 async def api_sector_etf_all(fields: str = "full"):
     if fields == "metadata":
-        return _cached_persistent(
+        return await _async_cached(
             "sector_etf_metadata",
             lambda: [{"ts_code": code, "name": name} for code, name in SECTOR_ETF.items()],
             max_age_hours=24,
         )
-    return _cached_persistent("sector_etf_all_list", _compute_sector_etf_all, max_age_hours=4)
+    return await _async_cached("sector_etf_all_list", _compute_sector_etf_all, max_age_hours=4)
 
 
 def _compute_sector_etf_one(ts_code):
@@ -345,7 +350,7 @@ def _compute_sector_etf_one(ts_code):
 
 @router.get("/api/sector-etf/{ts_code}")
 async def api_sector_etf_one(ts_code: str):
-    return _cached_persistent(f"sector_etf_{ts_code}", lambda: _compute_sector_etf_one(ts_code), max_age_hours=4)
+    return await _async_cached(f"sector_etf_{ts_code}", lambda: _compute_sector_etf_one(ts_code), max_age_hours=4)
 
 
 def _compute_sector_cards():
@@ -390,7 +395,7 @@ def _compute_sector_cards():
 
 @router.get("/api/sector-cards")
 async def api_sector_cards():
-    return _cached_persistent("sector_cards", _compute_sector_cards, max_age_hours=4)
+    return await _async_cached("sector_cards", _compute_sector_cards, max_age_hours=4)
 
 
 def _compute_share_std(ts_code: str):
@@ -448,7 +453,7 @@ def _compute_share_std(ts_code: str):
 
 @router.get("/api/share-std/{ts_code}")
 async def api_share_std(ts_code: str):
-    return _cached_persistent(
+    return await _async_cached(
         f"share_std_{ts_code}",
         lambda: _compute_share_std(ts_code),
         max_age_hours=4

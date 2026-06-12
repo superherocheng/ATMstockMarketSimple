@@ -12,6 +12,7 @@ import json
 import logging
 import threading
 import time as _time
+from collections import OrderedDict
 
 from config.config import (
     CACHE_MAX_SIZE, CACHE_DEFAULT_TTL,
@@ -96,14 +97,18 @@ def _redis_set(key, value, ttl=None):
 
 
 def _redis_delete(pattern):
-    """删除匹配 pattern* 的所有 Redis 键"""
+    """删除匹配 pattern* 的所有 Redis 键（使用 SCAN 代替 KEYS）"""
     r = _get_redis()
     if r is None:
         return
     try:
-        keys = r.keys(_redis_key(pattern) + "*")
-        if keys:
-            r.delete(*keys)
+        cursor = 0
+        while True:
+            cursor, keys = r.scan(cursor, match=_redis_key(pattern) + "*", count=100)
+            if keys:
+                r.delete(*keys)
+            if cursor == 0:
+                break
     except Exception:
         pass
 
@@ -118,11 +123,10 @@ CACHE_CATEGORIES = {
 
 
 class ThreadSafeCache:
-    """线程安全的内存 LRU 缓存，支持 TTL"""
+    """线程安全的内存 LRU 缓存，支持 TTL（OrderedDict 实现 O(1) 操作）"""
 
     def __init__(self, maxsize: int = 1000, default_ttl: float = None):
-        self._cache = {}
-        self._access_order = []
+        self._cache = OrderedDict()
         self._lock = threading.RLock()
         self._maxsize = maxsize
         self._default_ttl = default_ttl
@@ -135,12 +139,8 @@ class ThreadSafeCache:
             value, expire_at = entry
             if expire_at is not None and _time.time() > expire_at:
                 self._cache.pop(key, None)
-                if key in self._access_order:
-                    self._access_order.remove(key)
                 return None
-            if key in self._access_order:
-                self._access_order.remove(key)
-            self._access_order.append(key)
+            self._cache.move_to_end(key)
             return value
 
     def set(self, key, value, ttl: float = None):
@@ -151,12 +151,11 @@ class ThreadSafeCache:
             elif self._default_ttl is not None:
                 expire_at = _time.time() + self._default_ttl
             if key in self._cache:
-                if key in self._access_order:
-                    self._access_order.remove(key)
+                self._cache.pop(key)
             elif len(self._cache) >= self._maxsize:
                 self._evict_lru()
             self._cache[key] = (value, expire_at)
-            self._access_order.append(key)
+            self._cache.move_to_end(key)
 
     def get_or_set(self, key, func, *args, ttl: float = None, **kwargs):
         with self._lock:
@@ -164,24 +163,20 @@ class ThreadSafeCache:
             if entry is not None:
                 value, expire_at = entry
                 if expire_at is None or _time.time() <= expire_at:
-                    if key in self._access_order:
-                        self._access_order.remove(key)
-                    self._access_order.append(key)
+                    self._cache.move_to_end(key)
                     return value
             result = func(*args, **kwargs)
             self.set(key, result, ttl=ttl)
             return result
 
     def _evict_lru(self):
-        if self._access_order:
-            lru_key = self._access_order.pop(0)
-            self._cache.pop(lru_key, None)
+        if self._cache:
+            self._cache.popitem(last=False)
 
     def invalidate(self, *categories):
         with self._lock:
             if not categories:
                 self._cache.clear()
-                self._access_order.clear()
                 return
             keys_to_delete = set()
             for cat in categories:
@@ -193,8 +188,6 @@ class ThreadSafeCache:
                         keys_to_delete.add(pattern)
             for k in keys_to_delete:
                 self._cache.pop(k, None)
-                if k in self._access_order:
-                    self._access_order.remove(k)
 
     def clear_expired(self):
         with self._lock:
@@ -205,8 +198,6 @@ class ThreadSafeCache:
             ]
             for k in expired_keys:
                 self._cache.pop(k, None)
-                if k in self._access_order:
-                    self._access_order.remove(k)
 
     def __len__(self):
         return len(self._cache)

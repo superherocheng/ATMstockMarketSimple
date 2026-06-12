@@ -9,6 +9,7 @@ ATMstockMarket PostgreSQL 数据库连接管理模块
 """
 import logging
 import os
+import re
 import threading
 import time
 import datetime as dt
@@ -19,7 +20,7 @@ import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine, text, pool
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import SQLAlchemyError, OperationalError
+from sqlalchemy.exc import SQLAlchemyError, OperationalError, ProgrammingError, DataError
 # psycopg2 is used indirectly via SQLAlchemy
 
 
@@ -49,11 +50,8 @@ def _retry_on_disconnect(max_retries: int = 3, base_delay: float = 0.5):
                             f"retrying in {delay:.1f}s: {e}"
                         )
                         time.sleep(delay)
-                        # Force pool reconnection by disposing engine
-                        mgr = PostgreSQLConnectionManager._instance
-                        if mgr and mgr._engine:
-                            mgr._engine.dispose()
-                            logger.info("DB engine pool disposed, will create fresh connections")
+                        # pool_pre_ping=True handles stale connections;
+                        # no need to dispose the entire pool on transient errors.
                     else:
                         logger.error(f"DB operation failed after {max_retries} retries: {e}")
                 except SQLAlchemyError as e:
@@ -135,7 +133,6 @@ class PostgreSQLConnectionManager:
     
     def _execute_with_positional_params(self, conn, sql: str, params: tuple):
         """将位置参数转换为命名参数执行"""
-        import re
         param_names = []
         param_counter = [0]
         
@@ -152,7 +149,7 @@ class PostgreSQLConnectionManager:
     @_retry_on_disconnect()
     def query(self, sql: str, params: Optional[tuple] = None) -> pd.DataFrame:
         """执行查询并返回DataFrame
-        
+
         支持两种参数格式：
         1. 命名参数：使用 :param 格式，传递字典
         2. 位置参数：使用 %s 或 ? 格式，传递元组（自动转换为命名参数）
@@ -166,13 +163,15 @@ class PostgreSQLConnectionManager:
                         return self._query_with_positional_params(conn, sql, params)
                 else:
                     return pd.read_sql_query(text(sql), conn)
-        except Exception as e:
-            logger.error("Query error on sql=%s params=%s: %s", sql[:80], params, e, exc_info=True)
+        except (ProgrammingError, DataError) as e:
+            logger.error("Query error (re-raising) on sql=%s params=%s: %s", sql[:80], params, e, exc_info=True)
+            raise
+        except OperationalError as e:
+            logger.error("Query operational error on sql=%s params=%s: %s", sql[:80], params, e, exc_info=True)
             return pd.DataFrame()
     
     def _query_with_positional_params(self, conn, sql: str, params: tuple) -> pd.DataFrame:
         """将位置参数转换为命名参数查询"""
-        import re
         param_names = []
         param_counter = [0]
         
@@ -208,18 +207,18 @@ class PostgreSQLConnectionManager:
             logger.error("Insert error into %s: %s", table_name, e, exc_info=True)
             return 0
     
-    def upsert_dataframe(self, df: pd.DataFrame, table_name: str, 
-                        primary_key: List[str]) -> int:
+    def upsert_dataframe(self, df: pd.DataFrame, table_name: str,
+                        primary_key: List[str], chunk_size: int = 1000) -> int:
         """使用UPSERT语义插入DataFrame（PostgreSQL ON CONFLICT）"""
         if df is None or len(df) == 0:
             return 0
-        
+
         try:
             columns = list(df.columns)
             columns_str = ", ".join([f'"{col}"' for col in columns])
             placeholders = ", ".join([f":{col}" for col in columns])
             pk_constraint = ", ".join([f'"{pk}"' for pk in primary_key])
-            
+
             update_cols = [col for col in columns if col not in primary_key]
             if update_cols:
                 update_str = ", ".join([f'"{col}" = EXCLUDED."{col}"' for col in update_cols])
@@ -236,13 +235,17 @@ class PostgreSQLConnectionManager:
                     ON CONFLICT ({pk_constraint})
                     DO NOTHING
                 """
-            
-            with self.get_connection() as conn:
-                data = df.to_dict('records')
-                conn.execute(text(sql), data)
-                conn.commit()
-            
-            return len(df)
+
+            total = 0
+            data = df.to_dict('records')
+            for i in range(0, len(data), chunk_size):
+                chunk = data[i:i + chunk_size]
+                with self.get_connection() as conn:
+                    conn.execute(text(sql), chunk)
+                    conn.commit()
+                total += len(chunk)
+
+            return total
         except Exception as e:
             logger.error("Upsert error into %s: %s", table_name, e, exc_info=True)
             return 0
@@ -250,7 +253,7 @@ class PostgreSQLConnectionManager:
     def execute_batch(self, operations: List[tuple]) -> int:
         """批量执行SQL操作（事务性）"""
         count = 0
-        
+
         try:
             with self.get_connection() as conn:
                 for sql, params in operations:
@@ -262,8 +265,8 @@ class PostgreSQLConnectionManager:
                 conn.commit()
             return count
         except Exception as e:
-            logger.error("Batch execution error (committed %d ops): %s", count, e, exc_info=True)
-            return count
+            logger.error("Batch execution error (%d ops attempted, none committed): %s", count, e, exc_info=True)
+            return 0
     
     def close(self):
         """关闭连接池并重置单例状态"""

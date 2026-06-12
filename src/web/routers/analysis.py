@@ -1,4 +1,5 @@
 """FastAPI router for the analysis module."""
+import asyncio
 import logging
 from pathlib import Path
 
@@ -16,6 +17,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 router = APIRouter()
+
+
+async def _async_cached(cache_key, compute_fn, max_age_hours):
+    """Run sync _cached_persistent in a thread to avoid blocking the event loop."""
+    return await asyncio.to_thread(_cached_persistent, cache_key, compute_fn, max_age_hours)
 
 
 @router.get("/analysis", response_class=HTMLResponse)
@@ -40,7 +46,7 @@ async def api_presets():
 
 @router.get("/api/analysis/factor-distribution")
 async def api_factor_distribution(preset_id: str = "optimized"):
-    return _cached_persistent(
+    return await _async_cached(
         f"analysis_factor_dist_{preset_id}",
         lambda: chart_builder.build_factor_distribution(preset_id),
         max_age_hours=4,
@@ -49,7 +55,7 @@ async def api_factor_distribution(preset_id: str = "optimized"):
 
 @router.get("/api/analysis/ic-series")
 async def api_ic_series(preset_id: str = "optimized"):
-    return _cached_persistent(
+    return await _async_cached(
         f"analysis_ic_series_{preset_id}",
         lambda: chart_builder.build_ic_series(preset_id),
         max_age_hours=4,
@@ -58,7 +64,7 @@ async def api_ic_series(preset_id: str = "optimized"):
 
 @router.get("/api/analysis/quadrant-heatmap")
 async def api_quadrant_heatmap(preset_id: str = "optimized"):
-    return _cached_persistent(
+    return await _async_cached(
         f"analysis_qheatmap_{preset_id}",
         lambda: chart_builder.build_quadrant_heatmap(preset_id),
         max_age_hours=4,
@@ -67,7 +73,7 @@ async def api_quadrant_heatmap(preset_id: str = "optimized"):
 
 @router.get("/api/analysis/group-returns")
 async def api_group_returns(preset_id: str = "optimized"):
-    return _cached_persistent(
+    return await _async_cached(
         f"analysis_group_ret_{preset_id}",
         lambda: chart_builder.build_group_returns(preset_id),
         max_age_hours=4,
@@ -76,7 +82,7 @@ async def api_group_returns(preset_id: str = "optimized"):
 
 @router.get("/api/analysis/rolling-icir")
 async def api_rolling_icir(preset_id: str = "optimized", window: int = 60):
-    return _cached_persistent(
+    return await _async_cached(
         f"analysis_rolling_icir_{preset_id}_{window}",
         lambda: chart_builder.build_rolling_icir(preset_id, window),
         max_age_hours=4,
@@ -86,6 +92,11 @@ async def api_rolling_icir(preset_id: str = "optimized", window: int = 60):
 @router.get("/api/analysis/ic-summary-all")
 async def api_ic_summary_all():
     """Return IC summary for all presets for the homepage card."""
+    return await asyncio.to_thread(_ic_summary_all_sync)
+
+
+def _ic_summary_all_sync():
+    """Sync implementation of IC summary, run in a thread."""
     from sqlalchemy import text
     from src.core.db_manager_postgresql import get_conn
 
@@ -129,7 +140,7 @@ async def api_ic_summary_all():
 
 @router.get("/api/analysis/summary")
 async def api_summary(preset_id: str = "optimized"):
-    return _cached_persistent(
+    return await _async_cached(
         f"analysis_summary_{preset_id}",
         lambda: chart_builder.build_summary(preset_id),
         max_age_hours=4,
@@ -138,6 +149,11 @@ async def api_summary(preset_id: str = "optimized"):
 
 @router.get("/api/investment-recommendation")
 async def api_investment_recommendation(preset_id: str = "optimized"):
+    return await asyncio.to_thread(_investment_recommendation_sync, preset_id)
+
+
+def _investment_recommendation_sync(preset_id):
+    """Sync implementation of investment recommendation, run in a thread."""
     result = _cached_persistent(
         f"investment_rec_v2_{preset_id}",
         lambda: recommendation_engine.build_investment_recommendation(preset_id),
@@ -158,7 +174,7 @@ async def api_investment_recommendation(preset_id: str = "optimized"):
                     "请先运行财务数据提取或触发 recompute-financial API。"
                 )
         except Exception as exc:
-            pass
+            logger.warning("Failed to load financial factors: %s", exc)
 
     return result
 
@@ -166,7 +182,7 @@ async def api_investment_recommendation(preset_id: str = "optimized"):
 @router.get("/api/market-timing")
 async def api_market_timing():
     from src.analysis.market_timing import compute_market_timing
-    return _cached_persistent(
+    return await _async_cached(
         "market_timing",
         compute_market_timing,
         max_age_hours=4,
@@ -176,6 +192,11 @@ async def api_market_timing():
 @router.get("/api/analysis/financial-factors")
 async def api_financial_factors():
     """Return latest financial quality factor data for all ETFs."""
+    return await asyncio.to_thread(_financial_factors_sync)
+
+
+def _financial_factors_sync():
+    """Sync implementation of financial factors fetch, run in a thread."""
     try:
         from src.analysis.financial_factor import load_latest_financial_factors
         factors = load_latest_financial_factors()

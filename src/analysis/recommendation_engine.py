@@ -19,6 +19,9 @@ from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 
+# Module-level cache for schema column detection (avoids 4 queries per call)
+_SCHEMA_CACHE = None
+
 
 def _get_conn():
     from src.core.db_manager_postgresql import get_conn
@@ -28,6 +31,31 @@ def _get_conn():
 def _safe_dict(d):
     from src.core.db_manager_postgresql import safe_dict
     return safe_dict(d)
+
+
+def _detect_factor_columns(conn):
+    """Check which optional columns exist in factor_daily (cached after first call)."""
+    global _SCHEMA_CACHE
+    if _SCHEMA_CACHE is not None:
+        return _SCHEMA_CACHE
+    has_rsrs = conn.execute(text(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_name='factor_daily' AND column_name='rsrs'"
+    )).fetchone() is not None
+    has_quality = conn.execute(text(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_name='factor_daily' AND column_name='z_quality'"
+    )).fetchone() is not None
+    has_efficiency = conn.execute(text(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_name='factor_daily' AND column_name='z_efficiency'"
+    )).fetchone() is not None
+    has_rsi = conn.execute(text(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_name='factor_daily' AND column_name='z_rsi_momentum'"
+    )).fetchone() is not None
+    _SCHEMA_CACHE = (has_rsrs, has_quality, has_efficiency, has_rsi)
+    return _SCHEMA_CACHE
 
 
 def build_investment_recommendation(preset_id: str = "short",
@@ -60,28 +88,8 @@ def build_investment_recommendation(preset_id: str = "short",
         latest_date = date_row[0]
 
         # ── 2. Get all ETFs' latest factor values ──
-        # Check if rsrs columns exist (may not if migration hasn't run)
-        has_rsrs = conn.execute(text(
-            "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name='factor_daily' AND column_name='rsrs'"
-        )).fetchone() is not None
-
-        # Check if quality columns exist (V4)
-        has_quality = conn.execute(text(
-            "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name='factor_daily' AND column_name='z_quality'"
-        )).fetchone() is not None
-
-        # Check if efficiency columns exist (V5)
-        has_efficiency = conn.execute(text(
-            "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name='factor_daily' AND column_name='z_efficiency'"
-        )).fetchone() is not None
-
-        has_rsi = conn.execute(text(
-            "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name='factor_daily' AND column_name='z_rsi_momentum'"
-        )).fetchone() is not None
+        # Check which optional columns exist (cached after first call)
+        has_rsrs, has_quality, has_efficiency, has_rsi = _detect_factor_columns(conn)
 
         if has_rsrs and has_quality and has_efficiency and has_rsi:
             factor_rows = conn.execute(text("""
@@ -189,6 +197,7 @@ def build_investment_recommendation(preset_id: str = "short",
             FROM sector_etf_daily
             WHERE ts_code IN (SELECT etf_code FROM factor_daily
                               WHERE preset_id = :pid AND trade_date = :d)
+              AND trade_date >= (SELECT MAX(trade_date) - INTERVAL '180 days' FROM sector_etf_daily)
             ORDER BY ts_code, trade_date
         """), {"pid": preset_id, "d": latest_date}).fetchall()
 
@@ -201,6 +210,27 @@ def build_investment_recommendation(preset_id: str = "short",
     # ── Build data structures ──
     sector_names = dict(SECTOR_ETF)
 
+    def _safe_float(val):
+        """Convert DB value to float, returning None for missing/NaN instead of 0."""
+        if val is None or val is pd.NA:
+            return None
+        try:
+            f = float(val)
+            if pd.isna(f):
+                return None
+            return f
+        except (ValueError, TypeError):
+            return None
+
+    def _safe_int(val):
+        """Convert DB value to int, returning None for missing."""
+        if val is None or val is pd.NA:
+            return None
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            return None
+
     # ETF factor data
     etf_data = {}
     for r in factor_rows:
@@ -208,13 +238,16 @@ def build_investment_recommendation(preset_id: str = "short",
         entry = {
             "code": code,
             "name": sector_names.get(code, code),
-            "z_flow": float(r[1]) if r[1] else 0,
-            "z_mom": float(r[2]) if r[2] else 0,
-            "factor": float(r[3]) if r[3] else 0,
-            "quadrant": int(r[4]) if r[4] else 0,
-            "flow_raw": float(r[5]) if r[5] else 0,
-            "mom_raw": float(r[6]) if r[6] else 0,
+            "z_flow": _safe_float(r[1]) or 0,
+            "z_mom": _safe_float(r[2]) or 0,
+            "factor": _safe_float(r[3]) or 0,
+            "quadrant": _safe_int(r[4]) or 0,
+            "flow_raw": _safe_float(r[5]) or 0,
+            "mom_raw": _safe_float(r[6]) or 0,
         }
+        # Track which critical factors are missing (None) for confidence penalty
+        entry["_missing_factors"] = []
+
         # V4: financial quality factor columns
         entry["z_quality"] = 0.0
         entry["f_quality_raw"] = 0.0
@@ -226,30 +259,40 @@ def build_investment_recommendation(preset_id: str = "short",
         entry["rsi_momentum_raw"] = 0.0
 
         if has_rsrs and has_quality and has_efficiency and has_rsi and len(r) >= 15:
-            entry["z_rsrs"] = float(r[8]) if r[8] else 0
-            entry["f_quality_raw"] = float(r[9]) if r[9] else 0
-            entry["z_quality"] = float(r[10]) if r[10] else 0
-            entry["efficiency_raw"] = float(r[11]) if r[11] else 0
-            entry["z_efficiency"] = float(r[12]) if r[12] else 0
-            entry["rsi_momentum_raw"] = float(r[13]) if r[13] else 0
-            entry["z_rsi_momentum"] = float(r[14]) if r[14] else 0
+            entry["z_rsrs"] = _safe_float(r[8]) or 0
+            entry["f_quality_raw"] = _safe_float(r[9]) or 0
+            entry["z_quality"] = _safe_float(r[10]) or 0
+            entry["efficiency_raw"] = _safe_float(r[11]) or 0
+            entry["z_efficiency"] = _safe_float(r[12]) or 0
+            entry["rsi_momentum_raw"] = _safe_float(r[13]) or 0
+            entry["z_rsi_momentum"] = _safe_float(r[14]) or 0
         elif has_rsrs and has_quality and has_efficiency and len(r) >= 13:
-            entry["z_rsrs"] = float(r[8]) if r[8] else 0
-            entry["f_quality_raw"] = float(r[9]) if r[9] else 0
-            entry["z_quality"] = float(r[10]) if r[10] else 0
-            entry["efficiency_raw"] = float(r[11]) if r[11] else 0
-            entry["z_efficiency"] = float(r[12]) if r[12] else 0
+            entry["z_rsrs"] = _safe_float(r[8]) or 0
+            entry["f_quality_raw"] = _safe_float(r[9]) or 0
+            entry["z_quality"] = _safe_float(r[10]) or 0
+            entry["efficiency_raw"] = _safe_float(r[11]) or 0
+            entry["z_efficiency"] = _safe_float(r[12]) or 0
         elif has_rsrs and has_quality and len(r) >= 11:
-            entry["z_rsrs"] = float(r[8]) if r[8] else 0
-            entry["f_quality_raw"] = float(r[9]) if r[9] else 0
-            entry["z_quality"] = float(r[10]) if r[10] else 0
+            entry["z_rsrs"] = _safe_float(r[8]) or 0
+            entry["f_quality_raw"] = _safe_float(r[9]) or 0
+            entry["z_quality"] = _safe_float(r[10]) or 0
         elif has_rsrs and len(r) >= 9:
-            entry["z_rsrs"] = float(r[8]) if r[8] else 0
+            entry["z_rsrs"] = _safe_float(r[8]) or 0
         elif has_quality and len(r) >= 9:
-            entry["z_quality"] = float(r[8]) if r[8] else 0
-            entry["f_quality_raw"] = float(r[7]) if r[7] else 0
+            entry["z_quality"] = _safe_float(r[8]) or 0
+            entry["f_quality_raw"] = _safe_float(r[7]) or 0
         else:
             entry["z_rsrs"] = 0
+
+        # Data completeness check: flag missing critical factors
+        for fname, idx in [("z_flow", 1), ("z_mom", 2), ("factor", 3)]:
+            if _safe_float(r[idx]) is None:
+                entry["_missing_factors"].append(fname)
+        if has_rsrs and len(r) >= 9 and _safe_float(r[8]) is None:
+            entry["_missing_factors"].append("z_rsrs")
+        if has_quality and _safe_float(entry.get("z_quality")) is None:
+            entry["_missing_factors"].append("z_quality")
+
         etf_data[code] = entry
 
     # IC stats
@@ -469,16 +512,40 @@ def build_investment_recommendation(preset_id: str = "short",
     if total_final_score <= 0:
         return {"error": "No valid factor signals", "recommendations": []}
 
-    # Per-ETF cap: 25% absolute
+    # Per-ETF cap: 25% absolute, with redistribution of capped excess
     max_single = 0.25
+
+    # First pass: compute raw weights and identify capped ETFs
+    raw_weights = []
+    for c, score in top:
+        share = score / total_final_score
+        raw_weights.append(total_budget * share)
+
+    # Apply cap and collect excess
+    capped_weights = []
+    excess = 0.0
+    capped_indices = set()
+    for i, w in enumerate(raw_weights):
+        if w > max_single:
+            excess += w - max_single
+            capped_weights.append(max_single)
+            capped_indices.add(i)
+        else:
+            capped_weights.append(w)
+
+    # Redistribute excess proportionally among uncapped ETFs
+    if excess > 0 and len(capped_indices) < len(capped_weights):
+        uncapped_total = sum(capped_weights[i] for i in range(len(capped_weights)) if i not in capped_indices)
+        if uncapped_total > 0:
+            for i in range(len(capped_weights)):
+                if i not in capped_indices:
+                    redistribution = excess * (capped_weights[i] / uncapped_total)
+                    capped_weights[i] = min(capped_weights[i] + redistribution, max_single)
 
     recommendations = []
     allocated = 0.0
-    for c, score in top:
-        share = score / total_final_score
-        raw_weight = total_budget * share
-
-        weight = min(raw_weight, max_single)
+    for idx, (c, score) in enumerate(top):
+        weight = capped_weights[idx]
         allocated += weight
 
         # Strategy label
@@ -511,7 +578,7 @@ def build_investment_recommendation(preset_id: str = "short",
             "quadrant": c["quadrant"],
             "holding_days": f"{holding} trading days",
             "position_ratio": f"{round(weight * 100, 1)}%",
-            "confidence": "High" if c["quadrant"] == 1 else "Mid",
+            "confidence": ("High" if c["quadrant"] == 1 else "Mid") if not c.get("_missing_factors") else "Low",
             "z_quality": round(c["z_quality"], 4),
             "f_quality_raw": round(c["f_quality_raw"], 4),
             "z_efficiency": round(c["z_efficiency"], 4),
@@ -630,7 +697,7 @@ def build_investment_recommendation(preset_id: str = "short",
     holding_period = f"{preset['forward_periods'][0]}-day medium-term holding"
     strategy_desc = (
         f"{preset['description']}. "
-        f"36-ETF pool: ICIR=0.91, annualized excess 22.5% (after 0.10% costs), turnover 76%. "
+        f"历史回测参考: 36-ETF pool: ICIR=0.91, annualized excess 22.5% (after 0.10% costs), turnover 76%. "
         f"Market signal: {timing.get('regime_cn','Neutral')} (timing adjustment {timing_adj*100:+.0f}%)."
     )
 

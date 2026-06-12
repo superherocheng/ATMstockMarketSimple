@@ -14,7 +14,7 @@
     <script defer src="/static/js/vendor.js"></script>
     <script defer src="/static/js/app.js"></script>
     <script>
-        document.documentElement.dataset.theme = 'light';
+        (function(){var t=localStorage.getItem('atm-theme');document.documentElement.dataset.theme=t||'light';})();
     </script>
     <style>
         @media (max-width: 640px) {
@@ -99,6 +99,7 @@
             </nav>
         </div>
         <div class="sidebar-nav-footer">
+            <p style="font-size:var(--text-xs);color:var(--c-text-tertiary);line-height:1.3;margin-bottom:8px;">Educational purposes only, not investment advice</p>
             <p>Display</p>
             <div style="display:flex;gap:6px;margin-top:6px;">
                 <button id="theme-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggle()" title="Toggle theme" type="button">
@@ -204,9 +205,6 @@
     </main>
     </div><!-- /page-layout -->
 
-    <footer>
-        <p>ATMstockMarket — Data Source: Tushare / AKShare | For educational purposes only, not investment advice</p>
-    </footer>
 
     <div class="bottom-nav" role="navigation" aria-label="Main navigation">
       <a href="/" class="bottom-nav-item" aria-label="Home">
@@ -440,7 +438,7 @@
             var lastClose = kline.length > 0 ? parseFloat(kline[kline.length-1].close || 0) : 0;
             var lastPct = kline.length > 0 ? parseFloat(kline[kline.length-1].pct_chg || 0) : 0;
             var pctColor = lastPct >= 0 ? 'var(--c-up)' : 'var(--c-down)';
-            return '<div class="' + cardClass + '" onclick="selectSector(\'' + s.ts_code + '\');return false;" data-code="' + s.ts_code + '">' +
+            return '<div class="' + cardClass + '" role="button" tabindex="0" onclick="selectSector(\'' + s.ts_code + '\');return false;" onkeydown="if(event.key===\'Enter\'){selectSector(\'' + s.ts_code + '\');return false;}" data-code="' + s.ts_code + '">' +
                 '<div class="font-semibold text-sm truncate">' + s.name + '</div>' +
                 '<div class="flex items-center gap-2 mt-1">' +
                 '<span class="font-mono text-xs" style="color:' + pctColor + ';">' +
@@ -534,16 +532,20 @@
     var shareCompareChart = null;
     var detailChart = null;
     var shareDetailChart = null;
+    var loadSectorsGen = 0;
+    var showDetailGen = 0;
     async function loadSectors() {
+        var gen = ++loadSectorsGen;
         try {
             var resp = await fetch('/api/sector-etf');
+            if (gen !== loadSectorsGen) return;
             allSectors = await resp.json();
             // Filter out sectors with no kline data
             allSectors = allSectors.filter(function(s) {
                 return s.kline && s.kline.length > 0;
             });
             try { await ATMChart.load(); } catch(e) { console.warn('ECharts load failed:', e); }
-            // Wrap chart renders in try-catch — requestAnimationFrame
+            if (gen !== loadSectorsGen) return; // stale request
             // runs outside the outer try-catch scope, so any throw here
             // would trigger window.onerror and show the ⚠️ warning banner.
             requestAnimationFrame(function() {
@@ -591,6 +593,7 @@
     }
 
     function showDetail(sector) {
+        var gen = ++showDetailGen;
         var section = document.getElementById('detail-section');
         section.classList.remove('hidden');
         document.getElementById('detail-title').textContent = sector.name + ' K-Line Trend';
@@ -601,7 +604,9 @@
         el.innerHTML = '';
         if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
         requestAnimationFrame(function() {
+        if (gen !== showDetailGen) return;
         detailChart = echarts.init(el);
+        if (ATMChart._instances) ATMChart._instances.set(el, detailChart);
         var kline = sector.kline || [];
         if (kline.length === 0) return;
 
@@ -675,6 +680,7 @@
         if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
         requestAnimationFrame(function() {
         shareDetailChart = echarts.init(el);
+        if (ATMChart._instances) ATMChart._instances.set(el, shareDetailChart);
         var th = ATM.getChartTheme();
 
         var shares = (sector.shares || []).slice();
@@ -814,6 +820,7 @@
         if (sectors.length > 6) sectors = sectors.slice(0, 3).concat(sectors.slice(-3));
         requestAnimationFrame(function() {
         compareChart = echarts.init(el);
+        if (ATMChart._instances) ATMChart._instances.set(el, compareChart);
         var th = ATM.getChartTheme();
 
         var with20d = sectors.map(function(s) {
@@ -872,6 +879,7 @@
         if (sectors.length > 6) sectors = sectors.slice(0, 3).concat(sectors.slice(-3));
         requestAnimationFrame(function() {
         shareCompareChart = echarts.init(el);
+        if (ATMChart._instances) ATMChart._instances.set(el, shareCompareChart);
         var th = ATM.getChartTheme();
 
         // Build category dates from the first sector with data (last 6 trading days)

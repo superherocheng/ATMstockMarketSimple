@@ -1,4 +1,3 @@
-import asyncio
 import os
 import sys
 import logging
@@ -132,7 +131,7 @@ def _run_fetch(task_type):
             with _fetch_lock:
                 _fetch_status["current_step"] = "更新ETF份额..."
             try:
-                share_result = asyncio.run(api_etf_share_update())
+                share_result = _do_etf_share_update()
                 if isinstance(share_result, dict):
                     if share_result.get("status") == "updated":
                         _add_log(f"[OK] ETF份额更新成功: {share_result.get('message', '')}")
@@ -165,7 +164,6 @@ def _run_fetch(task_type):
                     deleted = cleanup_conn.execute(text(
                         "DELETE FROM factor_daily WHERE trade_date >= :d"
                     ), {"d": share_max})
-                    cleanup_conn.commit()
                 # 同时清理 IC 数据（仅清理同日期范围的，IC 分析会重新计算）
                 if share_max:
                     ic_deleted = cleanup_conn.execute(text(
@@ -318,7 +316,7 @@ async def api_fetch_status():
 async def api_etf_share_status():
     """
     检查ETF份额数据状态
-    
+
     返回：
     - latest_trading_date: 最新交易日
     - is_up_to_date: 是否已更新到最新
@@ -326,17 +324,22 @@ async def api_etf_share_status():
     - sector_etf: 行业ETF份额状态列表
     - summary: 汇总信息
     """
+    return await asyncio.to_thread(_etf_share_status_sync)
+
+
+def _etf_share_status_sync():
+    """Sync implementation of ETF share status check, run in a thread."""
     try:
         latest_td = get_latest_trading_date()
         if not latest_td:
             return JSONResponse({"error": "无法确定最新交易日"}, status_code=500)
-        
+
         conn = get_conn()
-        
+
         all_etf_codes = list(INDEX_ETF.keys()) + list(SECTOR_ETF.keys())
         placeholders = ",".join([f":p{i}" for i in range(len(all_etf_codes))])
         params = {f"p{i}": c for i, c in enumerate(all_etf_codes)}
-        
+
         sql = f"""
             SELECT ts_code, MAX(trade_date) as max_date, COUNT(*) as cnt
             FROM etf_share
@@ -349,10 +352,10 @@ async def api_etf_share_status():
             max_date_str = _normalise_date(row[1])
             db_dates[row[0]] = {"max_date": max_date_str, "count": row[2]}
         conn.close()
-        
+
         index_etf_status = []
         sector_etf_status = []
-        
+
         for code, name in INDEX_ETF.items():
             info = db_dates.get(code, {"max_date": None, "count": 0})
             is_fresh = info["max_date"] is not None and info["max_date"] >= latest_td
@@ -364,7 +367,7 @@ async def api_etf_share_status():
                 "is_fresh": is_fresh,
                 "type": "宽基"
             })
-        
+
         for code, name in SECTOR_ETF.items():
             info = db_dates.get(code, {"max_date": None, "count": 0})
             is_fresh = info["max_date"] is not None and info["max_date"] >= latest_td
@@ -376,12 +379,12 @@ async def api_etf_share_status():
                 "is_fresh": is_fresh,
                 "type": "行业"
             })
-        
+
         all_status = index_etf_status + sector_etf_status
         fresh_count = sum(1 for s in all_status if s["is_fresh"])
         total_count = len(all_status)
         not_fresh_list = [s for s in all_status if not s["is_fresh"]]
-        
+
         return {
             "latest_trading_date": latest_td,
             "is_up_to_date": fresh_count == total_count,
@@ -425,33 +428,28 @@ def _fetch_etf_share_for_code(pro, ts_code, start_date):
     return None
 
 
-@router.post("/api/etf-share/update")
-async def api_etf_share_update():
+def _do_etf_share_update():
     """
-    更新ETF份额数据
-    
-    逻辑：
-    1. 检查所有ETF份额是否已是最新
-    2. 如果已是最新，返回状态
-    3. 如果不是，尝试从Tushare获取新数据
-    4. 如果数据不足，返回哪些ETF数据还没更新
-    5. 如果数据足够，更新数据库并返回完成
+    ETF份额更新的同步核心逻辑（无await，纯同步）。
+
+    被 _run_fetch（后台线程）直接调用，
+    也被 api_etf_share_update（FastAPI路由）委托调用。
     """
     try:
         latest_td = get_latest_trading_date()
         if not latest_td:
             return JSONResponse({"error": "无法确定最新交易日"}, status_code=500)
-        
+
         acceptable_min_td = _get_previous_trading_date(latest_td)
-        
+
         conn = get_conn()
-        
+
         all_etf = {**INDEX_ETF, **SECTOR_ETF}
         all_codes = list(all_etf.keys())
-        
+
         placeholders = ",".join([f":p{i}" for i in range(len(all_codes))])
         params = {f"p{i}": c for i, c in enumerate(all_codes)}
-        
+
         sql = f"""
             SELECT ts_code, MAX(trade_date) as max_date
             FROM etf_share
@@ -462,13 +460,13 @@ async def api_etf_share_update():
         db_dates = {}
         for row in results:
             db_dates[row[0]] = _normalise_date(row[1])
-        
+
         need_update = []
         for code in all_codes:
             max_date = db_dates.get(code)
             if not max_date or max_date < latest_td:
                 need_update.append(code)
-        
+
         if not need_update:
             conn.close()
             return {
@@ -479,21 +477,21 @@ async def api_etf_share_update():
                 "index_etf_count": len(INDEX_ETF),
                 "sector_etf_count": len(SECTOR_ETF)
             }
-        
+
         pro = get_pro()
         default_start = (datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=365)).strftime("%Y%m%d")
-        
+
         fetched_data = {}
         not_ready = []
-        
+
         for code in need_update:
             name = all_etf.get(code, code)
             existing_max = db_dates.get(code)
             start_date = existing_max or default_start
-            
+
             df = _fetch_etf_share_for_code(pro, code, start_date)
             time.sleep(0.35)
-            
+
             if df is not None and len(df) > 0:
                 max_date = df["trade_date"].max()
                 if max_date >= acceptable_min_td:
@@ -512,7 +510,7 @@ async def api_etf_share_update():
                     "max_date": existing_max,
                     "required_min": acceptable_min_td
                 })
-        
+
         if not_ready:
             conn.close()
             return {
@@ -524,22 +522,22 @@ async def api_etf_share_update():
                 "ready_count": len(fetched_data),
                 "total_need_update": len(need_update)
             }
-        
+
         db = get_db_manager()
         updated_count = 0
         update_details = []
-        
+
         for code, df in fetched_data.items():
             name = all_etf.get(code, code)
             existing_max = db_dates.get(code)
-            
+
             if existing_max:
                 n = db.upsert_dataframe(df, "etf_share", ["ts_code", "trade_date"])
             else:
                 conn.execute(text("DELETE FROM etf_share WHERE ts_code=:p0"), {"p0": code})
                 conn.commit()
                 n = db.insert_dataframe(df, "etf_share", if_exists='append')
-            
+
             updated_count += 1
             update_details.append({
                 "code": code,
@@ -547,10 +545,10 @@ async def api_etf_share_update():
                 "rows": n,
                 "new_max_date": df["trade_date"].max()
             })
-        
+
         conn.close()
         _cache_invalidate("etf", "overview")
-        
+
         return {
             "status": "updated",
             "message": f"成功更新 {updated_count} 只ETF份额数据",
@@ -558,10 +556,25 @@ async def api_etf_share_update():
             "updated_count": updated_count,
             "update_details": update_details
         }
-        
+
     except Exception as e:
         logger.error(f"更新ETF份额失败: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@router.post("/api/etf-share/update")
+async def api_etf_share_update():
+    """
+    更新ETF份额数据
+
+    逻辑：
+    1. 检查所有ETF份额是否已是最新
+    2. 如果已是最新，返回状态
+    3. 如果不是，尝试从Tushare获取新数据
+    4. 如果数据不足，返回哪些ETF数据还没更新
+    5. 如果数据足够，更新数据库并返回完成
+    """
+    return await asyncio.to_thread(_do_etf_share_update)
 
 
 @router.post("/api/cache/invalidate")

@@ -14,6 +14,7 @@ A cross-sectional dispersion metric (std of all sector ETF daily returns)
 is used to discount the composite score when the market is divergent.
 """
 import logging
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -81,6 +82,23 @@ def _compute_index_signals(ts_code: str, conn) -> dict:
     dates = [str(r[0]) for r in price_rows]
     closes = np.array([float(r[1]) for r in price_rows])
     latest_date = dates[-1]
+
+    # Staleness warning: alert if data is more than 5 trading days behind
+    try:
+        from datetime import timedelta
+        from src.core.trading_calendar import get_latest_trading_date
+        latest_td = get_latest_trading_date()
+        if latest_td:
+            # Compare as YYYYMMDD strings
+            latest_date_dt = datetime.strptime(latest_date.replace("-", ""), "%Y%m%d").date() if "-" in latest_date else datetime.strptime(latest_date, "%Y%m%d").date()
+            latest_td_dt = datetime.strptime(latest_td, "%Y%m%d").date()
+            if (latest_td_dt - latest_date_dt).days > 5:
+                logger.warning(
+                    "Market timing data stale: latest=%s, expected>=%s",
+                    latest_date, latest_td
+                )
+    except Exception:
+        pass  # staleness check is non-critical, don't block computation
 
     share_map = {}
     for r in share_rows:
