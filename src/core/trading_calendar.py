@@ -12,8 +12,11 @@ ATMstockMarket 交易日历工具
 用法：
     python trading_calendar.py          # 查看数据库状态报告
 """
+import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
@@ -124,18 +127,23 @@ def get_latest_trading_date():
         if cal_dates:
             cal_latest = cal_dates[-1]
             candidates.append(cal_latest)
-    except Exception:
+            logger.debug(f"Calendar source: cal_latest={cal_latest}, total_dates={len(cal_dates)}")
+    except Exception as e:
+        logger.warning(f"Tushare calendar API failed: {e}")
         pass
 
-    # ── 来源 2：DB stock_daily 实际数据 ──
-    db_max = get_db_max_date("stock_daily")
-    if db_max and db_max <= today_str:
-        candidates.append(db_max)
+    # ── 来源 2：DB 实际数据（多个表取最新，避免单表过期） ──
+    for table in ("stock_daily", "sector_etf_daily", "index_etf_daily"):
+        db_max = get_db_max_date(table)
+        if db_max and db_max <= today_str:
+            candidates.append(db_max)
 
     if not candidates:
+        logger.warning("No candidates for latest trading date")
         return None
 
     latest = max(candidates)
+    logger.debug(f"Latest trading date candidates: {candidates}, selected: {latest}")
 
     # ── 来源 3：当日历明显过时（>3 天）且今天为工作日时，推断今天 ──
     if cal_latest:
@@ -150,16 +158,14 @@ def get_latest_trading_date():
 
     # ── 市场未收盘 → 排除今天 ──
     if latest == today_str and now_bj.hour < _DATA_AVAILABLE_HOUR_BJ:
-        # 回退到之前最近的已知交易日
-        candidates_minus_today = [c for c in candidates if c < today_str]
-        if candidates_minus_today:
-            latest = max(candidates_minus_today)
-        elif cal_dates:
-            # cal_dates 中有完整日历，取今天之前的最后一个交易日
+        # 优先使用日历取前一个交易日，其次用 DB 候选日期
+        prev_trading = None
+        if cal_dates:
             prev_from_cal = [d for d in cal_dates if d < today_str]
-            latest = max(prev_from_cal) if prev_from_cal else None
-        else:
-            latest = None
+            prev_trading = max(prev_from_cal) if prev_from_cal else None
+        candidates_minus_today = [c for c in candidates if c < today_str]
+        db_fallback = max(candidates_minus_today) if candidates_minus_today else None
+        latest = prev_trading or db_fallback
 
     _latest_td_cache = latest
     _latest_td_cache_ts = now_ts

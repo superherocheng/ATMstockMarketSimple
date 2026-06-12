@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 import logging
@@ -131,7 +132,7 @@ def _run_fetch(task_type):
             with _fetch_lock:
                 _fetch_status["current_step"] = "更新ETF份额..."
             try:
-                share_result = api_etf_share_update()
+                share_result = asyncio.run(api_etf_share_update())
                 if isinstance(share_result, dict):
                     if share_result.get("status") == "updated":
                         _add_log(f"[OK] ETF份额更新成功: {share_result.get('message', '')}")

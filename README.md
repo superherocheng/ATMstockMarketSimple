@@ -388,6 +388,23 @@ Alembic Migration 008（`008_convert_trade_date_to_date.py`）将 `trade_date` �
 
 ---
 
+## 📋 v21.3.0 更新日志
+
+### 🐛 修复：交易日历多表回退 + 异步调用修复
+
+| 模块 | 改动 |
+|------|------|
+| **`trading_calendar.py`** | 增强交易日判断：新增多表回退机制（`stock_daily` / `sector_etf_daily` / `index_etf_daily`），避免单表过期导致日期错误；优化未收盘时的回退逻辑，优先使用日历数据 |
+| **`fetch.py`** | 修复 `api_etf_share_update()` 异步调用问题，使用 `asyncio.run()` 确保协程正确执行 |
+| **日志** | 新增结构化日志记录，交易日判定过程可追溯 |
+
+**修复验证**：
+- 多表回退：任一数据表最新日期可用即可作为候选 ✅
+- ETF份额更新：异步调用正常完成 ✅
+- 完整 Update+Backtest 流程正常运行 ✅
+
+---
+
 ## 📄 License
 
 MIT License
