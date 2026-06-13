@@ -103,3 +103,4 @@ logs/
 
 # DeepSeek TUI artifacts
 checklist.json
+.claude/
