@@ -427,6 +427,22 @@ Alembic Migration 008（`008_convert_trade_date_to_date.py`）将 `trade_date` �
 
 ---
 
+## 📋 v23.1.0 更新日志
+
+### 🎨 字体更换：Times New Roman + 宋体
+
+> 全线字体从 Geist 更换为 Times New Roman（英文/数字）和 SimSun 宋体（中文），提升中文阅读体验。
+
+| 模块 | 改动 |
+|------|------|
+| **字体变量** | `--font-body/--font-display`: `"Inter", system-ui` → `"Times New Roman", "SimSun", serif` |
+| **等宽字体** | `--font-mono`: `"JetBrains Mono"` → `"Times New Roman", "SimSun", monospace` |
+| **Favicon** | `font-family`: `system-ui, sans-serif` → `"Times New Roman", "SimSun", serif` |
+
+**修改统计**：2 个文件 +3/-3 行
+
+---
+
 ## 📋 v23.0.0 更新日志
 
 ### 🎨 Brutalist Swiss UI/UX 重设计 — 单色石墨粉笔风格

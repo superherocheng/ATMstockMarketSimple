@@ -32,9 +32,9 @@
   --c-zero: #8a857c;
 
   /* --- Typography --- */
-  --font-display: "Archivo Narrow", "Arial Narrow", sans-serif;
-  --font-body: "Inter", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-display: "Times New Roman", "SimSun", serif;
+  --font-body: "Times New Roman", "SimSun", serif;
+  --font-mono: "Times New Roman", "SimSun", monospace;
   --font-sans: var(--font-body);
   --font-serif: var(--font-display);
   --font-num: var(--font-mono);
