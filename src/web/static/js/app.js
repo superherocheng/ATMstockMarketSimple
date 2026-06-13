@@ -324,7 +324,7 @@ ATM.getChartTheme = function() {
         backgroundColor: 'transparent',
         textStyle: {
             color: dark ? '#E8E8E8' : '#111111',
-            fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+            fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif"
         },
         title: {
             textStyle: {
@@ -348,7 +348,7 @@ ATM.getChartTheme = function() {
             textStyle: {
                 color: dark ? '#E8E8E8' : '#000000',
                 fontSize: 12,
-                fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+                fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif"
             },
             extraCssText: 'box-shadow:0 4px 16px rgba(0,0,0,0.12);border-radius:6px;'
         },
@@ -359,11 +359,11 @@ ATM.getChartTheme = function() {
         upColor0: 'rgba(220, 38, 38, 0.15)',
         downColor: '#16A34A',
         downColor0: 'rgba(22, 163, 74, 0.15)',
-        accentColor: '#2563EB',
+        accentColor: '#0a0a0a',
         accentLight: 'rgba(37, 99, 235, 0.15)',
         seriesColors: dark
             ? ['#E8E8E8', '#60A5FA', '#AAAAAA', '#666666', '#F87171', '#4ADE80', '#FBBF24', '#CCCCCC']
-            : ['#000000', '#2563EB', '#777777', '#BBBBBB', '#DC2626', '#16A34A', '#D97735', '#444444']
+            : ['#000000', '#737373', '#a1a1a1', '#e5e5e5', '#DC2626', '#16A34A', '#D97735', '#0a0a0a']
     };
 };
 
@@ -1188,7 +1188,7 @@ ATMChart.getChartTheme = function() {
     return {
         backgroundColor: 'transparent',
         textStyle: {
-            fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif",
+            fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif",
             fontSize: 12,
             color: '#111111'
         },
@@ -1196,7 +1196,7 @@ ATMChart.getChartTheme = function() {
             textStyle: {
                 color: '#000000',
                 fontWeight: 700,
-                fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+                fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif"
             },
             subtextStyle: {
                 color: '#777777'
@@ -1239,7 +1239,7 @@ ATMChart.getChartTheme = function() {
             },
             axisLabel: {
                 color: '#777777',
-                fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+                fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif"
             },
             splitLine: {
                 lineStyle: {
@@ -1265,7 +1265,7 @@ ATMChart.getChartTheme = function() {
             },
             axisLabel: {
                 color: '#777777',
-                fontFamily: "'IBM Plex Mono', 'JetBrains Mono', monospace"
+                fontFamily: "'Geist Mono', ui-monospace, monospace"
             },
             splitLine: {
                 lineStyle: {
@@ -1283,14 +1283,14 @@ ATMChart.getChartTheme = function() {
             borderWidth: 1,
             textStyle: {
                 color: '#000000',
-                fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+                fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif"
             },
             extraCssText: 'border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.12);'
         },
         legend: {
             textStyle: {
                 color: '#444444',
-                fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+                fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif"
             },
             pageTextStyle: {
                 color: '#777777'
@@ -1298,7 +1298,7 @@ ATMChart.getChartTheme = function() {
         },
         color: [
             '#000000',
-            '#2563EB',
+            '#737373',
             '#777777',
             '#BBBBBB',
             '#DC2626',
@@ -1311,7 +1311,7 @@ ATMChart.getChartTheme = function() {
         watercolorColors: {
             blue: '#000000',
             blueLight: '#444444',
-            green: '#2563EB',
+            neutral: '#737373',
             greenLight: '#3B82F6',
             terracotta: '#D97735',
             terracottaLight: '#E8A075',
@@ -1331,7 +1331,7 @@ ATMChart.getChartThemeDark = function() {
     return {
         backgroundColor: 'transparent',
         textStyle: {
-            fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif",
+            fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif",
             fontSize: 12,
             color: '#E8E8E8'
         },
@@ -1339,7 +1339,7 @@ ATMChart.getChartThemeDark = function() {
             textStyle: {
                 color: '#E8E8E8',
                 fontWeight: 700,
-                fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+                fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif"
             },
             subtextStyle: {
                 color: '#AAAAAA'
@@ -1382,7 +1382,7 @@ ATMChart.getChartThemeDark = function() {
             },
             axisLabel: {
                 color: '#AAAAAA',
-                fontFamily: "'IBM Plex Mono', 'JetBrains Mono', monospace"
+                fontFamily: "'Geist Mono', ui-monospace, monospace"
             },
             splitLine: {
                 lineStyle: {
@@ -1408,7 +1408,7 @@ ATMChart.getChartThemeDark = function() {
             },
             axisLabel: {
                 color: '#AAAAAA',
-                fontFamily: "'IBM Plex Mono', 'JetBrains Mono', monospace"
+                fontFamily: "'Geist Mono', ui-monospace, monospace"
             },
             splitLine: {
                 lineStyle: {
@@ -1426,14 +1426,14 @@ ATMChart.getChartThemeDark = function() {
             borderWidth: 1,
             textStyle: {
                 color: '#E8E8E8',
-                fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+                fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif"
             },
             extraCssText: 'border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.12);'
         },
         legend: {
             textStyle: {
                 color: '#CCCCCC',
-                fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+                fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif"
             },
             pageTextStyle: {
                 color: '#AAAAAA'
@@ -1651,7 +1651,7 @@ ATMChart.calculateMA = function(dayCount, data) {
 ATMChart.buildKlineOption = function(klineData, maDays) {
     maDays = maDays || [5, 10, 20, 60];
     var theme = ATMChart.getChartTheme();
-    var maColors = ['#2563EB', '#D97735', '#777777', '#16A34A'];
+    var maColors = ['#0a0a0a', '#737373', '#a1a1a1', '#16A34A'];
     var dateData = klineData.map(function(item) { return item[0]; });
     var ohlcData = klineData.map(function(item) {
         return [item[1], item[3], item[4], item[2]]; // [open, close, low, high]

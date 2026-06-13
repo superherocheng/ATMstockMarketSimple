@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="/static/css/app.css">
     <script defer src="/static/js/vendor.js"></script>
@@ -509,7 +509,7 @@
         quads.forEach(function(q) {
             var val = q.value !== undefined ? q.value : 0;
             var color = (q.itemStyle && q.itemStyle.color) ? q.itemStyle.color : '#e8e4db';
-            var valColor = val > 0 ? '#2d5a2d' : val < 0 ? '#8b4513' : '#666';
+            var valColor = val > 0 ? '#2d5a2d' : val < 0 ? '#8b4513' : '#737373';
             var valStr = val > 0 ? '+' + val.toFixed(2) + '%' : val.toFixed(2) + '%';
             html += '<div class="quadrant-cell" style="background:' + color + ';">';
             html += '<div class="q-name">' + q.name + '</div>';

@@ -1,12 +1,12 @@
 /* ══════════════════════════════════════════════════
-   ATMstockMarket — Brutalist / Wikipedia Design Tokens
-   "High-End Wikipedia" / "Minimalist Brutalism" / "Print Newspaper"
-   Strict Black, White, Blue. Zero radius. Zero shadows.
+   ATMstockMarket — Brutalist Swiss Design System
+   "Graphite on Chalk" — 1px borders, zero shadows, Geist type.
+   Monochromatic achromatic — only market data uses color.
    ══════════════════════════════════════════════════ */
 
 :root {
     /* ══════════════════════════════════════════════════
-       色彩系统 — Brutalist Monochrome + Blue
+       色彩系统 — Brutalist Swiss Achromatic
        ══════════════════════════════════════════════════ */
 
     /* 基础色 — Strict Black & White */
@@ -14,32 +14,32 @@
     --c-black: #000000;
 
     /* 背景色 */
-    --c-bg: #FAFAFA;
-    --c-bg-secondary: #FFFFFF;
-    --c-bg-tertiary: #F4F4F5;
+    --c-bg: #ffffff;
+    --c-bg-secondary: #ffffff;
+    --c-bg-tertiary: #f2f2f2;
 
     /* 文本色 */
-    --c-text: #111111;
-    --c-text-secondary: #444444;
-    --c-text-tertiary: #777777;
-    --c-text-muted: #999999;
+    --c-text: #0a0a0a;
+    --c-text-secondary: #0a0a0a;
+    --c-text-tertiary: #737373;
+    --c-text-muted: #a1a1a1;
 
     /* 边框色 — Thin clean lines */
-    --c-border: #D4D4D8;
-    --c-border-light: #E4E4E7;
-    --c-border-strong: #18181B;
+    --c-border: #e5e5e5;
+    --c-border-light: #e5e5e5;
+    --c-border-strong: #0a0a0a;
 
     /* 链接色 — Wikipedia Blue */
-    --c-link: #0645AD;
-    --c-link-hover: #043680;
-    --c-link-visited: #0B0080;
-    --c-link-external: #0645AD;
+    --c-link: #0a0a0a;
+    --c-link-hover: #0a0a0a;
+    --c-link-visited: #0a0a0a;
+    --c-link-external: #0a0a0a;
 
     /* 强调色 — Blue */
-    --c-accent: #2563EB;
-    --c-accent-light: #3B82F6;
-    --c-accent-dark: #1D4ED8;
-    --c-accent-bg: rgba(37, 99, 235, 0.08);
+    --c-accent: #0a0a0a;
+    --c-accent-light: #171717;
+    --c-accent-dark: #000000;
+    --c-accent-bg: #f2f2f2;
 
     /* 市场涨跌色 — Flat Sharp Green/Red, NO gradients */
     --c-up: #DC2626;
@@ -54,7 +54,7 @@
     --c-success: #16A34A;
     --c-warning: #D97735;
     --c-error: #DC2626;
-    --c-info: #2563EB;
+    --c-info: #0a0a0a;
     --c-zero: #777777;
 
     /* ══════════════════════════════════════════════════
@@ -62,19 +62,20 @@
        ══════════════════════════════════════════════════ */
 
     --c-card: #FFFFFF;
-    --c-card-hover: #FAFAFA;
-    --c-card-selected: #F0F4FF;
+    --c-card-hover: #f2f2f2;
+    --c-card-selected: #f2f2f2;
     --c-overlay: rgba(0, 0, 0, 0.5);
 
     /* ══════════════════════════════════════════════════
-       字体系统 — Playfair Display + Inter (like ATMBlog)
+       字体系统 — Geist (Vercel geometric sans)
+       Tight tracking at display, compact at body.
        ══════════════════════════════════════════════════ */
 
-    --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', 'Noto Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --font-display: 'Geist', 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-body: var(--font-display);
     --font-sans: var(--font-display);
-    --font-mono: 'IBM Plex Mono', 'JetBrains Mono', 'Menlo', 'Consolas', 'Courier New', monospace;
-    --font-serif: 'Playfair Display', 'Source Serif 4', Georgia, 'Noto Serif SC', serif;
+    --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', 'Cascadia Code', 'Menlo', 'Consolas', monospace;
+    --font-serif: var(--font-display);
     --font-num: var(--font-mono);
 
     --body-font: var(--font-body);
@@ -85,50 +86,50 @@
        字体大小
        ══════════════════════════════════════════════════ */
 
-    --text-xs: 0.75rem;
-    --text-sm: 0.875rem;
-    --text-base: 1rem;
-    --text-lg: 1.125rem;
-    --text-xl: 1.25rem;
-    --text-2xl: 1.5rem;
-    --text-3xl: 1.875rem;
-    --text-4xl: 2.25rem;
+    --text-xs: 12px;
+    --text-sm: 13px;
+    --text-base: 14px;
+    --text-lg: 16px;
+    --text-xl: 18px;
+    --text-2xl: 24px;
+    --text-3xl: 32px;
+    --text-4xl: 48px;
 
     /* ══════════════════════════════════════════════════
        间距系统
        ══════════════════════════════════════════════════ */
 
-    --space-0-5: 0.25rem;
-    --space-1: 0.5rem;
-    --space-1-5: 0.75rem;
-    --space-2: 1rem;
-    --space-3: 1.5rem;
-    --space-4: 2rem;
-    --space-5: 2.5rem;
-    --space-6: 3rem;
-    --space-8: 4rem;
+    --space-0-5: 4px;
+    --space-1: 8px;
+    --space-1-5: 10px;
+    --space-2: 12px;
+    --space-3: 16px;
+    --space-4: 20px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --space-8: 40px;
 
     /* ══════════════════════════════════════════════════
        圆角 — Subtle, professional curves
        ══════════════════════════════════════════════════ */
 
     --radius-sm: 4px;
-    --radius-md: 6px;
-    --radius-lg: 8px;
-    --radius-xl: 12px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 26px;
     --radius-full: 9999px;
 
     /* ══════════════════════════════════════════════════
        阴影 — Layered depth for visual hierarchy
        ══════════════════════════════════════════════════ */
 
-    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
-    --shadow-md: 0 2px 8px rgba(0,0,0,0.06);
-    --shadow-lg: 0 4px 16px rgba(0,0,0,0.08);
-    --shadow-xl: 0 8px 32px rgba(0,0,0,0.10);
-    --shadow-card: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
-    --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.08);
-    --shadow-nav: 0 1px 3px rgba(0,0,0,0.06);
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+    --shadow-xl: none;
+    --shadow-card: none;
+    --shadow-card-hover: none;
+    --shadow-nav: none;
 
     /* ══════════════════════════════════════════════════
        动效系统 — Crisp, fast transitions
@@ -153,19 +154,19 @@
        表格 — Sharp grid lines
        ══════════════════════════════════════════════════ */
 
-    --c-table-header: #F4F4F5;
+    --c-table-header: #f2f2f2;
     --c-table-stripe: rgba(0,0,0,0.015);
-    --c-table-hover: #F0F4FF;
-    --c-table-row-border: #E4E4E7;
+    --c-table-hover: #f2f2f2;
+    --c-table-row-border: #e5e5e5;
 
     /* ══════════════════════════════════════════════════
        输入框
        ══════════════════════════════════════════════════ */
 
     --c-input-bg: #ffffff;
-    --c-input-border: #000000;
-    --c-input-focus: #2563EB;
-    --c-input-focus-ring: 0 0 0 2px rgba(37, 99, 235, 0.3);
+    --c-input-border: #e5e5e5;
+    --c-input-focus: #0a0a0a;
+    --c-input-focus-ring: 0 0 0 2px rgba(10, 10, 10, 0.15);
 
     /* ══════════════════════════════════════════════════
        滚动条
@@ -180,7 +181,7 @@
        ══════════════════════════════════════════════════ */
 
     --c-skeleton: #E5E5E5;
-    --c-skeleton-shine: #F5F5F5;
+    --c-skeleton-shine: #f2f2f2;
 
     /* ══════════════════════════════════════════════════
        焦点环
@@ -189,122 +190,97 @@
     --focus-ring: var(--c-input-focus-ring);
 }
 
-/* ─── Ampersand Readability Override ─────────────────────────────── */
-/* Playfair Display's decorative ampersand is illegible at a glance.
-   Override U+0026 (&) only, swapping in Inter's clean blocky glyph. */
-@font-face {
-    font-family: 'Playfair Display';
-    src: local('Inter'), local('Helvetica Neue'), local('Arial');
-    unicode-range: U+0026;
-    font-weight: 400;
-    font-style: normal;
-}
-@font-face {
-    font-family: 'Playfair Display';
-    src: local('Inter'), local('Helvetica Neue'), local('Arial');
-    unicode-range: U+0026;
-    font-weight: 700;
-    font-style: normal;
-}
-@font-face {
-    font-family: 'Playfair Display';
-    src: local('Inter'), local('Helvetica Neue'), local('Arial');
-    unicode-range: U+0026;
-    font-weight: 900;
-    font-style: normal;
-}
-
 /* ══════════════════════════════════════════════════
-   深色模式 — Brutalist Dark
+   深色模式 — Brutalist Swiss Dark
    ══════════════════════════════════════════════════ */
 
 [data-theme="dark"] {
-    --c-bg: #111111;
-    --c-bg-secondary: #111111;
-    --c-bg-tertiary: #1A1A1A;
+    --c-bg: #171717;
+    --c-bg-secondary: #171717;
+    --c-bg-tertiary: #1a1a1a;
 
-    --c-card: #111111;
-    --c-card-hover: #1A1A1A;
+    --c-card: #171717;
+    --c-card-hover: #1a1a1a;
 
-    --c-text: #E8E8E8;
-    --c-text-secondary: #B0B0B0;
-    --c-text-tertiary: #808080;
-    --c-text-muted: #606060;
+    --c-text: #e5e5e5;
+    --c-text-secondary: #e5e5e5;
+    --c-text-tertiary: #737373;
+    --c-text-muted: #525252;
 
-    --c-border: #444444;
-    --c-border-light: #333333;
-    --c-border-strong: #666666;
+    --c-border: #333333;
+    --c-border-light: #262626;
+    --c-border-strong: #525252;
 
-    --c-link: #7BB8FF;
-    --c-link-hover: #9DCAFF;
-    --c-link-visited: #9DCAFF;
+    --c-link: #e5e5e5;
+    --c-link-hover: #ffffff;
+    --c-link-visited: #ffffff;
 
-    --c-accent: #7BB8FF;
-    --c-accent-light: #9DCAFF;
-    --c-accent-dark: #5A9AE6;
-    --c-accent-bg: rgba(123, 184, 255, 0.1);
+    --c-accent: #e5e5e5;
+    --c-accent-light: #ffffff;
+    --c-accent-dark: #ffffff;
+    --c-accent-bg: rgba(255, 255, 255, 0.05);
 
-    --c-table-header: #1A1A1A;
+    --c-table-header: #1a1a1a;
     --c-table-stripe: rgba(255,255,255,0.02);
-    --c-table-hover: #222222;
+    --c-table-hover: #262626;
     --c-table-row-border: #333333;
 
-    --c-input-bg: #111111;
-    --c-input-border: #444444;
-    --c-input-focus: #7BB8FF;
-    --c-input-focus-ring: 0 0 0 2px rgba(123, 184, 255, 0.3);
+    --c-input-bg: #171717;
+    --c-input-border: #333333;
+    --c-input-focus: #e5e5e5;
+    --c-input-focus-ring: 0 0 0 2px rgba(229, 229, 229, 0.15);
 
-    --c-scrollbar-track: #111111;
-    --c-scrollbar-thumb: #444444;
-    --c-scrollbar-thumb-hover: #666666;
+    --c-scrollbar-track: #171717;
+    --c-scrollbar-thumb: #333333;
+    --c-scrollbar-thumb-hover: #525252;
 
-    --c-skeleton: #222222;
-    --c-skeleton-shine: #1A1A1A;
+    --c-skeleton: #262626;
+    --c-skeleton-shine: #1a1a1a;
 }
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --c-bg: #111111;
-        --c-bg-secondary: #111111;
-        --c-bg-tertiary: #1A1A1A;
+        --c-bg: #171717;
+        --c-bg-secondary: #171717;
+        --c-bg-tertiary: #1a1a1a;
 
-        --c-card: #111111;
-        --c-card-hover: #1A1A1A;
+        --c-card: #171717;
+        --c-card-hover: #1a1a1a;
 
-        --c-text: #E8E8E8;
-        --c-text-secondary: #B0B0B0;
-        --c-text-tertiary: #808080;
-        --c-text-muted: #606060;
+        --c-text: #e5e5e5;
+        --c-text-secondary: #e5e5e5;
+        --c-text-tertiary: #737373;
+        --c-text-muted: #525252;
 
-        --c-border: #444444;
-        --c-border-light: #333333;
-        --c-border-strong: #666666;
+        --c-border: #333333;
+        --c-border-light: #262626;
+        --c-border-strong: #525252;
 
-        --c-link: #7BB8FF;
-        --c-link-hover: #9DCAFF;
-        --c-link-visited: #9DCAFF;
+        --c-link: #e5e5e5;
+        --c-link-hover: #ffffff;
+        --c-link-visited: #ffffff;
 
-        --c-accent: #7BB8FF;
-        --c-accent-light: #9DCAFF;
-        --c-accent-dark: #5A9AE6;
-        --c-accent-bg: rgba(123, 184, 255, 0.1);
+        --c-accent: #e5e5e5;
+        --c-accent-light: #ffffff;
+        --c-accent-dark: #ffffff;
+        --c-accent-bg: rgba(255, 255, 255, 0.05);
 
-        --c-table-header: #1A1A1A;
+        --c-table-header: #1a1a1a;
         --c-table-stripe: rgba(255,255,255,0.02);
-        --c-table-hover: #222222;
+        --c-table-hover: #262626;
         --c-table-row-border: #333333;
 
-        --c-input-bg: #111111;
-        --c-input-border: #444444;
-        --c-input-focus: #7BB8FF;
-        --c-input-focus-ring: 0 0 0 2px rgba(123, 184, 255, 0.3);
+        --c-input-bg: #171717;
+        --c-input-border: #333333;
+        --c-input-focus: #e5e5e5;
+        --c-input-focus-ring: 0 0 0 2px rgba(229, 229, 229, 0.15);
 
-        --c-scrollbar-track: #111111;
-        --c-scrollbar-thumb: #444444;
-        --c-scrollbar-thumb-hover: #666666;
+        --c-scrollbar-track: #171717;
+        --c-scrollbar-thumb: #333333;
+        --c-scrollbar-thumb-hover: #525252;
 
-        --c-skeleton: #222222;
-        --c-skeleton-shine: #1A1A1A;
+        --c-skeleton: #262626;
+        --c-skeleton-shine: #1a1a1a;
     }
 }
 
@@ -365,7 +341,7 @@ body {
     color: var(--c-text);
     font-family: var(--font-sans);
     font-size: var(--text-base);
-    line-height: 1.6;
+    line-height: 1.43;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     min-height: 100vh;
@@ -392,7 +368,7 @@ body {
 }
 
 .tablet-topbar-logo a {
-    font-family: var(--font-serif);
+    font-family: var(--font-sans);
     font-size: 1.1rem;
     font-weight: 700;
     color: var(--c-text);
@@ -436,7 +412,7 @@ body {
 
 /* ─── 文本选择 ─────────────────────────────── */
 ::selection {
-    background: var(--c-accent-bg);
+    background: #f2f2f2;
     color: var(--c-text);
 }
 
@@ -459,46 +435,50 @@ body {
     background: var(--c-scrollbar-thumb-hover);
 }
 
-/* ─── 排版系统 — Serif headings, sans body ─────────────────────────────── */
+/* ─── 排版系统 — Geist tight tracking ─────────────────────────────── */
 h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-serif);
-    font-weight: 700;
-    line-height: 1.3;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    line-height: 1.20;
     color: var(--c-text);
     margin-bottom: var(--space-1);
+    letter-spacing: -0.025em;
 }
 
 h1 {
-    font-size: var(--text-3xl);
-    font-weight: 900;
+    font-size: var(--text-4xl);
+    font-weight: 600;
+    letter-spacing: -0.05em;
     padding-bottom: var(--space-1);
     margin-bottom: var(--space-2);
-    font-family: var(--font-serif);
+    font-family: var(--font-sans);
 }
 
 h2 {
     font-size: var(--text-2xl);
-    font-weight: 700;
+    font-weight: 600;
+    letter-spacing: -0.025em;
     padding-bottom: var(--space-0-5);
     margin-bottom: var(--space-2);
-    font-family: var(--font-serif);
+    font-family: var(--font-sans);
 }
 
 h3 {
     font-size: var(--text-xl);
-    font-weight: 700;
+    font-weight: 600;
+    letter-spacing: -0.025em;
     font-family: var(--font-sans);
 }
 
 h4 {
     font-size: var(--text-lg);
-    font-weight: 600;
+    font-weight: 500;
     font-family: var(--font-sans);
 }
 
 p {
     font-family: var(--font-sans);
-    line-height: 1.6;
+    line-height: 1.43;
     color: var(--c-text);
     margin-bottom: var(--space-2);
 }
@@ -524,19 +504,19 @@ a:visited {
     font-variant-numeric: tabular-nums;
 }
 
-/* ─── 卡片 — Elevated surface with depth ─────────────────────────────── */
+/* ─── 卡片 — 1px border, no shadow ─────────────────────────────── */
 .card {
     background: var(--c-card);
     border: 1px solid var(--c-border);
     border-radius: var(--radius-lg);
     padding: var(--space-3);
-    box-shadow: var(--shadow-card);
-    transition: box-shadow var(--transition-normal), background-color var(--transition-fast);
+    box-shadow: none;
+    transition: background-color var(--transition-fast);
 }
 
 .card:hover {
     background: var(--c-card-hover);
-    box-shadow: var(--shadow-card-hover);
+    box-shadow: none;
     border-color: var(--c-border);
     transform: none;
 }
@@ -546,24 +526,24 @@ a:visited {
     border: 1px solid var(--c-border);
     border-radius: var(--radius-lg);
     padding: var(--space-3);
-    box-shadow: var(--shadow-card);
-    transition: box-shadow var(--transition-normal), background-color var(--transition-fast);
+    box-shadow: none;
+    transition: background-color var(--transition-fast);
 }
 
 .glass:hover {
     background: var(--c-card-hover);
-    box-shadow: var(--shadow-card-hover);
+    box-shadow: none;
     border-color: var(--c-border);
 }
 
-/* ─── 导航 — Elevated sticky header ─────────────────────────────── */
+/* ─── 导航 — Flat, border-separated ─────────────────────────────── */
 nav {
     background: var(--c-bg-secondary);
     border-bottom: 1px solid var(--c-border);
     position: sticky;
     top: 0;
     z-index: var(--z-sticky);
-    box-shadow: var(--shadow-nav);
+    box-shadow: none;
 }
 
 .nav-container {
@@ -586,7 +566,7 @@ nav {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    font-family: var(--font-serif);
+    font-family: var(--font-sans);
     font-weight: 700;
     font-size: var(--text-base);
     color: var(--c-text);
@@ -873,23 +853,23 @@ textarea::placeholder {
     border: 1px solid var(--c-border);
     min-height: 40px;
     text-decoration: none;
-    box-shadow: var(--shadow-sm);
+    box-shadow: none;
 }
 
 .btn-primary {
-    background: var(--c-accent);
-    color: #FFFFFF;
-    border-color: var(--c-accent);
+    background: var(--c-black);
+    color: #ffffff;
+    border-color: var(--c-black);
     font-weight: 700;
-    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+    box-shadow: none;
 }
 
 .btn-primary:hover {
     background: var(--c-accent-dark);
     border-color: var(--c-accent-dark);
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
-    transform: translateY(-1px);
-    color: #FFFFFF;
+    box-shadow: none;
+    transform: none;
+    color: #ffffff;
 }
 
 .btn-secondary {
@@ -1034,9 +1014,9 @@ textarea::placeholder {
 }
 
 .style-balanced {
-    background: var(--c-accent-bg);
-    color: var(--c-accent);
-    border-color: var(--c-accent);
+    background: #f2f2f2;
+    color: var(--c-black);
+    border-color: var(--c-border);
 }
 
 .style-growth {
@@ -1113,7 +1093,7 @@ footer {
     color: var(--c-text-tertiary);
     border-top: 1px solid var(--c-border);
     background: var(--c-bg-secondary);
-    line-height: 1.6;
+    line-height: 1.43;
     position: fixed;
     bottom: 0;
     left: 0;
@@ -1577,12 +1557,12 @@ canvas { max-width: 100% !important; }
 .text-error { color: var(--c-error); }
 .text-center { text-align: center; }
 .text-mono { font-family: var(--font-mono); }
-.text-serif { font-family: var(--font-serif); }
+.text-serif { font-family: var(--font-sans); }
 .text-sm { font-size: var(--text-sm); }
 .text-xs { font-size: var(--text-xs); }
 .text-bold { font-weight: 600; }
 
-.bg-accent { background: var(--c-accent-bg); }
+.bg-accent { background: #f2f2f2; }
 .bg-up { background: var(--c-up-bg); }
 .bg-down { background: var(--c-down-bg); }
 
@@ -1662,14 +1642,14 @@ canvas { max-width: 100% !important; }
     border: 1px solid var(--c-border);
     border-radius: var(--radius-lg);
     padding: var(--space-3);
-    transition: box-shadow var(--transition-normal), background-color var(--transition-fast);
-    box-shadow: var(--shadow-card);
+    transition: background-color var(--transition-fast);
+    box-shadow: none;
 }
 
 .home-card:hover {
     background: var(--c-card-hover);
     border-color: var(--c-border);
-    box-shadow: var(--shadow-card-hover);
+    box-shadow: none;
 }
 
 .home-card-full { grid-column: span 1; }
@@ -1779,7 +1759,7 @@ details[open] .home-card-chevron { transform: rotate(180deg); }
     overflow-x: auto;
     margin-top: var(--space-4);
     -webkit-overflow-scrolling: touch;
-    box-shadow: var(--shadow-card);
+    box-shadow: none;
 }
 
 .quick-strip-link {
@@ -1834,8 +1814,8 @@ details[open] .home-card-chevron { transform: rotate(180deg); }
     border: 1px solid var(--c-border);
     border-left: 4px solid var(--c-up);
     border-radius: var(--radius-lg);
-    transition: box-shadow var(--transition-normal), background-color var(--transition-fast);
-    box-shadow: var(--shadow-card);
+    transition: background-color var(--transition-fast);
+    box-shadow: none;
 }
 
 @media (max-width: 1023px) {
@@ -1901,7 +1881,7 @@ blockquote p {
 
 .message-box-warning {
     border-left-color: var(--c-warning);
-    background: rgba(255, 93, 0, 0.05);
+    background: rgba(217, 119, 53, 0.08);
 }
 
 .message-box-error {
@@ -2035,7 +2015,7 @@ blockquote p {
     margin-bottom: 0;
 }
 .sidebar-logo a {
-    font-family: var(--font-serif);
+    font-family: var(--font-sans);
     font-size: 1.1rem;
     font-weight: 700;
     color: var(--c-text);
@@ -2119,8 +2099,8 @@ blockquote p {
     border: 1px solid var(--c-border);
     border-radius: var(--radius-md);
     padding: var(--space-1-5);
-    box-shadow: var(--shadow-card);
-    transition: box-shadow var(--transition-normal), background-color var(--transition-fast);
+    box-shadow: none;
+    transition: background-color var(--transition-fast);
     cursor: pointer;
     font-size: var(--text-xs);
 }
@@ -2129,14 +2109,14 @@ blockquote p {
     background: var(--c-bg-tertiary);
     color: var(--c-text);
     border-color: var(--c-border);
-    box-shadow: var(--shadow-card-hover);
+    box-shadow: none;
 }
 
 .sector-card.selected {
     border-color: var(--c-accent);
     background: var(--c-card-selected);
     color: var(--c-text);
-    box-shadow: var(--shadow-card-hover);
+    box-shadow: none;
 }
 
 /* ─── Tab Button ─────────────────────────────── */
@@ -2166,7 +2146,7 @@ blockquote p {
     background: var(--c-black);
     border-color: var(--c-black);
     font-weight: 700;
-    box-shadow: var(--shadow-sm);
+    box-shadow: none;
 }
 
 @media (max-width: 640px) {
@@ -2213,7 +2193,7 @@ blockquote p {
     padding: var(--space-3);
     margin-bottom: 0;
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
+    box-shadow: none;
 }
 
 .data-card-header {
@@ -2931,14 +2911,14 @@ blockquote p {
 .kpi-row { display:flex; gap:12px; margin-bottom:16px; }
 .kpi-card {
     flex:1; background:var(--c-card); border-radius:var(--radius-lg); padding:var(--space-2) var(--space-3);
-    border:1px solid var(--c-border); transition: box-shadow var(--transition-normal), background-color var(--transition-fast);
-    box-shadow: var(--shadow-card); position: relative; overflow: hidden;
+    border:1px solid var(--c-border); transition: background-color var(--transition-fast);
+    box-shadow: none; position: relative; overflow: hidden;
 }
 .kpi-card::before {
     content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
     background: var(--c-accent); opacity: 0; transition: opacity var(--transition-fast);
 }
-.kpi-card:hover { box-shadow: var(--shadow-card-hover); }
+.kpi-card:hover { box-shadow: none; }
 .kpi-card:hover::before { opacity: 1; }
 .kpi-label { font-size:10px; color:var(--c-text-tertiary); text-transform:uppercase; letter-spacing:0.06em; font-weight:700; display:flex; align-items:center; gap:6px; }
 .kpi-value { font-size:24px; font-weight:700; color:var(--c-text); font-family:var(--font-mono); transition: color var(--transition-fast); line-height: 1.3; }
@@ -2966,10 +2946,10 @@ blockquote p {
 .chart-cell {
     background:var(--c-card); border-radius:var(--radius-lg); padding:var(--space-3);
     border:1px solid var(--c-border); overflow:hidden;
-    transition: box-shadow var(--transition-normal), background-color var(--transition-fast);
-    box-shadow: var(--shadow-card);
+    transition: background-color var(--transition-fast);
+    box-shadow: none;
 }
-.chart-cell:hover { box-shadow: var(--shadow-card-hover); background: var(--c-card-hover); }
+.chart-cell:hover { box-shadow: none; background: var(--c-card-hover); }
 .chart-cell h3 { font-size:11px; font-weight:700; color:var(--c-text); margin:0 0 8px; text-transform:uppercase; letter-spacing:0.06em; display:flex; align-items:center; gap:6px; }
 .chart-container { width:100%; height:280px; }
 .chart-full { margin-top:12px; }
@@ -3049,7 +3029,7 @@ blockquote p {
     display: flex;
     align-items: flex-start;
     gap: var(--space-2);
-    background: var(--c-accent-bg);
+    background: #f2f2f2;
     border: 1px solid var(--c-accent);
     border-radius: var(--radius-md);
     padding: var(--space-2) var(--space-3);
@@ -3068,7 +3048,7 @@ blockquote p {
 .exec-summary-body {
     font-size: var(--text-sm);
     color: var(--c-text-secondary);
-    line-height: 1.6;
+    line-height: 1.43;
     flex: 1;
 }
 .exec-summary-body strong { color: var(--c-text); }
@@ -3086,7 +3066,7 @@ blockquote p {
     overflow: hidden;
     margin-bottom: 8px;
     transition: all var(--transition-base);
-    box-shadow: var(--shadow-card);
+    box-shadow: none;
 }
 .chart-group-details[open] { border-color: var(--c-border); }
 .chart-group-summary {
@@ -3162,7 +3142,7 @@ blockquote p {
     opacity: 1;
 }
 
-.summary-card { margin-top:12px; background:var(--c-card); border-radius:var(--radius-lg); padding:16px; border:1px solid var(--c-border); box-shadow: var(--shadow-card); }
+.summary-card { margin-top:12px; background:var(--c-card); border-radius:var(--radius-lg); padding:16px; border:1px solid var(--c-border); box-shadow: none; }
 .summary-content { background:var(--c-bg-tertiary); border-radius:var(--radius-md); padding:12px 16px; font-size:12px; line-height:1.8; color:var(--c-text-secondary); }
 .no-data { text-align:center; padding:40px; color:var(--c-text-tertiary); font-size:13px; }
 

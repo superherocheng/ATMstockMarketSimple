@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="/static/css/app.css">
     <script defer src="/static/js/vendor.js"></script>
@@ -425,7 +425,7 @@
 
             function renderVisCharts(data) {
                 var recs = data.recommendations;
-                var COLORS = ['#000000', '#2563EB', '#DC2626', '#16A34A', '#D97706'];
+                var COLORS = ['#000000', '#737373', '#DC2626', '#16A34A', '#D97706'];
 
                 recs.forEach(function(r) {
                     r._mom = parseFloat(r.momentum) || 0;
@@ -482,7 +482,7 @@
                         legend: {
                             data: recs.map(function(r) { return r._shortName; }),
                             bottom: 4,
-                            textStyle: { fontSize: 10, fontFamily: 'IBM Plex Mono, monospace', color: '#444' },
+                            textStyle: { fontSize: 10, fontFamily: 'Geist Mono, monospace', color: '#0a0a0a' },
                             icon: 'rect', itemWidth: 10, itemHeight: 10, itemGap: 14
                         },
                         radar: {
@@ -491,7 +491,7 @@
                                 return {
                                     name: isQuality && qualityDisabled ? 'Quality (已停用)' : l,
                                     max: 100,
-                                    nameTextStyle: isQuality && qualityDisabled ? { color: '#999' } : { color: '#111' }
+                                    nameTextStyle: isQuality && qualityDisabled ? { color: '#999' } : { color: '#0a0a0a' }
                                 };
                             }),
                             shape: 'polygon',
@@ -501,7 +501,7 @@
                             axisLine: { lineStyle: { color: '#000', width: 2 } },
                             splitLine: { lineStyle: { color: '#ddd', width: 1 } },
                             splitArea: { show: false },
-                            name: { textStyle: { color: '#111', fontSize: 10, fontWeight: 700, fontFamily: 'IBM Plex Mono, monospace' } }
+                            name: { textStyle: { color: '#0a0a0a', fontSize: 10, fontWeight: 700, fontFamily: 'Geist Mono, monospace' } }
                         },
                         series: [{ type: 'radar', data: radarData }]
                     });
@@ -534,19 +534,19 @@
                         xAxis: {
                             name: 'Capital Flow',
                             nameLocation: 'middle', nameGap: 28,
-                            nameTextStyle: { fontSize: 9, fontWeight: 700, fontFamily: 'IBM Plex Mono', color: '#666' },
+                            nameTextStyle: { fontSize: 9, fontWeight: 700, fontFamily: 'Geist Mono', color: '#737373' },
                             axisLine: { lineStyle: { color: '#999', width: 1 } },
                             axisTick: { lineStyle: { color: '#999' } },
-                            axisLabel: { fontSize: 9, fontFamily: 'IBM Plex Mono', color: '#666' },
+                            axisLabel: { fontSize: 9, fontFamily: 'Geist Mono', color: '#737373' },
                             splitLine: { show: false }
                         },
                         yAxis: {
                             name: 'Return %',
                             nameLocation: 'end', nameGap: 6,
-                            nameTextStyle: { fontSize: 9, fontWeight: 700, fontFamily: 'IBM Plex Mono', color: '#666' },
+                            nameTextStyle: { fontSize: 9, fontWeight: 700, fontFamily: 'Geist Mono', color: '#737373' },
                             axisLine: { lineStyle: { color: '#999', width: 1 } },
                             axisTick: { lineStyle: { color: '#999' } },
-                            axisLabel: { fontSize: 9, fontFamily: 'IBM Plex Mono', color: '#666', formatter: '{value}%' },
+                            axisLabel: { fontSize: 9, fontFamily: 'Geist Mono', color: '#737373', formatter: '{value}%' },
                             splitLine: { show: false }
                         },
                         series: [{
@@ -555,7 +555,7 @@
                             symbolSize: 20,
                             label: {
                                 show: true, formatter: '{b}', position: 'top',
-                                fontSize: 9, fontWeight: 700, fontFamily: 'IBM Plex Mono', color: '#111'
+                                fontSize: 9, fontWeight: 700, fontFamily: 'Geist Mono', color: '#0a0a0a'
                             },
                             markLine: {
                                 silent: true,
@@ -566,8 +566,8 @@
                             }
                         }],
                         graphic: [
-                            { type: 'text', left: '12%', top: 8, style: { text: 'STRONG', fill: '#ccc', fontSize: 10, fontWeight: 900, fontFamily: 'IBM Plex Mono' } },
-                            { type: 'text', right: '10%', bottom: 8, style: { text: 'RISK', fill: '#ccc', fontSize: 10, fontWeight: 900, fontFamily: 'IBM Plex Mono' } }
+                            { type: 'text', left: '12%', top: 8, style: { text: 'STRONG', fill: '#a1a1a1', fontSize: 10, fontWeight: 900, fontFamily: 'Geist Mono' } },
+                            { type: 'text', right: '10%', bottom: 8, style: { text: 'RISK', fill: '#a1a1a1', fontSize: 10, fontWeight: 900, fontFamily: 'Geist Mono' } }
                         ]
                     });
                 });
@@ -592,7 +592,7 @@
                         tooltip: {
                             trigger: 'item', formatter: '{b}: {d}%',
                             backgroundColor: '#fff', borderColor: '#000', borderWidth: 2,
-                            textStyle: { fontFamily: 'IBM Plex Mono', fontSize: 12, color: '#111' }
+                            textStyle: { fontFamily: 'Geist Mono', fontSize: 12, color: '#0a0a0a' }
                         },
                         series: [{
                             type: 'pie',
@@ -601,7 +601,7 @@
                             data: donutData,
                             label: {
                                 formatter: '{b}\n{d}%', fontSize: 10, fontWeight: 700,
-                                fontFamily: 'IBM Plex Mono', color: '#111', lineHeight: 16
+                                fontFamily: 'Geist Mono', color: '#0a0a0a', lineHeight: 16
                             },
                             labelLine: { lineStyle: { color: '#000', width: 2 }, length: 10, length2: 15 },
                             emphasis: { itemStyle: { borderColor: '#000', borderWidth: 3, shadowBlur: 0 } },
