@@ -323,47 +323,49 @@ ATM.getChartTheme = function() {
     return {
         backgroundColor: 'transparent',
         textStyle: {
-            color: dark ? '#E8E8E8' : '#111111',
-            fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif"
+            color: dark ? '#e6dfd3' : '#111111',
+            fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
         },
         title: {
             textStyle: {
-                color: dark ? '#E8E8E8' : '#000000',
-                fontWeight: 700
+                color: dark ? '#e6dfd3' : '#111111',
+                fontWeight: 700,
+                fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
             }
         },
         legend: {
             textStyle: {
-                color: dark ? '#CCCCCC' : '#444444',
-                fontSize: 12
+                color: dark ? '#a09888' : '#3a3733',
+                fontSize: 12,
+                fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
             },
             icon: 'rect',
             itemWidth: 14,
             itemHeight: 8
         },
         tooltip: {
-            backgroundColor: dark ? '#2A2A2A' : '#FFFFFF',
-            borderColor: dark ? '#555555' : '#000000',
+            backgroundColor: dark ? '#23211c' : '#f7f4ec',
+            borderColor: dark ? '#3a3530' : '#1f1d1a',
             borderWidth: 1,
             textStyle: {
-                color: dark ? '#E8E8E8' : '#000000',
+                color: dark ? '#e6dfd3' : '#111111',
                 fontSize: 12,
-                fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif"
+                fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
             },
-            extraCssText: 'box-shadow:0 4px 16px rgba(0,0,0,0.12);border-radius:6px;'
+            extraCssText: 'border:1px solid #1f1d1a;'
         },
-        splitLineColor: dark ? '#333333' : '#E5E5E5',
-        axisLabelColor: dark ? '#AAAAAA' : '#777777',
-        axisLineColor: dark ? '#555555' : '#000000',
-        upColor: '#DC2626',
-        upColor0: 'rgba(220, 38, 38, 0.15)',
-        downColor: '#16A34A',
-        downColor0: 'rgba(22, 163, 74, 0.15)',
-        accentColor: '#0a0a0a',
-        accentLight: 'rgba(37, 99, 235, 0.15)',
+        splitLineColor: dark ? '#3a3530' : '#1f1d1a',
+        axisLabelColor: dark ? '#706658' : '#8a857c',
+        axisLineColor: dark ? '#3a3530' : '#1f1d1a',
+        upColor: '#c8462c',
+        upColor0: 'rgba(200, 70, 44, 0.15)',
+        downColor: '#3a7a3a',
+        downColor0: 'rgba(58, 122, 58, 0.15)',
+        accentColor: '#c8462c',
+        accentLight: 'rgba(200, 70, 44, 0.15)',
         seriesColors: dark
-            ? ['#E8E8E8', '#60A5FA', '#AAAAAA', '#666666', '#F87171', '#4ADE80', '#FBBF24', '#CCCCCC']
-            : ['#000000', '#737373', '#a1a1a1', '#e5e5e5', '#DC2626', '#16A34A', '#D97735', '#0a0a0a']
+            ? ['#e6dfd3', '#d66947', '#a09888', '#706658', '#5a9a5a', '#3a3530', '#e6dfd3', '#706658']
+            : ['#111111', '#c8462c', '#3a3733', '#8a857c', '#3a7a3a', '#1f1d1a', '#c8462c', '#8a857c']
     };
 };
 
@@ -1188,26 +1190,26 @@ ATMChart.getChartTheme = function() {
     return {
         backgroundColor: 'transparent',
         textStyle: {
-            fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif",
+            fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
             fontSize: 12,
             color: '#111111'
         },
         title: {
             textStyle: {
-                color: '#000000',
+                color: '#111111',
                 fontWeight: 700,
-                fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif"
+                fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
             },
             subtextStyle: {
-                color: '#777777'
+                color: '#8a857c'
             }
         },
         line: {
             itemStyle: {
-                borderWidth: 2
+                borderWidth: 1
             },
             lineStyle: {
-                width: 2
+                width: 1
             },
             symbolSize: 4,
             symbol: 'rect',
@@ -1221,29 +1223,29 @@ ATMChart.getChartTheme = function() {
         pie: {
             itemStyle: {
                 borderRadius: 0,
-                borderColor: '#FFFFFF',
-                borderWidth: 2
+                borderColor: '#f1ede3',
+                borderWidth: 1
             }
         },
         categoryAxis: {
             axisLine: {
                 lineStyle: {
-                    color: '#000000',
+                    color: '#1f1d1a',
                     width: 1
                 }
             },
             axisTick: {
                 lineStyle: {
-                    color: '#000000'
+                    color: '#1f1d1a'
                 }
             },
             axisLabel: {
-                color: '#777777',
-                fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif"
+                color: '#8a857c',
+                fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
             },
             splitLine: {
                 lineStyle: {
-                    color: '#E5E5E5',
+                    color: '#1f1d1a',
                     type: 'solid'
                 }
             },
@@ -1254,22 +1256,22 @@ ATMChart.getChartTheme = function() {
         valueAxis: {
             axisLine: {
                 lineStyle: {
-                    color: '#000000',
+                    color: '#1f1d1a',
                     width: 1
                 }
             },
             axisTick: {
                 lineStyle: {
-                    color: '#000000'
+                    color: '#1f1d1a'
                 }
             },
             axisLabel: {
-                color: '#777777',
-                fontFamily: "'Geist Mono', ui-monospace, monospace"
+                color: '#8a857c',
+                fontFamily: "'JetBrains Mono', ui-monospace, monospace"
             },
             splitLine: {
                 lineStyle: {
-                    color: '#E5E5E5',
+                    color: '#1f1d1a',
                     type: 'solid'
                 }
             },
@@ -1278,51 +1280,51 @@ ATMChart.getChartTheme = function() {
             }
         },
         tooltip: {
-            backgroundColor: '#FFFFFF',
-            borderColor: '#000000',
+            backgroundColor: '#f7f4ec',
+            borderColor: '#1f1d1a',
             borderWidth: 1,
             textStyle: {
-                color: '#000000',
-                fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif"
+                color: '#111111',
+                fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
             },
-            extraCssText: 'border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.12);'
+            extraCssText: 'border:1px solid #1f1d1a;'
         },
         legend: {
             textStyle: {
-                color: '#444444',
-                fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif"
+                color: '#3a3733',
+                fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
             },
             pageTextStyle: {
-                color: '#777777'
+                color: '#8a857c'
             }
         },
         color: [
-            '#000000',
-            '#737373',
-            '#777777',
-            '#BBBBBB',
-            '#DC2626',
-            '#16A34A',
-            '#D97735',
-            '#444444',
-            '#999999',
-            '#CCCCCC'
+            '#111111',
+            '#3a3733',
+            '#8a857c',
+            '#1f1d1a',
+            '#c8462c',
+            '#3a7a3a',
+            '#a87d2f',
+            '#111111',
+            '#8a857c',
+            '#1f1d1a'
         ],
         watercolorColors: {
-            blue: '#000000',
-            blueLight: '#444444',
-            neutral: '#737373',
-            greenLight: '#3B82F6',
-            terracotta: '#D97735',
-            terracottaLight: '#E8A075',
-            lavender: '#777777',
-            lavenderLight: '#999999',
-            peach: '#DC2626',
-            peachLight: '#EF4444',
-            up: '#DC2626',
-            upLight: '#EF4444',
-            down: '#16A34A',
-            downLight: '#22C55E'
+            blue: '#111111',
+            blueLight: '#3a3733',
+            neutral: '#8a857c',
+            greenLight: '#3a7a3a',
+            terracotta: '#c8462c',
+            terracottaLight: '#d66947',
+            lavender: '#8a857c',
+            lavenderLight: '#a09888',
+            peach: '#c8462c',
+            peachLight: '#d66947',
+            up: '#c8462c',
+            upLight: '#d66947',
+            down: '#3a7a3a',
+            downLight: '#5a9a5a'
         }
     };
 };
@@ -1331,26 +1333,26 @@ ATMChart.getChartThemeDark = function() {
     return {
         backgroundColor: 'transparent',
         textStyle: {
-            fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif",
+            fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
             fontSize: 12,
-            color: '#E8E8E8'
+            color: '#e6dfd3'
         },
         title: {
             textStyle: {
-                color: '#E8E8E8',
+                color: '#e6dfd3',
                 fontWeight: 700,
-                fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif"
+                fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
             },
             subtextStyle: {
-                color: '#AAAAAA'
+                color: '#706658'
             }
         },
         line: {
             itemStyle: {
-                borderWidth: 2
+                borderWidth: 1
             },
             lineStyle: {
-                width: 2
+                width: 1
             },
             symbolSize: 4,
             symbol: 'rect',
@@ -1364,29 +1366,29 @@ ATMChart.getChartThemeDark = function() {
         pie: {
             itemStyle: {
                 borderRadius: 0,
-                borderColor: '#2A2A2A',
-                borderWidth: 2
+                borderColor: '#1a1814',
+                borderWidth: 1
             }
         },
         categoryAxis: {
             axisLine: {
                 lineStyle: {
-                    color: '#555555',
+                    color: '#3a3530',
                     width: 1
                 }
             },
             axisTick: {
                 lineStyle: {
-                    color: '#555555'
+                    color: '#3a3530'
                 }
             },
             axisLabel: {
-                color: '#AAAAAA',
-                fontFamily: "'Geist Mono', ui-monospace, monospace"
+                color: '#706658',
+                fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
             },
             splitLine: {
                 lineStyle: {
-                    color: '#333333',
+                    color: '#3a3530',
                     type: 'solid'
                 }
             },
@@ -1397,22 +1399,22 @@ ATMChart.getChartThemeDark = function() {
         valueAxis: {
             axisLine: {
                 lineStyle: {
-                    color: '#555555',
+                    color: '#3a3530',
                     width: 1
                 }
             },
             axisTick: {
                 lineStyle: {
-                    color: '#555555'
+                    color: '#3a3530'
                 }
             },
             axisLabel: {
-                color: '#AAAAAA',
-                fontFamily: "'Geist Mono', ui-monospace, monospace"
+                color: '#706658',
+                fontFamily: "'JetBrains Mono', ui-monospace, monospace"
             },
             splitLine: {
                 lineStyle: {
-                    color: '#333333',
+                    color: '#3a3530',
                     type: 'solid'
                 }
             },
@@ -1421,51 +1423,51 @@ ATMChart.getChartThemeDark = function() {
             }
         },
         tooltip: {
-            backgroundColor: '#2A2A2A',
-            borderColor: '#555555',
+            backgroundColor: '#23211c',
+            borderColor: '#3a3530',
             borderWidth: 1,
             textStyle: {
-                color: '#E8E8E8',
-                fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif"
+                color: '#e6dfd3',
+                fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
             },
-            extraCssText: 'border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.12);'
+            extraCssText: 'border:1px solid #3a3530;'
         },
         legend: {
             textStyle: {
-                color: '#CCCCCC',
-                fontFamily: "'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif"
+                color: '#a09888',
+                fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
             },
             pageTextStyle: {
-                color: '#AAAAAA'
+                color: '#706658'
             }
         },
         color: [
-            '#E8E8E8',
-            '#60A5FA',
-            '#AAAAAA',
-            '#666666',
-            '#F87171',
-            '#4ADE80',
-            '#FBBF24',
-            '#CCCCCC',
-            '#888888',
-            '#555555'
+            '#e6dfd3',
+            '#d66947',
+            '#a09888',
+            '#706658',
+            '#5a9a5a',
+            '#3a3530',
+            '#c8462c',
+            '#a09888',
+            '#706658',
+            '#3a3530'
         ],
         watercolorColors: {
-            blue: '#E8E8E8',
-            blueLight: '#CCCCCC',
-            green: '#60A5FA',
-            greenLight: '#93C5FD',
-            terracotta: '#FBBF24',
-            terracottaLight: '#FCD34D',
-            lavender: '#AAAAAA',
-            lavenderLight: '#CCCCCC',
-            peach: '#F87171',
-            peachLight: '#FCA5A5',
-            up: '#F87171',
-            upLight: '#FCA5A5',
-            down: '#4ADE80',
-            downLight: '#86EFAC'
+            blue: '#e6dfd3',
+            blueLight: '#a09888',
+            green: '#5a9a5a',
+            greenLight: '#5a9a5a',
+            terracotta: '#d66947',
+            terracottaLight: '#c8462c',
+            lavender: '#a09888',
+            lavenderLight: '#706658',
+            peach: '#d66947',
+            peachLight: '#c8462c',
+            up: '#d66947',
+            upLight: '#c8462c',
+            down: '#5a9a5a',
+            downLight: '#5a9a5a'
         }
     };
 };

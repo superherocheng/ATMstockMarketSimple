@@ -1,15 +1,3 @@
 {
-  "mcpServers": {
-    "open-design": {
-      "command": "/Applications/Open Design.app/Contents/Resources/open-design/bin/node",
-      "args": [
-        "/Applications/Open Design.app/Contents/Resources/app/prebundled/daemon/daemon-cli.mjs",
-        "mcp"
-      ],
-      "env": {
-        "OD_DATA_DIR": "/Users/atmbrandnew/Library/Application Support/Open Design/namespaces/release-stable/data",
-        "OD_SIDECAR_IPC_PATH": "/tmp/open-design/ipc/release-stable/daemon.sock"
-      }
-    }
-  }
+  "mcpServers": {}
 }

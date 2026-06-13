@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="ATMstockMarket - A股市场分析平台">
-    <meta name="theme-color" content="#0a0a0a">
+    <meta name="theme-color" content="#f1ede3">
     <title>ATMstockMarket</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="/static/css/app.css">
     <script defer src="/static/js/vendor.js"></script>
@@ -482,7 +482,7 @@
             var pct = (r.position_ratio || 0) * 100;
             var barPct = totalWeight > 0 ? ((r.position_ratio || 0) / totalWeight * 100) : 0;
             html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
-                '<span style="font-size:12px;font-weight:500;min-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--c-text);">' + (r.etf_name || r.ts_code || 'Unknown') + '</span>' +
+                '<span style="font-size:12px;font-weight:500;min-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--c-text);">' + (r.name || r.code || 'Unknown') + '</span>' +
                 '<div style="flex:1;height:16px;background:var(--c-bg-secondary);border-radius:8px;overflow:hidden;">' +
                 '<div style="height:100%;width:' + barPct + '%;background:var(--c-accent);border-radius:8px;transition:width 0.3s;"></div></div>' +
                 '<span style="font-size:12px;font-family:var(--font-mono);color:var(--c-text-secondary);min-width:50px;text-align:right;">' + pct.toFixed(1) + '%</span></div>';

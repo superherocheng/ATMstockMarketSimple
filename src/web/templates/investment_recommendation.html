@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="/static/css/app.css">
     <script defer src="/static/js/vendor.js"></script>
@@ -78,7 +78,7 @@
 
     /* ── Stats grid ── */
     .stats-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; }
-    .stat-card { background:var(--c-bg); border-radius:var(--radius-sm); padding:12px 14px; border-left:3px solid transparent; }
+    .stat-card { background:var(--c-bg); border-radius:var(--radius-sm); padding:12px 14px; }
     .stat-card.q1 { border-left-color:var(--c-up); }
     .stat-card.q2 { border-left-color:var(--c-accent); }
     .stat-title { font-size:11px; font-weight:600; color:var(--c-text-tertiary); letter-spacing:0.3px; margin-bottom:8px; }
@@ -102,7 +102,7 @@
     .conf-wrap { padding:20px 16px; display:flex; flex-direction:column; justify-content:center; height:calc(100% - 37px); }
     .conf-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.2em; color:var(--c-text-muted); margin-bottom:8px; }
     .conf-score { font-size:48px; font-weight:900; font-family:var(--font-mono); line-height:1; margin-bottom:12px; }
-    .conf-bar-outer { width:100%; height:20px; border:3px solid #000; background:#fff; }
+    .conf-bar-outer { width:100%; height:20px; border:1px solid var(--color-hairline); }
     .conf-bar-fill { height:100%; transition:width 0.6s ease; }
     .conf-bar-fill.high { background:#16A34A; }
     .conf-bar-fill.mid { background:#D97706; }
@@ -238,10 +238,6 @@
                 <div class="vis-cell">
                     <h3 class="vis-title">Factor Scoring Radar</h3>
                     <div id="chart-radar" class="vis-chart"></div>
-                    <!-- Quality factor status note -->
-                    <div id="quality-status-note" style="display:none;text-align:center;font-size:11px;color:#999;padding:4px 0;">
-                      Quality 因子当前权重为 0（基于回测表现），不影响推荐评分
-                    </div>
                 </div>
                 <div class="vis-cell">
                     <h3 class="vis-title">Risk vs. Return Quadrant</h3>
@@ -433,7 +429,7 @@
                     r._quality = r.z_quality || 0;
                     r._efficiency = r.z_efficiency || 0;
                     r._rsi = r.z_rsi_momentum || 0;
-                    r._pos = parseFloat(r.position_ratio) || 0;
+                    r._pos = (r.position_ratio || 0) * 100;
                     r._shortName = r.name.replace(/ETF/i, '').trim();
                 });
 
@@ -449,15 +445,21 @@
                     var radarChart = echarts.init(radarEl);
                     if (ATMChart._instances) ATMChart._instances.set(radarEl, radarChart);
 
-                    var dims = ['_mom', '_flow', '_quality', '_efficiency', '_rsi'];
-                    var dimLabels = ['Momentum', 'Flow', 'Quality', 'Efficiency', 'RSI'];
+                    // Filter out disabled Quality dimension
+                    var enabledDims = ['_mom', '_flow', '_efficiency', '_rsi'];
+                    var enabledLabels = ['Momentum', 'Flow', 'Efficiency', 'RSI'];
+                    if (!qualityDisabled) {
+                        enabledDims.push('_quality');
+                        enabledLabels.push('Quality');
+                    }
+                    var dims = enabledDims;
+                    var dimLabels = enabledLabels;
                     var norm = {};
                     dims.forEach(function(d) {
                         var vals = recs.map(function(r) { return r[d]; });
                         var min = Math.min.apply(null, vals);
                         var max = Math.max.apply(null, vals);
                         var range = max - min || 1;
-                        // If all values are zero (e.g., inactive factor), set to 0
                         if (max === 0 && min === 0) {
                             norm[d] = vals.map(function() { return 0; });
                         } else {
@@ -471,7 +473,7 @@
                             name: r._shortName,
                             symbol: 'rect',
                             symbolSize: 6,
-                            lineStyle: { width: 2, color: COLORS[i] },
+                            lineStyle: { width: 1, color: COLORS[i] },
                             itemStyle: { color: COLORS[i] },
                             areaStyle: { opacity: 0.06, color: COLORS[i] }
                         };
@@ -482,32 +484,28 @@
                         legend: {
                             data: recs.map(function(r) { return r._shortName; }),
                             bottom: 4,
-                            textStyle: { fontSize: 10, fontFamily: 'Geist Mono, monospace', color: '#0a0a0a' },
+                            textStyle: { fontSize: 10, fontFamily: "'Inter', system-ui, sans-serif", color: '#3a3733' },
                             icon: 'rect', itemWidth: 10, itemHeight: 10, itemGap: 14
                         },
                         radar: {
-                            indicator: dimLabels.map(function(l, i) {
-                                var isQuality = l === 'Quality';
+                            indicator: dimLabels.map(function(l) {
                                 return {
-                                    name: isQuality && qualityDisabled ? 'Quality (已停用)' : l,
+                                    name: l,
                                     max: 100,
-                                    nameTextStyle: isQuality && qualityDisabled ? { color: '#999' } : { color: '#0a0a0a' }
+                                    nameTextStyle: { color: '#111111' }
                                 };
                             }),
                             shape: 'polygon',
                             splitNumber: 4,
                             radius: '58%',
                             center: ['50%', '44%'],
-                            axisLine: { lineStyle: { color: '#000', width: 2 } },
-                            splitLine: { lineStyle: { color: '#ddd', width: 1 } },
+                            axisLine: { lineStyle: { color: '#1f1d1a', width: 1 } },
+                            splitLine: { lineStyle: { color: '#1f1d1a', width: 1 } },
                             splitArea: { show: false },
-                            name: { textStyle: { color: '#0a0a0a', fontSize: 10, fontWeight: 700, fontFamily: 'Geist Mono, monospace' } }
+                            name: { textStyle: { color: '#111111', fontSize: 10, fontWeight: 600, fontFamily: "'Inter', system-ui, sans-serif" } }
                         },
                         series: [{ type: 'radar', data: radarData }]
                     });
-                    // Show/hide quality status note
-                    var qNote = document.getElementById('quality-status-note');
-                    if (qNote) qNote.style.display = qualityDisabled ? 'block' : 'none';
                 });
 
                 // --- Scatter Plot ---
@@ -534,19 +532,19 @@
                         xAxis: {
                             name: 'Capital Flow',
                             nameLocation: 'middle', nameGap: 28,
-                            nameTextStyle: { fontSize: 9, fontWeight: 700, fontFamily: 'Geist Mono', color: '#737373' },
+                            nameTextStyle: { fontSize: 9, fontWeight: 700, fontFamily: 'JetBrains Mono', color: '#737373' },
                             axisLine: { lineStyle: { color: '#999', width: 1 } },
                             axisTick: { lineStyle: { color: '#999' } },
-                            axisLabel: { fontSize: 9, fontFamily: 'Geist Mono', color: '#737373' },
+                            axisLabel: { fontSize: 9, fontFamily: 'JetBrains Mono', color: '#737373' },
                             splitLine: { show: false }
                         },
                         yAxis: {
                             name: 'Return %',
                             nameLocation: 'end', nameGap: 6,
-                            nameTextStyle: { fontSize: 9, fontWeight: 700, fontFamily: 'Geist Mono', color: '#737373' },
+                            nameTextStyle: { fontSize: 9, fontWeight: 700, fontFamily: 'JetBrains Mono', color: '#737373' },
                             axisLine: { lineStyle: { color: '#999', width: 1 } },
                             axisTick: { lineStyle: { color: '#999' } },
-                            axisLabel: { fontSize: 9, fontFamily: 'Geist Mono', color: '#737373', formatter: '{value}%' },
+                            axisLabel: { fontSize: 9, fontFamily: 'JetBrains Mono', color: '#737373', formatter: '{value}%' },
                             splitLine: { show: false }
                         },
                         series: [{
@@ -555,7 +553,7 @@
                             symbolSize: 20,
                             label: {
                                 show: true, formatter: '{b}', position: 'top',
-                                fontSize: 9, fontWeight: 700, fontFamily: 'Geist Mono', color: '#0a0a0a'
+                                fontSize: 9, fontWeight: 700, fontFamily: 'JetBrains Mono', color: '#0a0a0a'
                             },
                             markLine: {
                                 silent: true,
@@ -566,8 +564,8 @@
                             }
                         }],
                         graphic: [
-                            { type: 'text', left: '12%', top: 8, style: { text: 'STRONG', fill: '#a1a1a1', fontSize: 10, fontWeight: 900, fontFamily: 'Geist Mono' } },
-                            { type: 'text', right: '10%', bottom: 8, style: { text: 'RISK', fill: '#a1a1a1', fontSize: 10, fontWeight: 900, fontFamily: 'Geist Mono' } }
+                            { type: 'text', left: '12%', top: 8, style: { text: 'STRONG', fill: '#a1a1a1', fontSize: 10, fontWeight: 900, fontFamily: 'JetBrains Mono' } },
+                            { type: 'text', right: '10%', bottom: 8, style: { text: 'RISK', fill: '#a1a1a1', fontSize: 10, fontWeight: 900, fontFamily: 'JetBrains Mono' } }
                         ]
                     });
                 });
@@ -592,7 +590,7 @@
                         tooltip: {
                             trigger: 'item', formatter: '{b}: {d}%',
                             backgroundColor: '#fff', borderColor: '#000', borderWidth: 2,
-                            textStyle: { fontFamily: 'Geist Mono', fontSize: 12, color: '#0a0a0a' }
+                            textStyle: { fontFamily: 'JetBrains Mono', fontSize: 12, color: '#0a0a0a' }
                         },
                         series: [{
                             type: 'pie',
@@ -601,7 +599,7 @@
                             data: donutData,
                             label: {
                                 formatter: '{b}\n{d}%', fontSize: 10, fontWeight: 700,
-                                fontFamily: 'Geist Mono', color: '#0a0a0a', lineHeight: 16
+                                fontFamily: 'JetBrains Mono', color: '#0a0a0a', lineHeight: 16
                             },
                             labelLine: { lineStyle: { color: '#000', width: 2 }, length: 10, length2: 15 },
                             emphasis: { itemStyle: { borderColor: '#000', borderWidth: 3, shadowBlur: 0 } },
@@ -636,7 +634,7 @@
             if (data.recommendations && data.recommendations.length > 0) {
                 var maxPos = 0;
                 data.recommendations.forEach(function(r) {
-                    var pct = parseFloat(r.position_ratio);
+                    var pct = (r.position_ratio || 0) * 100;
                     if (pct > maxPos) maxPos = pct;
                 });
 
@@ -648,7 +646,7 @@
                     var quadCls = 'quad-' + quad;
                     var quadLabel = 'Q' + quad;
 
-                    var pct = parseFloat(r.position_ratio);
+                    var pct = (r.position_ratio || 0) * 100;
                     var barPct = maxPos > 0 ? Math.round(pct / maxPos * 100) : 0;
                     var barCls = quad === 1 ? 'q1' : 'q2';
 
