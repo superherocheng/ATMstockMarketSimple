@@ -60,7 +60,7 @@ for name in ('uvicorn.access', 'uvicorn'):
 from src.core.db_manager_postgresql import _ensure_db, close_db_manager
 from starlette.middleware.gzip import GZipMiddleware
 from src.web.services.middleware import rate_limit_middleware, add_cache_headers
-from src.web.routers import overview, etf, fetch, analysis, telemetry
+from src.web.routers import overview, etf, fetch, analysis, telemetry, rotation
 
 # ── 认证配置 ────────────────────────────────────────────────
 # 从环境变量读取 API_TOKEN，None 表示不启用认证（内网访问模式）
@@ -280,6 +280,7 @@ app.include_router(overview.router)
 app.include_router(etf.router)
 app.include_router(fetch.router)
 app.include_router(analysis.router)
+app.include_router(rotation.router)
 
 app.include_router(telemetry.router)
 

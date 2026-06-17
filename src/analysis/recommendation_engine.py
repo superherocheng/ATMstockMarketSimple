@@ -336,41 +336,53 @@ def build_investment_recommendation(preset_id: str = "short",
         logger.warning(f"Market timing failed: {exc}")
         timing = {"score": 0, "adjustment": 0, "regime_cn": "Unknown", "narrative": ""}
 
-    # ── Data coverage stats (right after fetching factor data) ──
+    # ── Data coverage stats ──
+    # Measure BOTH row coverage AND usable-factor coverage. A factor_daily row may
+    # exist for the latest date with factor=NaN (today's price/flow data only
+    # partially arrived), which makes the cross-sectional snapshot unusable even
+    # though the row count looks healthy. The app reads NaN via pandas, so we use
+    # _safe_float (which treats NaN/None as None) rather than a SQL COUNT — note
+    # PostgreSQL evaluates NaN = NaN as TRUE, so a SQL COUNT(factor) would wrongly
+    # count NaN rows as valid.
     total_tracked_etfs = len(sector_names)
-    try:
-        conn_cov = _get_conn()
-        cov_row = conn_cov.execute(text("""
-            SELECT trade_date, COUNT(*) as cnt
-            FROM factor_daily
-            WHERE preset_id = :pid AND trade_date = (
-                SELECT MAX(trade_date) FROM factor_daily WHERE preset_id = :pid
-            )
-            GROUP BY trade_date
-        """), {"pid": preset_id}).fetchone()
-        latest_etf_count = cov_row[1] if cov_row else 0
-        conn_cov.close()
-    except Exception:
-        latest_etf_count = 0
+    latest_etf_count = 0       # tracked ETFs with a row on the latest date
+    factor_valid_count = 0     # tracked ETFs with a usable (non-NaN) factor
+    for r in factor_rows:
+        if r[0] not in sector_names:
+            continue
+        latest_etf_count += 1
+        if _safe_float(r[3]) is not None:
+            factor_valid_count += 1
 
-    # If data coverage is insufficient, return empty state
-    if latest_etf_count < total_tracked_etfs * 0.5:
+    # If the latest day's cross-section is incomplete, do NOT emit investment advice.
+    if (latest_etf_count < total_tracked_etfs * 0.5
+            or factor_valid_count < total_tracked_etfs * 0.5):
         logger.warning(
-            f"ETF data coverage too low ({latest_etf_count}/{total_tracked_etfs}), "
-            f"skipping recommendation. Share data may be T+1 incomplete."
+            f"Latest-day cross-section incomplete for {latest_date}: "
+            f"{factor_valid_count}/{total_tracked_etfs} ETFs have usable factors "
+            f"({latest_etf_count} rows present). Skipping recommendation."
         )
         return {
-            "date": str(latest_date) if 'latest_date' in dir() else str(datetime.now().date()),
+            "error": "data_incomplete",
+            "data_incomplete": True,
+            "date": str(latest_date),
             "recommendations": [],
+            "message": (
+                f"最新交易日 {latest_date} 的截面数据尚未齐全"
+                f"（仅 {factor_valid_count}/{total_tracked_etfs} 只ETF有有效因子），"
+                f"暂不生成投资建议，待数据更新后自动恢复。"
+            ),
             "strategy": {
                 "name": f"ETF Multi-Factor Rotation Strategy ({preset['label']})",
-                "description": "数据不完整：ETF 份额数据覆盖不足，等待下一个交易日数据更新后自动恢复",
+                "description": "最新交易日截面数据不完整，等待数据更新后自动恢复",
                 "holding_period": "",
             },
-            "reasons": ["ETF 份额数据不完整，因子计算已跳过，请等待数据更新"],
-            "risk_warning": [f"⚠️ ETF份额数据覆盖不足（{latest_etf_count}/{total_tracked_etfs}），当前建议不适用"],
+            "reasons": ["最新交易日截面数据不完整，因子计算尚未完成，请等待数据更新"],
+            "risk_warning": [
+                f"⚠️ 最新交易日截面数据不完整（{factor_valid_count}/{total_tracked_etfs} "
+                f"只ETF有有效因子），当前建议不适用"
+            ],
             "stats": {},
-            "data_incomplete": True,
         }
 
     # ── Select and rank candidates ──

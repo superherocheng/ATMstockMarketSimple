@@ -259,7 +259,15 @@ def _run_fetch(task_type):
         except Exception as e:
             _add_log(f"[WARN] 投资建议预生成失败: {e}")
 
-        _cache_invalidate("etf", "overview", "analysis")
+        # 轮动策略报告预热（与投资建议同步，使 /rotation 看板反映最新行情）
+        try:
+            from src.analysis.rotation_strategy import build_rotation_report
+            build_rotation_report("optimized")
+            _add_log("[OK] 轮动策略报告已预生成")
+        except Exception as e:
+            _add_log(f"[WARN] 轮动策略报告预生成失败: {e}")
+
+        _cache_invalidate("etf", "overview", "analysis", "rotation")
         with _fetch_lock:
             _fetch_status["backtest_done"] = True
             _fetch_status["progress"] = 100
@@ -591,6 +599,6 @@ async def api_cache_invalidate(category: str = None):
         _cache_invalidate(category)
         logger.info("缓存已清除 (category=%s)", category)
     else:
-        _cache_invalidate("etf", "overview", "analysis")
+        _cache_invalidate("etf", "overview", "analysis", "rotation")
         logger.info("所有缓存已清除")
     return {"status": "ok", "category": category or "all"}

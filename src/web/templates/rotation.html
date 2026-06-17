@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETF 轮动策略 - ATM</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/app.css">
+    <script defer src="/static/js/vendor.js"></script>
+    <script defer src="/static/js/app.js"></script>
+    <style>
+    /* ── Report layout (继承 investment_recommendation 风格) ── */
+    .report-section { background:var(--c-card); border-radius:var(--radius-md); padding:20px 24px; margin-bottom:14px; border:1px solid var(--c-border); }
+    .report-section h3 { font-size:14px; font-weight:600; color:var(--c-text-secondary); margin:0 0 14px; display:flex; align-items:center; gap:8px; letter-spacing:0.3px; }
+    @media (max-width:640px) { .report-section { padding:12px; } .report-section h3 { font-size:13px; } }
+
+    .report-header { background:linear-gradient(135deg, var(--c-card), var(--c-bg-tertiary)); border:1px solid var(--c-border); border-radius:var(--radius-md); padding:24px 28px; margin-bottom:14px; }
+    .report-header-top { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .report-title { font-size:17px; font-weight:700; color:var(--c-text); line-height:1.4; }
+    .report-date { font-size:12px; color:var(--c-text-tertiary); font-family:var(--font-mono); }
+    .report-badges { display:flex; flex-wrap:wrap; gap:8px; }
+    .badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:var(--radius-full); font-size:12px; font-weight:600; white-space:nowrap; }
+    .badge-green { background:var(--c-up-bg); color:var(--c-up); }
+    .badge-red { background:var(--c-down-bg); color:var(--c-down); }
+    .badge-amber { background:var(--c-accent-bg); color:var(--c-accent-dark); }
+    .badge-neutral { background:var(--c-bg-tertiary); color:var(--c-text-secondary); }
+
+    /* ── KPI row ── */
+    .kpi-row { display:grid; grid-template-columns:repeat(6, 1fr); gap:10px; margin-bottom:14px; }
+    .kpi-card { background:var(--c-card); border:1px solid var(--c-border); border-radius:var(--radius-sm); padding:12px 14px; }
+    .kpi-label { font-size:11px; color:var(--c-text-tertiary); margin-bottom:4px; letter-spacing:0.3px; }
+    .kpi-value { font-size:18px; font-weight:700; color:var(--c-text); line-height:1.2; font-family:var(--font-mono); }
+    .kpi-sub { font-size:10px; color:var(--c-text-muted); margin-top:2px; }
+    @media (max-width:640px) { .kpi-row { grid-template-columns:repeat(3, 1fr); } }
+    @media (max-width:480px) { .kpi-row { grid-template-columns:repeat(2, 1fr); } }
+
+    /* ── Regime matrix 3x3 ── */
+    .regime-wrap { display:grid; grid-template-columns:90px 1fr; gap:14px; align-items:stretch; }
+    .regime-ylabel { writing-mode:vertical-rl; transform:rotate(180deg); text-align:center; font-size:11px; font-weight:700; color:var(--c-text-tertiary); letter-spacing:0.2em; text-transform:uppercase; display:flex; align-items:center; justify-content:center; }
+    .regime-matrix { display:grid; grid-template-columns:70px repeat(3, 1fr); grid-auto-rows:1fr; gap:6px; }
+    .regime-corner, .regime-colhead, .regime-rowhead { display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:var(--c-text-tertiary); letter-spacing:0.3px; padding:6px; }
+    .regime-cell { border:1px solid var(--c-border); padding:10px 8px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; background:var(--c-bg); }
+    .regime-cell .rc-pos { font-size:18px; font-weight:900; font-family:var(--font-mono); color:var(--c-text); }
+    .regime-cell .rc-level { font-size:11px; font-weight:700; }
+    .regime-cell .rc-action { font-size:10px; color:var(--c-text-muted); text-align:center; line-height:1.3; }
+    .regime-cell.current { border:2px solid var(--c-accent); background:var(--c-accent-bg); }
+    .regime-cell.current .rc-pos { color:var(--c-accent-dark); }
+    .lvl-轻仓 { color:var(--c-down); }
+    .lvl-均衡 { color:var(--c-accent-dark); }
+    .lvl-重仓 { color:var(--c-up); }
+    @media (max-width:640px) { .regime-wrap { grid-template-columns:1fr; } .regime-ylabel { writing-mode:horizontal-tb; transform:none; } .regime-cell .rc-action { display:none; } }
+
+    /* ── Visual grid ── */
+    .vis-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+    .vis-cell { background:var(--c-card); border:1px solid var(--c-border); border-radius:0; overflow:hidden; }
+    .vis-title { font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:0.2em; padding:10px 16px; border-bottom:1px solid var(--c-border); margin:0; color:var(--c-text); }
+    .vis-chart { width:100%; height:300px; }
+    @media (max-width:640px) { .vis-grid { grid-template-columns:1fr; } .vis-chart { height:260px; } }
+
+    /* ── Basket tables ── */
+    .rec-table { width:100%; border-collapse:collapse; }
+    .rec-table th { text-align:left; font-size:11px; font-weight:600; color:var(--c-text-tertiary); padding:8px 10px; border-bottom:1px solid var(--c-border); letter-spacing:0.5px; }
+    .rec-table td { padding:10px; border-bottom:1px solid var(--c-border); font-size:13px; vertical-align:middle; }
+    .rec-table tr:last-child td { border-bottom:none; }
+    .rec-table tr:hover td { background:var(--c-table-hover); }
+    .rank-num { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:var(--radius-full); font-size:11px; font-weight:700; background:var(--c-bg-tertiary); color:var(--c-text-tertiary); }
+    .rank-1 { background:#fee2e2; color:#dc2626; }
+    .quad-tag { display:inline-block; padding:1px 8px; border-radius:var(--radius-full); font-size:11px; font-weight:600; }
+    .quad-1 { background:var(--c-up-bg); color:var(--c-up); }
+    .quad-2 { background:var(--c-accent-bg); color:var(--c-accent-dark); }
+    .pos-bar-wrap { display:flex; align-items:center; gap:10px; }
+    .pos-bar { flex:1; height:8px; background:var(--c-bg-tertiary); border-radius:var(--radius-full); overflow:hidden; min-width:60px; }
+    .pos-bar-fill { height:100%; border-radius:var(--radius-full); }
+    .pos-bar-fill.q1 { background:var(--c-up); }
+    .pos-bar-fill.q2 { background:var(--c-accent); }
+    .pos-text { font-size:13px; font-weight:700; color:var(--c-text); min-width:42px; text-align:right; font-family:var(--font-mono); }
+
+    /* ── Risk / narrative ── */
+    .risk-list, .reason-list { list-style:none; padding:0; margin:0; }
+    .risk-item { display:flex; align-items:flex-start; gap:8px; padding:8px 0; font-size:13px; line-height:1.5; border-bottom:1px solid var(--c-border); }
+    .risk-item:last-child { border-bottom:none; }
+    .risk-icon { flex-shrink:0; margin-top:1px; }
+    .reason-item { display:flex; align-items:flex-start; gap:8px; padding:6px 0; font-size:13px; color:var(--c-text-secondary); line-height:1.5; }
+    .reason-bullet { flex-shrink:0; color:var(--c-accent); font-weight:700; }
+
+    .empty-state-guide { text-align:center; padding:48px 24px; background:var(--c-card); border:1px dashed var(--c-border); border-radius:var(--radius-lg,8px); }
+    .empty-state-guide-icon { font-size:40px; margin-bottom:12px; opacity:0.3; }
+    .empty-state-guide-title { font-size:16px; font-weight:700; color:var(--c-text); margin-bottom:8px; }
+    .empty-state-guide-desc { font-size:13px; color:var(--c-text-tertiary); line-height:1.6; max-width:420px; margin:0 auto; }
+    .hard-skeleton-text { font-family:var(--font-mono); }
+    </style>
+    <script>(function(){var t=localStorage.getItem('atm-theme');document.documentElement.dataset.theme=t||'light';})();</script>
+</head>
+<body class="min-h-screen">
+
+    <div class="tablet-topbar">
+        <div class="tablet-topbar-logo"><a href="/">ATMstockMarket</a></div>
+        <nav class="tablet-topbar-nav">
+            <a href="/">Home</a>
+            <a href="/etf">Index ETF</a>
+            <a href="/sector">Sector ETF</a>
+            <a href="/analysis">Analysis</a>
+            <a href="/rotation" class="active">Rotation</a>
+        </nav>
+    </div>
+
+    <div class="page-layout">
+    <aside class="sidebar-nav">
+        <div class="sidebar-logo">
+            <a href="/">ATMstockMarket</a>
+            <div class="sidebar-logo-sub">A-Share Market Analysis</div>
+        </div>
+        <div class="sidebar-nav-section">
+            <div class="sidebar-nav-label">Navigation</div>
+            <nav class="sidebar-nav-links">
+                <a href="/" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>Home</a>
+                <a href="/etf" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Index ETF</a>
+                <a href="/sector" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Sector ETF</a>
+                <a href="/analysis" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>Analysis</a>
+                <a href="/rotation" class="sidebar-nav-link active"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Rotation</a>
+            </nav>
+        </div>
+        <div class="sidebar-nav-footer">
+            <p style="font-size:var(--text-xs);color:var(--c-text-tertiary);line-height:1.3;margin-bottom:8px;">Educational purposes only, not investment advice</p>
+            <p>Display</p>
+            <div style="display:flex;gap:6px;margin-top:6px;">
+                <button id="theme-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggle()" title="Toggle theme" type="button">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                </button>
+            </div>
+            <p style="margin-top:12px;">Data Source</p>
+            <span>Tushare · AKShare</span>
+        </div>
+    </aside>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-8">
+
+        <div id="loading" class="hard-skeleton" style="min-height:300px;">
+            <span class="hard-skeleton-text">[ AWAITING ROTATION SIGNAL ... ]</span>
+        </div>
+
+        <div id="error-state" style="display:none;">
+            <div class="empty-state-guide">
+                <div class="empty-state-guide-icon">🔄</div>
+                <div class="empty-state-guide-title" id="error-title">轮动数据未就绪</div>
+                <div class="empty-state-guide-desc" id="error-msg">暂无轮动策略数据。请先在首页运行「更新数据」完成 ETF 行情与因子计算。</div>
+                <div style="margin-top:20px;">
+                    <a href="/" class="btn btn-primary" style="display:inline-flex;">返回首页 → 更新数据</a>
+                </div>
+            </div>
+        </div>
+
+        <div id="content" style="display:none;">
+
+            <div class="report-header">
+                <div class="report-header-top">
+                    <div>
+                        <div class="report-title">ETF 行业轮动策略 · 中信期货框架</div>
+                        <div class="report-date" id="data-date">--</div>
+                    </div>
+                    <div class="report-badges" id="badges"></div>
+                </div>
+                <p style="font-size:13px;color:var(--c-text-secondary);margin-top:10px;line-height:1.6;" id="action-line"></p>
+                <p style="font-size:11px;color:var(--c-text-tertiary);margin-top:6px;line-height:1.5;">市场情绪指标（宽基趋势 + 行业宽度）与行业轮动强度双轴驱动 → 总仓位 → 进攻层(Q1强势) + 防守层(Q2反转) 双层组合。本页为量化参考，不构成投资建议。</p>
+            </div>
+
+            <div class="kpi-row" id="kpi-row"></div>
+
+            <div class="report-section">
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> 双轴决策矩阵（情绪 × 轮动强度）</h3>
+                <div class="regime-wrap">
+                    <div class="regime-ylabel">市场情绪（上=过热 → 下=低迷）</div>
+                    <div id="regime-matrix" class="regime-matrix"></div>
+                </div>
+            </div>
+
+            <div class="vis-grid">
+                <div class="vis-cell"><h3 class="vis-title">市场情绪仪表</h3><div id="chart-sentiment-gauge" class="vis-chart"></div></div>
+                <div class="vis-cell"><h3 class="vis-title">情绪分趋势 (120日)</h3><div id="chart-sentiment-line" class="vis-chart"></div></div>
+                <div class="vis-cell"><h3 class="vis-title">行业轮动强度 (60日)</h3><div id="chart-rotation-line" class="vis-chart"></div></div>
+                <div class="vis-cell"><h3 class="vis-title">持仓相关性矩阵</h3><div id="chart-corr-heatmap" class="vis-chart"></div></div>
+            </div>
+
+            <div class="report-section">
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> 进攻层 — Q1 强势主线（约 70% 仓位）</h3>
+                <div class="table-scroll">
+                <table class="rec-table responsive-card" id="attack-table">
+                    <thead><tr><th style="width:28px;">#</th><th style="width:160px;">ETF</th><th style="width:36px;">Q</th><th style="width:64px;">Factor</th><th style="width:120px;">仓位</th></tr></thead>
+                    <tbody id="attack-body"></tbody>
+                </table>
+                </div>
+            </div>
+
+            <div class="report-section">
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> 防守层 — Q2 反转预期（约 30% 仓位）</h3>
+                <div class="table-scroll">
+                <table class="rec-table responsive-card" id="defense-table">
+                    <thead><tr><th style="width:28px;">#</th><th style="width:160px;">ETF</th><th style="width:36px;">Q</th><th style="width:64px;">Factor</th><th style="width:120px;">仓位</th></tr></thead>
+                    <tbody id="defense-body"></tbody>
+                </table>
+                </div>
+            </div>
+
+            <div class="report-section">
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> 策略解读</h3>
+                <ul class="reason-list" id="narrative-list"></ul>
+            </div>
+
+            <div class="report-section">
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01M12 3l9.66 17H2.34L12 3z"/></svg> 风险提示</h3>
+                <ul class="risk-list" id="risk-list"></ul>
+            </div>
+
+        </div>
+
+    </main>
+    </div>
+
+    <div class="bottom-nav" role="navigation" aria-label="Main navigation">
+      <a href="/" class="bottom-nav-item" aria-label="Home">
+        <span class="bottom-nav-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></span>
+        <span class="bottom-nav-label">Home</span>
+      </a>
+      <a href="/etf" class="bottom-nav-item" aria-label="Index ETF">
+        <span class="bottom-nav-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></span>
+        <span class="bottom-nav-label">Index ETF</span>
+      </a>
+      <a href="/sector" class="bottom-nav-item" aria-label="Sector ETF">
+        <span class="bottom-nav-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></span>
+        <span class="bottom-nav-label">Sector ETF</span>
+      </a>
+      <a href="/analysis" class="bottom-nav-item" aria-label="Analysis">
+        <span class="bottom-nav-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg></span>
+        <span class="bottom-nav-label">Analysis</span>
+      </a>
+      <a href="/rotation" class="bottom-nav-item active" aria-label="Rotation">
+        <span class="bottom-nav-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></span>
+        <span class="bottom-nav-label">Rotation</span>
+      </a>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', async function() {
+        ATMChart.initPage();
+        window.__atmPageReady();
+        try {
+            await new Promise(function(r) { requestAnimationFrame(r); });
+            var resp = await fetch('/api/rotation/report?preset_id=optimized');
+            var data = await resp.json();
+
+            if (data.error || data.data_incomplete) {
+                document.getElementById('loading').style.display = 'none';
+                var es = document.getElementById('error-state'); es.style.display = 'block';
+                document.getElementById('error-title').textContent = '📊 数据未就绪';
+                document.getElementById('error-msg').textContent = data.error || 'ETF 数据覆盖不足，请先在首页运行「更新数据」。';
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+
+            var S = data.sentiment || {};
+            var R = data.rotation || {};
+            var M = data.regime_matrix || {};
+            var P = data.portfolio || {};
+
+            document.getElementById('data-date').textContent = '数据日期: ' + (data.date || '--');
+            document.getElementById('action-line').textContent =
+                '当前格局【' + (S.regime_label || '?') + ' × ' + (R.level_label || '?') + '】 → 建议总仓位 ' +
+                Math.round((M.recommended_position || 0) * 100) + '%（' + (M.level || '') + '）：' + (M.action || '');
+
+            var badges = document.getElementById('badges'); badges.innerHTML = '';
+            var sCls = S.regime === 'high' ? 'badge-red' : (S.regime === 'low' ? 'badge-green' : 'badge-neutral');
+            badges.innerHTML += '<span class="badge ' + sCls + '">情绪 ' + (S.regime_label || '') + ' (' + (S.score||0).toFixed(2) + ')</span>';
+            var rCls = R.level === 'strong' ? 'badge-amber' : (R.level === 'weak' ? 'badge-green' : 'badge-neutral');
+            badges.innerHTML += '<span class="badge ' + rCls + '">轮动 ' + (R.level_label || '') + ' (' + (R.strength_pct||0).toFixed(0) + '%)</span>';
+            var pCls = (M.recommended_position||0) >= 0.8 ? 'badge-green' : ((M.recommended_position||0) <= 0.5 ? 'badge-red' : 'badge-amber');
+            badges.innerHTML += '<span class="badge ' + pCls + '">总仓位 ' + Math.round((M.recommended_position||0)*100) + '%</span>';
+
+            var kpis = [
+                { label: '情绪分', value: (S.score||0).toFixed(2), sub: '[-1 过冷, +1 过热]' },
+                { label: '情绪区间', value: S.regime_label || '-', sub: '趋势' + (((S.components||{}).trend_score)||0).toFixed(2) + ' / 宽度' + (((S.components||{}).breadth_score)||0).toFixed(2) },
+                { label: '轮动强度', value: (R.strength_pct||0).toFixed(0) + '%', sub: '历史百分位' },
+                { label: '轮动等级', value: R.level_label || '-', sub: '强度值 ' + (R.score||0).toFixed(2) },
+                { label: '建议总仓位', value: Math.round((M.recommended_position||0)*100) + '%', sub: M.level || '' },
+                { label: '组合持仓', value: (P.attack_count||0) + '攻 / ' + (P.defense_count||0) + '守', sub: '进攻+防守' },
+            ];
+            document.getElementById('kpi-row').innerHTML = kpis.map(function(k) {
+                return '<div class="kpi-card"><div class="kpi-label">' + k.label + '</div><div class="kpi-value">' + k.value + '</div><div class="kpi-sub">' + k.sub + '</div></div>';
+            }).join('');
+
+            renderRegimeMatrix(M);
+
+            if (typeof echarts !== 'undefined') {
+                renderSentimentGauge(S);
+                renderSentimentLine(S);
+                renderRotationLine(R);
+                renderCorrHeatmap(P.correlation || {});
+            }
+
+            renderBasket('attack-body', P.attack || [], 'q1');
+            renderBasket('defense-body', P.defense || [], 'q2');
+
+            var nl = document.getElementById('narrative-list');
+            nl.innerHTML = (data.narrative || []).map(function(n) {
+                return '<li class="reason-item"><span class="reason-bullet">▸</span><span>' + n + '</span></li>';
+            }).join('') || '<li class="reason-item" style="color:var(--c-text-tertiary);">--</li>';
+
+            var rl = document.getElementById('risk-list');
+            rl.innerHTML = (data.risk_warning || []).map(function(w) {
+                var icon = '⚠️', cls = 'var(--c-warning)';
+                if (w.indexOf('ⓘ') >= 0) { icon = 'ⓘ'; cls = 'var(--c-text-tertiary)'; }
+                else if (w.indexOf('ℹ') >= 0) { icon = 'ℹ️'; cls = 'var(--c-text-tertiary)'; }
+                else if (w.indexOf('🔗') >= 0) { icon = '🔗'; cls = 'var(--c-accent)'; }
+                return '<li class="risk-item"><span class="risk-icon" style="color:' + cls + ';">' + icon + '</span><span>' + w + '</span></li>';
+            }).join('') || '<li class="risk-item" style="color:var(--c-text-tertiary);">无风险提示</li>';
+
+        } catch(e) {
+            console.error('rotation load failed:', e);
+            document.getElementById('loading').style.display = 'none';
+            var es = document.getElementById('error-state'); es.style.display = 'block';
+            document.getElementById('error-title').textContent = '⚠️ 连接错误';
+            document.getElementById('error-msg').textContent = '加载轮动策略数据失败，请检查网络后刷新。';
+        }
+
+        function renderRegimeMatrix(M) {
+            var box = document.getElementById('regime-matrix');
+            if (!M.rows) { box.innerHTML = ''; return; }
+            var rotLabels = M.rotation_labels || {};
+            var html = '<div class="regime-corner"></div>';
+            (M.rotation_order || []).forEach(function(r) {
+                html += '<div class="regime-colhead">' + (rotLabels[r] || r) + '</div>';
+            });
+            M.rows.forEach(function(row) {
+                html += '<div class="regime-rowhead">' + row.label + '</div>';
+                row.cells.forEach(function(c) {
+                    html += '<div class="regime-cell' + (c.current ? ' current' : '') + '">' +
+                        '<div class="rc-pos">' + Math.round(c.position*100) + '%</div>' +
+                        '<div class="rc-level lvl-' + c.level + '">' + c.level + '</div>' +
+                        '<div class="rc-action">' + c.action + '</div>' +
+                        '</div>';
+                });
+            });
+            box.innerHTML = html;
+        }
+
+        function _chart(id) {
+            var el = document.getElementById(id);
+            if (!el) return null;
+            var ch = echarts.init(el);
+            if (ATMChart._instances) ATMChart._instances.set(el, ch);
+            return ch;
+        }
+
+        function renderSentimentGauge(S) {
+            var ch = _chart('chart-sentiment-gauge'); if (!ch) return;
+            var v = Math.round(((S.score||0) + 1) / 2 * 100);
+            ch.setOption({
+                backgroundColor:'transparent',
+                series: [{
+                    type:'gauge', min:0, max:100, startAngle:200, endAngle:-20,
+                    progress:{ show:true, width:14 },
+                    axisLine:{ lineStyle:{ width:14, color:[[0.3,'#16A34A'],[0.7,'#D97706'],[1,'#DC2626']] } },
+                    pointer:{ width:5, length:'65%' },
+                    detail:{ valueAnimation:true, formatter:'{value}', fontSize:28, fontFamily:'JetBrains Mono', offsetCenter:[0,'30%'], color:'#111' },
+                    title:{ offsetCenter:[0,'72%'], fontSize:11, color:'#737373' },
+                    data:[{ value:v, name:(S.regime_label||'') + ' 情绪' }],
+                    axisTick:{ distance:-14, length:5, lineStyle:{ color:'#fff' } },
+                    splitLine:{ distance:-14, length:10, lineStyle:{ color:'#fff', width:2 } },
+                    axisLabel:{ distance:-8, color:'#999', fontSize:9 }
+                }]
+            });
+        }
+
+        function renderSentimentLine(S) {
+            var ch = _chart('chart-sentiment-line'); if (!ch) return;
+            var ser = S.series || [];
+            ch.setOption({
+                backgroundColor:'transparent',
+                grid:{ left:40, right:16, top:20, bottom:36 },
+                tooltip:{ trigger:'axis' },
+                xAxis:{ type:'category', data:ser.map(function(p){ return p.date; }), axisLabel:{ fontSize:9, fontFamily:'JetBrains Mono', color:'#999', formatter:function(v){ return v.slice(4); } }, axisLine:{ lineStyle:{ color:'#999' } } },
+                yAxis:{ type:'value', min:-1, max:1, axisLabel:{ fontSize:9, color:'#999' }, splitLine:{ lineStyle:{ color:'#eee' } }, axisLine:{ show:false } },
+                series:[{ type:'line', data:ser.map(function(p){ return p.score; }), smooth:true, symbol:'none', lineStyle:{ width:2, color:'#c8462c' }, areaStyle:{ opacity:0.08 },
+                    markLine:{ silent:true, symbol:'none', lineStyle:{ color:'#999', type:'dashed' }, data:[{yAxis:0.5},{yAxis:-0.5},{yAxis:0, lineStyle:{color:'#000', type:'solid'}}] } }]
+            });
+        }
+
+        function renderRotationLine(R) {
+            var ch = _chart('chart-rotation-line'); if (!ch) return;
+            var ser = R.series || [];
+            ch.setOption({
+                backgroundColor:'transparent',
+                grid:{ left:44, right:16, top:20, bottom:40 },
+                tooltip:{ trigger:'axis' },
+                legend:{ data:['滚动均值','日churn'], bottom:2, textStyle:{ fontSize:10 }, icon:'rect', itemWidth:10, itemHeight:10 },
+                xAxis:{ type:'category', data:ser.map(function(p){ return p.date; }), axisLabel:{ fontSize:9, fontFamily:'JetBrains Mono', color:'#999', formatter:function(v){ return v.slice(4); } }, axisLine:{ lineStyle:{ color:'#999' } } },
+                yAxis:{ type:'value', axisLabel:{ fontSize:9, color:'#999' }, splitLine:{ lineStyle:{ color:'#eee' } }, axisLine:{ show:false } },
+                series:[
+                    { name:'滚动均值', type:'line', data:ser.map(function(p){ return p.rolling_mean; }), smooth:true, symbol:'none', lineStyle:{ width:2, color:'#111' } },
+                    { name:'日churn', type:'line', data:ser.map(function(p){ return p.churn; }), symbol:'none', lineStyle:{ width:1, color:'#8a857c', opacity:0.6 } }
+                ]
+            });
+        }
+
+        function renderCorrHeatmap(corr) {
+            var ch = _chart('chart-corr-heatmap'); if (!ch) return;
+            var labels = corr.labels || [];
+            var m = corr.matrix || [];
+            var hdata = [];
+            for (var i=0;i<labels.length;i++) for (var j=0;j<labels.length;j++) hdata.push([j, i, (m[i]&&m[i][j]!=null)?m[i][j]:0]);
+            if (!labels.length) { ch.setOption({title:{text:'暂无持仓', left:'center', top:'center', textStyle:{color:'#999', fontSize:13}}}); return; }
+            ch.setOption({
+                backgroundColor:'transparent',
+                grid:{ left:90, right:40, top:20, bottom:70 },
+                tooltip:{ position:'top', formatter:function(p){ return labels[p.value[1]]+' × '+labels[p.value[0]]+'<br/>corr = '+p.value[2]; } },
+                xAxis:{ type:'category', data:labels, axisLabel:{ fontSize:9, color:'#999', rotate:45 }, splitLine:{ show:false } },
+                yAxis:{ type:'category', data:labels, axisLabel:{ fontSize:9, color:'#999' }, splitLine:{ show:false } },
+                visualMap:{ min:-1, max:1, calculable:true, orient:'horizontal', left:'center', bottom:5, textStyle:{ fontSize:9 }, inRange:{ color:['#16A34A','#f1ede3','#DC2626'] } },
+                series:[{ type:'heatmap', data:hdata, label:{ show: labels.length<=4, fontSize:10, fontFamily:'JetBrains Mono' }, emphasis:{ itemStyle:{ shadowBlur:6 } } }]
+            });
+        }
+
+        function renderBasket(tbodyId, items, qCls) {
+            var tb = document.getElementById(tbodyId);
+            if (!items || !items.length) {
+                tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--c-text-tertiary);padding:24px;">无符合条件的标的</td></tr>';
+                return;
+            }
+            var maxPos = 0; items.forEach(function(r){ var p=(r.position_ratio||0)*100; if(p>maxPos)maxPos=p; });
+            tb.innerHTML = items.map(function(r, i) {
+                var pct = (r.position_ratio||0)*100;
+                var barPct = maxPos>0 ? Math.round(pct/maxPos*100) : 0;
+                return '<tr>' +
+                    '<td data-label="#"><span class="rank-num ' + (i===0?'rank-1':'') + '">' + (i+1) + '</span></td>' +
+                    '<td data-label="ETF"><strong>' + r.name + '</strong> <span style="font-size:10px;color:var(--c-text-muted);font-family:var(--font-mono);">' + r.code + '</span></td>' +
+                    '<td data-label="Q"><span class="quad-tag ' + qCls + '">Q' + r.quadrant + '</span></td>' +
+                    '<td data-label="Factor" style="font-family:var(--font-mono);font-size:12px;font-weight:600;">' + (r.factor_score||0).toFixed(3) + '</td>' +
+                    '<td data-label="仓位"><div class="pos-bar-wrap"><div class="pos-bar"><div class="pos-bar-fill ' + qCls + '" style="width:' + barPct + '%;"></div></div><span class="pos-text">' + pct.toFixed(1) + '%</span></div></td>' +
+                    '</tr>';
+            }).join('');
+        }
+    });
+    </script>
+</body>
+</html>

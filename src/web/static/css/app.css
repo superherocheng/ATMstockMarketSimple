@@ -5,7 +5,8 @@
    ══════════════════════════════════════════════════ */
 
 /* ── Fonts ─────────────────────────────────────── */
-@import url("https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+/* Latin glyphs render in Times New Roman; CJK glyphs fall through to KaiTi (楷体). */
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap");
 
 /* ============================================================
    Design Tokens
@@ -32,32 +33,34 @@
   --c-zero: #8a857c;
 
   /* --- Typography --- */
-  --font-display: "Times New Roman", "SimSun", serif;
-  --font-body: "Times New Roman", "SimSun", serif;
-  --font-mono: "Times New Roman", "SimSun", monospace;
+  /* Latin → Times New Roman, Chinese → 楷体 (KaiTi). Browser picks the first
+     family that has a glyph for each character, so mixed text renders correctly. */
+  --font-display: "Times New Roman", "KaiTi", "Kaiti SC", "STKaiti", "楷体", "DFKai-SB", serif;
+  --font-body: "Times New Roman", "KaiTi", "Kaiti SC", "STKaiti", "楷体", "DFKai-SB", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
   --font-sans: var(--font-body);
   --font-serif: var(--font-display);
   --font-num: var(--font-mono);
 
-  --text-display-xl: 120px;
-  --text-display-lg: 88px;
-  --text-headline-lg: 56px;
-  --text-headline-md: 28px;
-  --text-headline-sm: 18px;
-  --text-body-md: 16px;
-  --text-body-sm: 14px;
-  --text-label-sm: 11px;
-  --text-mono-sm: 11px;
+  --text-display-xl: 156px;
+  --text-display-lg: 112px;
+  --text-headline-lg: 72px;
+  --text-headline-md: 36px;
+  --text-headline-sm: 22px;
+  --text-body-md: 20px;
+  --text-body-sm: 18px;
+  --text-label-sm: 14px;
+  --text-mono-sm: 14px;
 
   /* Legacy aliases used in templates */
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 14px;
-  --text-lg: 16px;
-  --text-xl: 18px;
-  --text-2xl: 24px;
-  --text-3xl: 32px;
-  --text-4xl: 48px;
+  --text-xs: 14px;
+  --text-sm: 17px;
+  --text-base: 18px;
+  --text-lg: 20px;
+  --text-xl: 22px;
+  --text-2xl: 30px;
+  --text-3xl: 40px;
+  --text-4xl: 60px;
 
   /* --- Spacing --- */
   --space-xs: 4px;
@@ -2114,7 +2117,11 @@ details[open] .home-card-chevron { transform: rotate(180deg); }
 .quick-strip-link {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  /* Uniform width so every strip link matches the widest ("Investment Advice").
+     Mobile breakpoints below override flex to 50%/100% for wrapping. */
+  flex: 0 0 180px;
   padding: 10px 16px;
   font-family: var(--font-body);
   font-size: var(--text-body-sm);

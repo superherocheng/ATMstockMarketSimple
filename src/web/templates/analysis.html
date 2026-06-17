@@ -27,6 +27,7 @@
             <a href="/etf">Index ETF</a>
             <a href="/sector">Sector ETF</a>
             <a href="/analysis" class="active">Analysis</a>
+            <a href="/rotation">Rotation</a>
         </nav>
     </div>
 
@@ -43,6 +44,7 @@
                 <a href="/etf" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Index ETF</a>
                 <a href="/sector" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Sector ETF</a>
                 <a href="/analysis" class="sidebar-nav-link active"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>Analysis</a>
+                <a href="/rotation" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Rotation</a>
             </nav>
         </div>
         <div class="sidebar-nav-footer">
@@ -266,6 +268,12 @@
         </span>
         <span class="bottom-nav-label">Analysis</span>
       </a>
+      <a href="/rotation" class="bottom-nav-item" aria-label="Rotation">
+        <span class="bottom-nav-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </span>
+        <span class="bottom-nav-label">Rotation</span>
+      </a>
     </div>
 
     <script>
@@ -471,12 +479,17 @@
         summary.latest_factors.forEach(function(f, i) {
             var qColor = quadColors[f.quadrant] || '#999';
             var qLabel = quadLabels[f.quadrant] || 'Q' + f.quadrant;
-            var factorColor = f.factor > 0 ? 'var(--c-up)' : f.factor < 0 ? 'var(--c-down)' : 'var(--c-text)';
-            var weightDisplay = f.weight !== undefined && f.weight > 0 ? f.weight.toFixed(1) + '%' : '--';
+            // f.factor may be null when the latest day's cross-section is incomplete
+            // (factor computed as NaN in the DB). Guard so one null row can't crash
+            // the whole render and leave every chart stuck on the skeleton.
+            var hasFactor = f.factor !== null && f.factor !== undefined;
+            var factorColor = hasFactor ? (f.factor > 0 ? 'var(--c-up)' : f.factor < 0 ? 'var(--c-down)' : 'var(--c-text)') : 'var(--c-text-tertiary)';
+            var factorDisplay = hasFactor ? f.factor.toFixed(3) : '--';
+            var weightDisplay = f.weight !== undefined && f.weight !== null && f.weight > 0 ? f.weight.toFixed(1) + '%' : '--';
             html += '<tr style="border-bottom:1px solid var(--c-border);">';
             html += '<td style="padding:5px 4px;">' + (i + 1) + '</td>';
             html += '<td style="padding:5px 4px;">' + (f.name || f.code) + '</td>';
-            html += '<td style="padding:5px 4px;text-align:right;color:' + factorColor + ';">' + f.factor.toFixed(3) + '</td>';
+            html += '<td style="padding:5px 4px;text-align:right;color:' + factorColor + ';">' + factorDisplay + '</td>';
             html += '<td style="padding:5px 4px;text-align:center;"><span style="display:inline-block;padding:1px 6px;border-radius:0;font-size:11px;color:#fff;background:' + qColor + ';">' + qLabel + '</span></td>';
             html += '<td style="padding:5px 4px;text-align:right;">' + weightDisplay + '</td>';
             html += '</tr>';
