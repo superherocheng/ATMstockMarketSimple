@@ -18,7 +18,7 @@ services:
         condition: service_healthy
     networks:
       - atm_network
-      - docker_network
+      # - docker_network  # 跨项目通信：需先 `docker network create docker_network` 再取消注释
     restart: unless-stopped
     volumes:
       - ./logs:/app/logs
@@ -63,5 +63,6 @@ volumes:
 networks:
   atm_network:
     driver: bridge
-  docker_network:
-    external: true
+  # docker_network:        # 默认不启用，避免全新机器部署时因外部网络不存在而失败。
+  #   external: true       # 如需与本机其它 compose 项目共享网络，先执行
+                          # `docker network create docker_network`，再在 app 服务中取消注释 docker_network。

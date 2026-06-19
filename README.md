@@ -23,6 +23,8 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 
 > **核心定位**：基于多因子模型的ETF量化监控与投资决策辅助平台。
 
+> 📄 **策略研究**：参见 [`NEW策略.md`](./NEW策略.md) —— 中信期货 ETF 行业轮动策略总结报告（市场情绪 + 行业轮动双指标框架）。
+
 ## ✨ 功能特性
 
 ### 📊 数据监控
@@ -170,6 +172,8 @@ docker exec atmstockmarket python3 -u /app/src/data_fetchers/tushare_fetcher.py 
 ```
 
 **日常更新**：直接在首页点击 "Update + Backtest" 按钮即可，无需SSH登录。
+
+> 💡 **网络说明**：`docker-compose.yml` 默认仅使用内部 `atm_network`，开箱即用。如需与本机其它 compose 项目共享网络（跨项目通信），先执行 `docker network create docker_network`，再在 `app` 服务的 `networks:` 与文件底部 `networks:` 处取消 `docker_network` 的注释。
 
 **更新代码**：
 ```bash
