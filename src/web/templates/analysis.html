@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="/static/css/app.css">
     <script defer src="/static/js/vendor.js"></script>
@@ -48,14 +48,14 @@
             </nav>
         </div>
         <div class="sidebar-nav-footer">
-            <p style="font-size:var(--text-xs);color:var(--c-text-tertiary);line-height:1.3;margin-bottom:8px;">Educational purposes only, not investment advice</p>
+            <p style="font-size:11px;color:var(--color-stone);line-height:1.6;margin-bottom:8px;">Educational purposes only, not investment advice</p>
             <p>Display</p>
             <div style="display:flex;gap:6px;margin-top:6px;">
                 <button id="theme-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggle()" title="Toggle theme" type="button">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
                 </button>
             </div>
-            <p style="margin-top:12px;">Data Source</p>
+            <p style="margin-top:16px;">Data Source</p>
             <span>Tushare · AKShare</span>
         </div>
     </aside>
@@ -232,7 +232,7 @@
     </div>
 
     <!-- Investment recommendation entry -->
-    <div class="chart-full" style="margin-top:12px;">
+    <div class="chart-full" style="margin-top:16px;">
         <div class="chart-cell" style="text-align:center;padding:20px;">
             <a href="/analysis/investment-recommendation" class="rec-btn" style="padding:8px 24px;font-size:14px;display:inline-block;">View Full Investment Advice →</a>
             <p style="margin-top:8px;font-size:12px;color:var(--c-text-tertiary);">ETF allocation advice based on factor scores + fund flow</p>
@@ -414,6 +414,24 @@
         var winEl = document.getElementById('kpi-ic-win');
         if (icWin !== null) {
             winEl.style.color = icWin > 0.55 ? 'var(--c-up)' : icWin > 0.45 ? 'var(--c-text)' : 'var(--c-down)';
+        }
+
+        // KPI accent bars (left border color based on value)
+        var kpiCards = document.querySelectorAll('.kpi-card');
+        kpiCards.forEach(function(card) {
+            card.classList.remove('positive', 'negative', 'neutral');
+        });
+        if (icMean !== null) {
+            var card0 = kpiCards[0];
+            if (card0) card0.classList.add(icMean > 0 ? 'positive' : icMean < 0 ? 'negative' : 'neutral');
+        }
+        if (icir !== null) {
+            var card1 = kpiCards[1];
+            if (card1) card1.classList.add(icir > 0 ? 'positive' : icir < 0 ? 'negative' : 'neutral');
+        }
+        if (icWin !== null) {
+            var card2 = kpiCards[2];
+            if (card2) card2.classList.add(icWin > 0.5 ? 'positive' : 'negative');
         }
 
         // Sub labels with trend arrows

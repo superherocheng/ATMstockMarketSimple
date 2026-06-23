@@ -8,21 +8,21 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="/static/css/app.css">
     <script defer src="/static/js/vendor.js"></script>
     <script defer src="/static/js/app.js"></script>
     <style>
-    .tech-section { background:var(--c-card); border-radius:var(--radius-md); padding:20px 24px; margin-bottom:16px; border:1px solid var(--c-border); }
-    .tech-section h3 { font-size:15px; font-weight:700; color:var(--c-accent-dark); margin:0 0 12px; display:flex; align-items:center; gap:8px; }
-    .tech-section h3 .icon { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:6px; font-size:14px; }
-    .tech-section p, .tech-section li { font-size:13px; line-height:1.8; color:var(--c-text-secondary); }
+    .tech-section { background:var(--c-card); border-radius:var(--radius-md); padding:20px 24px; margin-bottom:16px; box-shadow:0 4px 16px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06); }
+    .tech-section h3 { font-size:15px; font-weight:700; color:var(--c-text); margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+    .tech-section h3 .icon { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:8px; font-size:14px; }
+    .tech-section p, .tech-section li { font-size:13px; line-height:1.8; color:var(--c-text-secondary); margin-bottom:16px; }
     .tech-section ul { padding-left:20px; margin:8px 0; }
-    .tech-section li { margin-bottom:4px; }
-    .tech-formula { background:var(--c-bg-tertiary); border-radius:6px; padding:10px 16px; margin:10px 0; font-family:var(--font-mono); font-size:12px; color:var(--c-accent-dark); }
-    .back-link { display:inline-flex; align-items:center; gap:6px; color:var(--c-accent-dark); font-size:13px; text-decoration:none; margin-bottom:16px; }
-    .back-link:hover { color: var(--c-accent); }
+    .tech-section li { margin-bottom:6px; }
+    .tech-formula { background:#F8F9FA; border-radius:8px; padding:14px 20px; margin:14px 0; font-family:var(--font-mono); font-size:16px; color:var(--c-text); text-align:center; box-shadow:inset 0 1px 3px rgba(0,0,0,0.04); }
+    .back-link { display:inline-flex; align-items:center; gap:6px; color:var(--c-text-secondary); font-size:13px; text-decoration:none; margin-bottom:16px; }
+    .back-link:hover { color: var(--c-text); }
     </style>
     <script>
         document.documentElement.dataset.theme = 'light';
@@ -58,14 +58,14 @@
             </nav>
         </div>
         <div class="sidebar-nav-footer">
-            <p style="font-size:var(--text-xs);color:var(--c-text-tertiary);line-height:1.3;margin-bottom:8px;">Educational purposes only, not investment advice</p>
+            <p style="font-size:11px;color:var(--color-stone);line-height:1.6;margin-bottom:8px;">Educational purposes only, not investment advice</p>
             <p>Display</p>
             <div style="display:flex;gap:6px;margin-top:6px;">
                 <button id="theme-toggle-btn" class="theme-toggle-btn" onclick="ATMTheme.toggle()" title="Toggle theme" type="button">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
                 </button>
             </div>
-            <p style="margin-top:12px;">Data Source</p>
+            <p style="margin-top:16px;">Data Source</p>
             <span>Tushare · AKShare</span>
         </div>
     </aside>
