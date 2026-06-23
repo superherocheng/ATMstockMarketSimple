@@ -19,7 +19,7 @@
 
 ## 📖 项目简介
 
-ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控平台，提供指数ETF跟踪、行业轮动可视化、份额变化分析、**多因子分析**、**投资建议**等功能。采用 **FastAPI + PostgreSQL** 架构，前端使用 **Jinja2 + Tailwind CSS + ECharts 5**。
+ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控平台，提供指数ETF跟踪、行业轮动可视化、份额变化分析、**多因子分析**、**投资建议**等功能。采用 **FastAPI + PostgreSQL** 架构，前端使用 **Jinja2 + Design Tokens CSS + ECharts 5**。
 
 > **核心定位**：基于多因子模型的ETF量化监控与投资决策辅助平台。
 
@@ -53,7 +53,7 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 - 📋 **专业投资报告** - 报告式投资建议页，含KPI指标+排名表+风险提示
 - 📱 **全端适配** - 响应式布局，桌面+移动端统一体验
 - 🌙 **暗色模式** - 完整支持light/dark主题切换
-- 🎯 **专业设计系统** - 设计令牌（Design Tokens）驱动的圆角、阴影、间距体系
+- 🎯 **Modern Minimalist 设计系统** - Inter + PingFang SC 字体，软阴影卡片系统，圆角6-16px标尺
 - 📊 **增强KPI仪表板** - 因子分析页KPI卡片含趋势箭头(▲▼)、悬停蓝色指示条
 - ⓘ **富文本信息提示** - 悬停ⓘ图标弹出260px宽度专业解读卡片
 - 📡 **数据新鲜度状态栏** - 全站顶部显示数据日期+大盘择时信号
@@ -132,7 +132,7 @@ ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控�
 | **后端** | Python 3.12 · FastAPI · Uvicorn | 高性能异步Web框架 |
 | **数据库** | PostgreSQL · SQLAlchemy | 关系型数据库 + ORM |
 | **缓存** | Redis + 内存LRU | 双重缓存策略 |
-| **前端** | Jinja2 · Tailwind CSS · vanilla JS | 服务端渲染 + 现代CSS |
+| **前端** | Jinja2 · vanilla CSS (Design Tokens) · vanilla JS | 服务端渲染 + 现代CSS |
 | **可视化** | ECharts 5 (bundled) | 无需CDN，离线可用 |
 | **数据源** | Tushare Pro | 专业金融数据接口 |
 
@@ -428,6 +428,50 @@ Alembic Migration 008（`008_convert_trade_date_to_date.py`）将 `trade_date` �
 | **暗色模式** | 所有新组件圆角/阴影在暗色模式下完整适配 |
 
 **修改统计**：21个文件 +664/-346行（BUG修复）+ 5个文件 UI/UX改造
+
+---
+
+## 📋 v24.0.0 更新日志
+
+### 🎨 Modern Minimalist 重设计 — 从 Linen 到 Fintech 现代风
+
+> 从 Linen Design System（米色基底、发丝线边框、零阴影）全面迁移至 Modern Minimalist Design System（灰白基底、软阴影卡片、圆角6-16px）。
+
+| 模块 | 改动 |
+|------|------|
+| **配色** | 米色(#f1ede3) → 灰白(#F5F7FA)；墨色(#111) → 深灰(#1A1A1A)；红色(#c8462c → #FF4D4F)；绿色(#3a7a3a → #52C41A) |
+| **字体** | Times New Roman + KaiTi → **Inter + PingFang SC**，全站字体尺寸缩小约30% |
+| **阴影** | 全部 `none` → 分层软阴影体系（4级+卡片悬停+导航） |
+| **圆角** | 全部 `0px` → 6/8/12/16px 统一圆角标尺 |
+| **间距** | 32px gutter → 20px；40px page padding → 32px |
+| **卡片** | `transparent` → `#FFFFFF` 白色卡片背景，`box-shadow` 层级区分 |
+| **边框** | 发丝线 `1px solid #1f1d1a` → 浅分隔线 `1px solid #F0F2F5` |
+| **表格** | 表头灰底(#F5F7FA)、条纹0.02透明度、行边框#F0F2F5 |
+| **输入框** | 透明背景 → 白色背景 + #D0D5DD 边框 |
+| **侧边栏** | 新增 `--sidebar-width: 240px` / `--sidebar-collapsed: 64px` 变量体系 |
+
+### 🌙 暗色模式重构
+
+| 模块 | 改动 |
+|------|------|
+| **暗色基底** | 暖碳(#1a1814) → 深空灰(#0F1117) |
+| **暗色面板** | 暖灰(#23211c) → 深蓝灰(#1A1D27) |
+| **暗色文字** | 暖白(#e6dfd3) → 冷白(#E8EAED) |
+| **暗色分隔** | 暖棕发丝线(#3a3530) → 冷深灰(#2A2D37) |
+| **暗色卡片** | 透明 → 深蓝灰(#1A1D27) 含悬停色(#22252F) |
+
+### 📱 页面优化
+
+| 模块 | 改动 |
+|------|------|
+| **投资建议页** | KPI卡片和报告区块由边框区分改为阴影卡片；渐变仓位条(Q1红橙/Q2蓝紫)；排名标签配色优化；移除 `letter-spacing` |
+| **ETF页面** | 样式统一为阴影卡片体系 |
+| **首页/Sector** | 卡片阴影、间距、排版对齐新设计系统 |
+| **因子分析页** | KPI卡片阴影化，布局紧凑优化 |
+| **技术笔记** | 表格与文字排版适配新系统 |
+| **Archivo Narrow 字体** | 移除 Archivo Narrow Google Fonts 加载，统一使用 Inter |
+
+**修改统计**：10 个文件 +1258/-656 行
 
 ---
 
