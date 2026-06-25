@@ -176,6 +176,16 @@ def _investment_recommendation_sync(preset_id):
         except Exception as exc:
             logger.warning("Failed to load financial factors: %s", exc)
 
+    # ── Dynamically compute change_action (always fresh, never cached) ──
+    if "error" not in result and "recommendations" in result and result["recommendations"]:
+        try:
+            recs = result.get("recommendations", [])
+            rec_date = result.get("date", "")
+            if recs and rec_date:
+                recommendation_engine.enrich_change_actions(preset_id, recs, rec_date)
+        except Exception as exc:
+            logger.warning("Failed to enrich change actions: %s", exc)
+
     return result
 
 

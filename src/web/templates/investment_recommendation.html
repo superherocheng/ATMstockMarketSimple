@@ -142,6 +142,9 @@
         .pos-bar { min-width: 40px; }
         .pos-text { font-size: 11px; min-width: 34px; }
     }
+    @media (max-width:480px) {
+        .rec-table th:nth-child(8), .rec-table td:nth-child(8) { display:none; }
+    }
     @media (max-width:400px) {
         .rec-table th:nth-child(4), .rec-table td:nth-child(4) { display:none; }
         .rec-table td { font-size: 11px; padding: 6px 4px; }
@@ -269,6 +272,7 @@
                             <th>Strategy</th>
                             <th style="width:100px;">Position</th>
                             <th style="width:40px;">Conf</th>
+                            <th style="width:70px;">操作</th>
                         </tr>
                     </thead>
                     <tbody id="rec-body"></tbody>
@@ -404,6 +408,17 @@
             // Preset badge
             badges.innerHTML += '<span class="badge badge-neutral"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:2px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Short-term Preset</span>';
 
+            // ICIR Strategy Mode badge
+            if (data.strategy_mode) {
+                var sm = data.strategy_mode;
+                var smCls = 'badge-green';
+                var smIcon = '✅';
+                if (sm.mode === 'caution') { smCls = 'badge-amber'; smIcon = '⚠️'; }
+                else if (sm.mode === 'reduced') { smCls = 'badge-amber'; smIcon = '✅'; }
+                else if (sm.mode === 'hibernate') { smCls = 'badge-red'; smIcon = '❌'; }
+                badges.innerHTML += '<span class="badge ' + smCls + '">' + smIcon + ' ' + (sm.label_cn || sm.mode) + '</span>';
+            }
+
             // Quality weight badge
             if (data.weight_allocation && data.weight_allocation.quality_active === false) {
                 badges.innerHTML += '<span class="badge badge-neutral" title="Quality 因子经回测验证 ICIR 为负，已从本预设中移除">Quality 0%</span>';
@@ -424,6 +439,13 @@
                 kpis.push({ label: 'Risk Level', value: hasDanger ? 'High' : 'Normal', sub: hasDanger ? 'Watch Risk' : 'Actionable' });
             }
             kpis.push({ label: 'Recommended ETFs', value: data.recommendations ? data.recommendations.length + ' ETFs' : '0', sub: 'Q1+Q2 Quadrants' });
+            // ICIR strategy mode KPI
+            if (data.strategy_mode) {
+                var sm = data.strategy_mode;
+                var smSub = sm.mode === 'full' ? '全力持有15日' : (sm.mode === 'reduced' ? '减仓持有15日' : (sm.mode === 'caution' ? '灵活调仓' : '暂停选股'));
+                var smColor = sm.mode === 'full' ? 'var(--c-up)' : (sm.mode === 'hibernate' ? 'var(--c-down)' : 'var(--c-warning)');
+                kpis.push({ label: '策略模式', value: '<span style="color:' + smColor + ';">' + (sm.label_cn || sm.mode) + '</span>', sub: smSub });
+            }
 
             kpiRow.innerHTML = kpis.map(function(k) {
                 return '<div class="kpi-card"><div class="kpi-label">' + k.label + '</div><div class="kpi-value">' + k.value + '</div><div class="kpi-sub">' + k.sub + '</div></div>';
@@ -653,6 +675,12 @@
                     if (pct > maxPos) maxPos = pct;
                 });
 
+                    function getActionTag(action) {
+                        if (action === "new") return '<span style="font-size:10px;font-weight:600;color:#52C41A;">调仓买入</span>';
+                        if (action === "adjust") return '<span style="font-size:10px;font-weight:600;color:#FAAD14;">调整权重</span>';
+                        return '<span style="font-size:10px;color:var(--c-text-muted);">持有</span>';
+                    }
+
                 tbody.innerHTML = data.recommendations.map(function(r, i) {
                     var rank = i < 3 ? 'rank-' + (i + 1) : 'rank-other';
                     var rankText = i < 3 ? ['\uD83E\uDD47', '\uD83E\uDD48', '\uD83E\uDD49'][i] : (i + 1);
@@ -683,13 +711,17 @@
                         '<td data-label="ETF"><strong>' + r.name + '</strong> <span style="font-size:10px;color:var(--c-text-muted);font-family:var(--font-mono);">' + r.code + '</span></td>' +
                         '<td data-label="Quadrant"><span class="quad-tag ' + quadCls + '">' + quadLabel + '</span></td>' +
                         '<td data-label="Score" style="font-family:var(--font-mono);font-size:12px;font-weight:600;">' + (r.factor_score !== undefined ? r.factor_score.toFixed(3) : '--') + '</td>' +
-                        '<td data-label="Strategy"><span style="font-size:10px;color:' + qColor + ';font-weight:600;">Quality ' + qDisplay + '</span> · <span style="font-size:10px;color:' + rColor + ';font-weight:600;">RSI ' + rDisplay + '</span> · <span style="font-size:11px;color:var(--c-text-secondary);">' + (r.strategy_desc || r.strategy || '') + '</span></td>' +
+                        '<td data-label="Strategy"><span style="font-size:10px;color:' + qColor + ';font-weight:600;">Quality ' + qDisplay + '</span> · <span style="font-size:10px;color:' + rColor + ';font-weight:600;">RSI ' + rDisplay + '</span> · <span style="font-size:11px;color:var(--c-text-secondary);">' + (r.strategy_desc || r.strategy || '') + '</span>' +
+                            (r.holding_days_remaining !== undefined && r.holding_days_remaining > 0 ? ' <span style="font-size:10px;color:#4F46E5;font-weight:600;">持有余' + r.holding_days_remaining + '日</span>' : '') +
+                            (r.force_held ? ' <span style="font-size:10px;color:#52C41A;font-weight:600;">强制持有</span>' : '') +
+                        '</td>' +
                         '<td data-label="Position"><div class="pos-bar-wrap"><div class="pos-bar"><div class="pos-bar-fill ' + barCls + '" style="width:' + barPct + '%;"></div></div><span class="pos-text">' + pct.toFixed(1) + '%</span></div></td>' +
                         '<td data-label="Confidence" style="text-align:center;"><span class="conf-dot ' + confCls + '" title="Confidence: ' + confLabel + '"></span></td>' +
+                        '<td data-label="Action">' + getActionTag(r.change_action || 'hold') + '</td>' +
                         '</tr>';
                 }).join('');
             } else {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--c-text-tertiary);padding:30px;">No recommended ETFs</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--c-text-tertiary);padding:30px;">No recommended ETFs</td></tr>';
             }
 
             // ── Risk warnings ──

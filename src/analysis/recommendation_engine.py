@@ -6,9 +6,11 @@ Generates structured investment recommendations by combining:
 - Market timing (CSI 500 regime signal)
 - Cross-ETF correlation penalty
 - Risk budgeting position sizing
+- ICIR-gated holding strategy (4 modes: full/reduced/caution/hibernate)
 
 Every recommendation includes confidence level, rationale, and risk warnings.
 """
+import json
 import logging
 from datetime import datetime
 from typing import List, Optional
@@ -21,6 +23,104 @@ logger = logging.getLogger(__name__)
 
 # Module-level cache for schema column detection (avoids 4 queries per call)
 _SCHEMA_CACHE = None
+
+# ── ICIR regime constants ──
+_ICIR_HOLDING_PERIOD = 15
+_ICIR_FULL = 0.50
+_ICIR_REDUCED = 0.30
+_ICIR_CAUTION = 0.20
+
+
+def _get_icir_mode(recent_icir: float) -> dict:
+    """Classify ICIR into operational regime.
+
+    Returns: {mode, multiplier, label_cn, force_hold, desc}
+    """
+    if recent_icir is None:
+        return {"mode": "caution", "multiplier": 0.5, "label_cn": "谨慎-数据不足",
+                "force_hold": False, "desc": "Insufficient data, cautious mode"}
+    if recent_icir >= _ICIR_FULL:
+        return {"mode": "full", "multiplier": 1.0, "label_cn": "全力出击",
+                "force_hold": True, "desc": f"ICIR={recent_icir:.2f} strong, full force"}
+    if recent_icir >= _ICIR_REDUCED:
+        return {"mode": "reduced", "multiplier": 0.7, "label_cn": "标准策略",
+                "force_hold": True, "desc": f"ICIR={recent_icir:.2f} usable, reduced position"}
+    if recent_icir >= _ICIR_CAUTION:
+        return {"mode": "caution", "multiplier": 0.5, "label_cn": "谨慎模式",
+                "force_hold": False, "desc": f"ICIR={recent_icir:.2f} weak, caution"}
+    return {"mode": "hibernate", "multiplier": 0.0, "label_cn": "冬眠模式",
+            "force_hold": False, "desc": f"ICIR={recent_icir:.2f} near random, hibernate"}
+
+
+def _trading_days_between(preset_id: str, start_date: str, end_date: str) -> int:
+    """Count trading days between two dates from factor_daily."""
+    from src.core.db_manager_postgresql import get_conn
+    conn = get_conn()
+    try:
+        row = conn.execute(text(
+            "SELECT COUNT(*) FROM factor_daily "
+            "WHERE preset_id = :pid AND trade_date > :s AND trade_date <= :e"
+        ), {"pid": preset_id, "s": start_date, "e": end_date}).fetchone()
+        return int(row[0]) if row else 0
+    except Exception:
+        return 0
+    finally:
+        conn.close()
+
+
+def _load_holdings(preset_id: str) -> dict:
+    """Load current holdings with entry dates from analysis_cache."""
+    from src.core.db_manager_postgresql import get_conn
+    conn = get_conn()
+    try:
+        row = conn.execute(text(
+            "SELECT data_json FROM analysis_cache WHERE key = :key"
+        ), {"key": f"holdings_{preset_id}"}).fetchone()
+        if row and row[0]:
+            data = json.loads(row[0])
+            if isinstance(data, dict):
+                return data.get("holdings", {})
+        return {}
+    except Exception as exc:
+        logger.debug(f"Could not load holdings: {exc}")
+        return {}
+    finally:
+        conn.close()
+
+
+def _save_holdings(preset_id: str, recommendations: list, latest_date: str):
+    """Save current holdings (code + entry_date) to analysis_cache."""
+    from sqlalchemy import text as sa_text
+    from src.core.db_manager_postgresql import get_conn
+    prev_holdings = _load_holdings(preset_id)
+    new_holdings = {}
+    for r in recommendations:
+        code = r["code"]
+        if code in prev_holdings:
+            new_holdings[code] = prev_holdings[code]
+        else:
+            new_holdings[code] = {"entry_date": latest_date, "position": r.get("position_ratio", 0)}
+    payload = {"date": latest_date, "holdings": new_holdings}
+    conn = get_conn()
+    try:
+        existing = conn.execute(sa_text(
+            "SELECT 1 FROM analysis_cache WHERE key = :key"
+        ), {"key": f"holdings_{preset_id}"}).fetchone()
+        if existing:
+            conn.execute(sa_text(
+                "UPDATE analysis_cache SET data_json = :data, updated_at = :now WHERE key = :key"
+            ), {"data": json.dumps(payload, ensure_ascii=False), "now": str(datetime.now()),
+                "key": f"holdings_{preset_id}"})
+        else:
+            conn.execute(sa_text(
+                "INSERT INTO analysis_cache (key, data_json, updated_at) VALUES (:key, :data, :now)"
+            ), {"data": json.dumps(payload, ensure_ascii=False), "now": str(datetime.now()),
+                "key": f"holdings_{preset_id}"})
+        conn.commit()
+    except Exception as exc:
+        logger.warning(f"Could not save holdings: {exc}")
+    finally:
+        conn.close()
 
 
 def _get_conn():
@@ -78,6 +178,12 @@ def build_investment_recommendation(preset_id: str = "short",
 
     preset = get_preset(preset_id)
     conn = _get_conn()
+    # ICIR mode defaults (overridden inside try block when DB data available)
+    icir_mode = _get_icir_mode(None)
+    mode_multiplier = icir_mode["multiplier"]
+    mode_force_hold = icir_mode["force_hold"]
+    holding_days = {}
+    str_latest_date = ""
     try:
         # ── 1. Get latest factor date ──
         date_row = conn.execute(text("""
@@ -180,6 +286,23 @@ def build_investment_recommendation(preset_id: str = "short",
         else:
             recent_icir = None
             icir_decay_pct = None
+
+        # ── 4b. ICIR regime: determine strategy mode ──
+        icir_mode = _get_icir_mode(recent_icir)
+        mode_multiplier = icir_mode["multiplier"]
+        mode_force_hold = icir_mode["force_hold"]
+
+        # ── 4c. Load existing holdings for holding-day tracking ──
+        str_latest_date = str(latest_date)
+        existing_holdings = _load_holdings(preset_id)
+        holding_days = {}
+        for code, info in existing_holdings.items():
+            entry_date = info.get("entry_date", "")
+            if entry_date:
+                days = _trading_days_between(preset_id, entry_date, str_latest_date)
+                holding_days[code] = {"days_held": days, "entry_date": entry_date}
+            else:
+                holding_days[code] = {"days_held": 0, "entry_date": str_latest_date}
 
         # Get quadrant performance at optimal H
         qp_rows = conn.execute(text("""
@@ -421,6 +544,27 @@ def build_investment_recommendation(preset_id: str = "short",
                 candidates.append(e)
         candidates.sort(key=lambda x: -x["factor"])
 
+    # ── Force-hold: retain existing positions that haven't completed H days ──
+    if mode_force_hold and etf_data and holding_days:
+        candidate_codes = {c["code"] for c in candidates}
+        for code, hd in holding_days.items():
+            if hd["days_held"] >= _ICIR_HOLDING_PERIOD:
+                continue
+            if code not in etf_data or code in candidate_codes:
+                continue
+            e = etf_data[code]
+            if e["quadrant"] == 4 and e.get("z_rsrs", 0) <= 0.3:
+                continue
+            if e["factor"] <= 0:
+                continue
+            e["_force_held"] = True
+            e["_held_days"] = hd["days_held"]
+            candidates.append(e)
+        if any(c.get("_force_held") for c in candidates):
+            candidates.sort(key=lambda x: -x["factor"])
+            held = [c["code"] for c in candidates if c.get("_force_held")]
+            logger.info(f"Force-held {len(held)} ETFs: {','.join(held)} (mode={icir_mode['mode']})")
+
     if not candidates:
         return {
             "date": str(latest_date),
@@ -518,7 +662,23 @@ def build_investment_recommendation(preset_id: str = "short",
     # so no separate Q1/Q2 budget split is needed.
     base_budget = 1.0
     timing_adj = timing.get("adjustment", 0.0)
-    total_budget = max(0.3, min(1.3, base_budget + timing_adj))
+    # ICIR mode multiplier: reduces position when signal is weak
+    mode_budget = base_budget * mode_multiplier
+    total_budget = max(0.0, min(1.3, mode_budget + timing_adj))
+
+    # ── Hibernate mode: don't select any ETFs ──
+    if total_budget <= 0:
+        return {
+            "date": str(latest_date),
+            "recommendations": [],
+            "strategy": {
+                "name": f"ETF Multi-Factor Rotation Strategy ({preset['label']})",
+                "description": f"ICIR门控: {icir_mode['label_cn']} — {icir_mode['desc']}. 因子预测力不足，暂停选股。",
+                "holding_period": "",
+            },
+            "reasons": [f"ICIR={recent_icir:.2f}, factor near random level. Holding cash recommended."],
+            "risk_warning": [f"⏸ ICIR={recent_icir:.2f}，因子信号接近随机。策略进入{icir_mode['label_cn']}，不推荐ETF。"],
+        }
 
     total_final_score = sum(s for _, s in top)
     if total_final_score <= 0:
@@ -589,6 +749,9 @@ def build_investment_recommendation(preset_id: str = "short",
             "factor_score": round(c["factor"], 4),
             "quadrant": c["quadrant"],
             "holding_days": f"{holding} trading days",
+            "days_held": c.get("_held_days", 0),
+            "holding_days_remaining": max(0, _ICIR_HOLDING_PERIOD - c.get("_held_days", 0)),
+            "force_held": c.get("_force_held", False),
             "position_ratio": round(weight, 4),
             "confidence": ("High" if c["quadrant"] == 1 else "Mid") if not c.get("_missing_factors") else "Low",
             "z_quality": round(c["z_quality"], 4),
@@ -602,6 +765,27 @@ def build_investment_recommendation(preset_id: str = "short",
     # ── Risk warnings (use optimal forward period's ICIR) ──
     risk_warnings = []
     best_h = optimal_h  # highest ICIR period
+
+    # ICIR regime warning
+    if icir_mode["mode"] == "full":
+        risk_warnings.append(
+            f"✅ ICIR门控: {icir_mode['label_cn']} — 近期ICIR={recent_icir:.2f}，信号强劲。"
+            f"强制持仓{_ICIR_HOLDING_PERIOD}日，锁定完整预期收益。"
+        )
+    elif icir_mode["mode"] == "reduced":
+        risk_warnings.append(
+            f"✅ ICIR门控: {icir_mode['label_cn']} — 近期ICIR={recent_icir:.2f}，信号可用。"
+            f"强制持仓{_ICIR_HOLDING_PERIOD}日，仓位降至{icir_mode['multiplier']*100:.0f}%。"
+        )
+    elif icir_mode["mode"] == "caution":
+        risk_warnings.append(
+            f"⚠️ ICIR门控: {icir_mode['label_cn']} — 近期ICIR={recent_icir:.2f}，信号较弱。"
+            f"不强制持有，仓位仅{icir_mode['multiplier']*100:.0f}%。"
+        )
+    elif icir_mode["mode"] == "hibernate":
+        risk_warnings.append(
+            f"⏸ ICIR门控: {icir_mode['label_cn']} — 近期ICIR={recent_icir:.2f}，近乎随机。暂停选股。"
+        )
     if best_h in ic_summary and ic_summary[best_h]["icir"] is not None:
         icir_val = ic_summary[best_h]["icir"]
         if icir_val < 0.2:
@@ -709,7 +893,8 @@ def build_investment_recommendation(preset_id: str = "short",
     holding_period = f"{preset['forward_periods'][0]}-day medium-term holding"
     strategy_desc = (
         f"{preset['description']}. "
-        f"历史回测参考: 36-ETF pool: ICIR=0.91, annualized excess 22.5% (after 0.10% costs), turnover 76%. "
+        f"V8权重: RSRS(28%) Mom(32%) Flow(20%) RSI(14%) Efficiency(6%). "
+        f"ICIR门控: {icir_mode['label_cn']} (近期ICIR={recent_icir:.2f}). "
         f"Market signal: {timing.get('regime_cn','Neutral')} (timing adjustment {timing_adj*100:+.0f}%)."
     )
 
@@ -718,6 +903,10 @@ def build_investment_recommendation(preset_id: str = "short",
     top_ic_mean = best_ic.get("ic_mean")
     top_icir = best_ic.get("icir")
     top_ic_win_rate = best_ic.get("ic_win_rate")
+
+    # Save holdings for next call's holding-day tracking
+    if recommendations:
+        _save_holdings(preset_id, recommendations, str_latest_date)
 
     return {
         "date": str(latest_date),
@@ -729,6 +918,7 @@ def build_investment_recommendation(preset_id: str = "short",
         "ic_mean": top_ic_mean,
         "icir": top_icir,
         "ic_win_rate": top_ic_win_rate,
+        "strategy_mode": icir_mode,
         "reasons": reasons,
         "recommendations": recommendations,
         "risk_warning": risk_warnings,
@@ -750,3 +940,96 @@ def build_investment_recommendation(preset_id: str = "short",
             "narrative": timing.get("narrative", ""),
         },
     }
+
+
+# ════════════════════════════════════════════════════════════
+#  变更追踪：调仓买入 / 调整权重 / 持有
+# ════════════════════════════════════════════════════════════
+
+_PREV_WEIGHT_THRESHOLD = 0.01
+
+
+def _load_prev_recommendation(preset_id: str) -> list:
+    """Load previous day's recommendation from analysis_cache."""
+    from src.core.db_manager_postgresql import get_conn
+    conn = get_conn()
+    try:
+        row = conn.execute(text(
+            "SELECT data_json FROM analysis_cache WHERE key = :key"
+        ), {"key": f"prev_rec_{preset_id}"}).fetchone()
+        if row and row[0]:
+            data = json.loads(row[0])
+            if isinstance(data, list):
+                return data
+            if isinstance(data, dict) and "recommendations" in data:
+                return data["recommendations"]
+        return []
+    except Exception as exc:
+        logger.debug(f"Could not load prev recommendation: {exc}")
+        return []
+    finally:
+        conn.close()
+
+
+def _save_prev_recommendation(preset_id: str, recommendations: list, latest_date: str):
+    """Save current recommendation to analysis_cache for next comparison."""
+    from sqlalchemy import text as sa_text
+    from src.core.db_manager_postgresql import get_conn
+    snapshot = [
+        {"code": r["code"], "position": r.get("position_ratio", 0)}
+        for r in recommendations
+    ]
+    payload = {"date": latest_date, "recommendations": snapshot}
+    conn = get_conn()
+    try:
+        existing = conn.execute(sa_text(
+            "SELECT 1 FROM analysis_cache WHERE key = :key"
+        ), {"key": f"prev_rec_{preset_id}"}).fetchone()
+        if existing:
+            conn.execute(sa_text(
+                "UPDATE analysis_cache SET data_json = :data, updated_at = :now WHERE key = :key"
+            ), {"data": json.dumps(payload, ensure_ascii=False), "now": str(datetime.now()),
+                "key": f"prev_rec_{preset_id}"})
+        else:
+            conn.execute(sa_text(
+                "INSERT INTO analysis_cache (key, data_json, updated_at) VALUES (:key, :data, :now)"
+            ), {"data": json.dumps(payload, ensure_ascii=False), "now": str(datetime.now()),
+                "key": f"prev_rec_{preset_id}"})
+        conn.commit()
+    except Exception as exc:
+        logger.warning(f"Could not save prev recommendation: {exc}")
+    finally:
+        conn.close()
+
+
+def _compute_change_action(rec: dict, prev_map: dict) -> str:
+    """Determine change action: 'new'(调仓买入), 'adjust'(调整权重), 'hold'(持有)."""
+    code = rec["code"]
+    new_weight = rec.get("position_ratio", 0)
+    prev = prev_map.get(code)
+    if prev is None:
+        return "new"
+    prev_weight = prev.get("position", 0)
+    if abs(new_weight - prev_weight) >= _PREV_WEIGHT_THRESHOLD:
+        return "adjust"
+    return "hold"
+
+
+def enrich_change_actions(preset_id: str, recommendations: list, latest_date: str) -> list:
+    """Add change_action field by comparing with previous day's recommendations.
+
+    Called from API endpoint AFTER cache lookup so actions are always fresh.
+    """
+    try:
+        prev_recs = _load_prev_recommendation(preset_id)
+        prev_map = {}
+        for p in prev_recs:
+            prev_map[p["code"]] = p
+        for rec in recommendations:
+            rec["change_action"] = _compute_change_action(rec, prev_map)
+        _save_prev_recommendation(preset_id, recommendations, latest_date)
+    except Exception as exc:
+        logger.warning(f"Could not enrich change_actions: {exc}")
+        for rec in recommendations:
+            rec["change_action"] = "hold"
+    return recommendations

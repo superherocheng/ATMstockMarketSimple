@@ -13,10 +13,14 @@ V6: Added RSI momentum factor (rsi_momentum).
 V7: Added optimized preset with H=15, zeroed Quality/Efficiency based on
     rolling ICIR validation showing they consistently harm composite IC.
 
-Weight design (v7 optimized):
-  Quality (ICIR=-0.24) and Efficiency (ICIR=-0.19) zeroed after 5-window
-  rolling validation showed negative IC across all windows.
-  Remaining weight allocated to RSRS/Mom/Flow/RSI_Mom with ICIR²-optimized ratios.
+V8: Rebalanced optimized weights by ICIR² on 34 industry ETFs
+    (2025-09~2026-06). RSRS(0.28) Mom(0.32) Flow(0.20) RSI_Mom(0.14)
+    Efficiency(0.06 reinstated). Quality removed (no valid data).
+
+Weight design (v8 optimized):
+  RSRS(ICIR=0.33→28%) Mom(ICIR=0.39→32%) Flow(ICIR=0.28→20%)
+  RSI_Mom(ICIR=0.22→14%) Efficiency(ICIR=0.14→6%) Quality=0%.
+  All single factors show positive IC at H=15 on 34 industry ETFs.
 """
 PRESETS = {
     "short": {
@@ -34,13 +38,13 @@ PRESETS = {
     "optimized": {
         "id": "optimized",
         "label": "Optimized",
-        "description": "RSRS=20, Flow=10, Mom=20, H=15 — 36-ETF pool, ICIR=0.91, stickiness=1.0",
+        "description": "RSRS=20, Flow=10, Mom=20, H=15 — 34-ETF industry pool, ICIR=0.60, stickiness=1.0",
         "rsrs_lookback": 20,
         "flow_lookback": 10,
         "mom_lookback": 20,
         "forward_periods": [15],
-        "factor_weights": {"rsrs": 0.38, "flow": 0.22, "mom": 0.32, "quality": 0.0, "efficiency": 0.0, "rsi_momentum": 0.08},
-        "eff_sma_window": 0,
+        "factor_weights": {"rsrs": 0.28, "flow": 0.20, "mom": 0.32, "quality": 0.0, "efficiency": 0.06, "rsi_momentum": 0.14},
+        "eff_sma_window": 5,
         "reversal_lookback": 5,
         "rsrs_ma_dampening": 0.5,
         "portfolio_stickiness": 1.0,
