@@ -272,7 +272,7 @@
                             <th>Strategy</th>
                             <th style="width:100px;">Position</th>
                             <th style="width:40px;">Conf</th>
-                            <th style="width:70px;">操作</th>
+                            <th style="width:70px;">Action</th>
                         </tr>
                     </thead>
                     <tbody id="rec-body"></tbody>
@@ -357,9 +357,9 @@
                     // Latest trading day's cross-section isn't complete yet (e.g. today's
                     // price/flow data only partially arrived → many factors are NaN).
                     // Do not present investment advice until the data catches up.
-                    errorTitle.textContent = '⏳ 截面数据尚未齐全';
+                    errorTitle.textContent = '⏳ Cross-section data incomplete';
                     errorMsg.textContent = data.message ||
-                        ('最新交易日 ' + (data.date || '') + ' 的截面数据尚未齐全，暂不显示投资建议，待数据更新后自动恢复。');
+                        ('最新交易日 ' + (data.date || '') + ' cross-section data is incomplete. Investment advice will show once data is ready.');
                 } else if (data.error === 'no_data' || data.error.indexOf('no data') >= 0) {
                     errorTitle.textContent = '📊 Data Not Ready';
                     errorMsg.textContent = 'Investment advice requires factor analysis data. Please run "Update + Backtest" from the homepage first.';
@@ -406,7 +406,7 @@
             }
 
             // Preset badge
-            badges.innerHTML += '<span class="badge badge-neutral"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:2px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Short-term Preset</span>';
+            badges.innerHTML += '<span class="badge badge-neutral"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:2px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Optimized Preset</span>';
 
             // ICIR Strategy Mode badge
             if (data.strategy_mode) {
@@ -421,7 +421,7 @@
 
             // Quality weight badge
             if (data.weight_allocation && data.weight_allocation.quality_active === false) {
-                badges.innerHTML += '<span class="badge badge-neutral" title="Quality 因子经回测验证 ICIR 为负，已从本预设中移除">Quality 0%</span>';
+                badges.innerHTML += '<span class="badge badge-neutral" title="Quality factor had negative ICIR, removed from this preset">Quality 0%</span>';
             }
 
             // ── KPI row ──
@@ -442,9 +442,9 @@
             // ICIR strategy mode KPI
             if (data.strategy_mode) {
                 var sm = data.strategy_mode;
-                var smSub = sm.mode === 'full' ? '全力持有15日' : (sm.mode === 'reduced' ? '减仓持有15日' : (sm.mode === 'caution' ? '灵活调仓' : '暂停选股'));
+                var smSub = sm.mode === 'full' ? 'Full 15d Hold' : (sm.mode === 'reduced' ? 'Reduced 15d Hold' : (sm.mode === 'caution' ? 'Flexible' : 'Paused'));
                 var smColor = sm.mode === 'full' ? 'var(--c-up)' : (sm.mode === 'hibernate' ? 'var(--c-down)' : 'var(--c-warning)');
-                kpis.push({ label: '策略模式', value: '<span style="color:' + smColor + ';">' + (sm.label_cn || sm.mode) + '</span>', sub: smSub });
+                kpis.push({ label: 'Strategy Mode', value: '<span style="color:' + smColor + ';">' + (sm.label_cn || sm.mode) + '</span>', sub: smSub });
             }
 
             kpiRow.innerHTML = kpis.map(function(k) {
@@ -676,9 +676,9 @@
                 });
 
                     function getActionTag(action) {
-                        if (action === "new") return '<span style="font-size:10px;font-weight:600;color:#52C41A;">调仓买入</span>';
-                        if (action === "adjust") return '<span style="font-size:10px;font-weight:600;color:#FAAD14;">调整权重</span>';
-                        return '<span style="font-size:10px;color:var(--c-text-muted);">持有</span>';
+                        if (action === "new") return '<span style="font-size:10px;font-weight:600;color:#52C41A;">Buy New</span>';
+                        if (action === "adjust") return '<span style="font-size:10px;font-weight:600;color:#FAAD14;">Adjust Wgt</span>';
+                        return '<span style="font-size:10px;color:var(--c-text-muted);">Hold</span>';
                     }
 
                 tbody.innerHTML = data.recommendations.map(function(r, i) {
@@ -696,24 +696,25 @@
                     var confLabel = r.confidence || (quad === 1 ? 'High' : 'Mid');
                     var confCls = confLabel === 'High' ? 'conf-high' : 'conf-mid';
 
-                    // V4: Financial quality score for display
+                    // V4: Financial quality \u2014 hide when no data (all zeros)
                     var zq = r.z_quality;
-                    var qColor = zq > 0.5 ? 'var(--c-up)' : (zq < -0.5 ? 'var(--c-down)' : 'var(--c-text-tertiary)');
-                    var qDisplay = (typeof zq === 'number' && zq !== 0) ? (zq > 0 ? '+' : '') + zq.toFixed(2) + '\u03C3' : '--';
+                    var qDisplay = (typeof zq === 'number' && Math.abs(zq) > 0.01) ? (zq > 0 ? '+' : '') + zq.toFixed(2) + '\u03C3' : '';
 
-                    // V6: RSI momentum score for display
+                    // V6: RSI momentum \u2014 hide when near zero (no signal)
                     var zr = r.z_rsi_momentum || 0;
-                    var rColor = zr > 0.3 ? 'var(--c-up)' : (zr < -0.3 ? 'var(--c-down)' : 'var(--c-text-tertiary)');
-                    var rDisplay = (typeof zr === 'number' && zr !== 0) ? (zr > 0 ? '+' : '') + zr.toFixed(2) + '\u03C3' : '--';
+                    var rDisplay = (typeof zr === 'number' && Math.abs(zr) > 0.05) ? (zr > 0 ? '+' : '') + zr.toFixed(2) + '\u03C3' : '';
 
                     return '<tr>' +
                         '<td data-label="Rank"><span class="rank-num ' + rank + '">' + rankText + '</span></td>' +
                         '<td data-label="ETF"><strong>' + r.name + '</strong> <span style="font-size:10px;color:var(--c-text-muted);font-family:var(--font-mono);">' + r.code + '</span></td>' +
                         '<td data-label="Quadrant"><span class="quad-tag ' + quadCls + '">' + quadLabel + '</span></td>' +
                         '<td data-label="Score" style="font-family:var(--font-mono);font-size:12px;font-weight:600;">' + (r.factor_score !== undefined ? r.factor_score.toFixed(3) : '--') + '</td>' +
-                        '<td data-label="Strategy"><span style="font-size:10px;color:' + qColor + ';font-weight:600;">Quality ' + qDisplay + '</span> · <span style="font-size:10px;color:' + rColor + ';font-weight:600;">RSI ' + rDisplay + '</span> · <span style="font-size:11px;color:var(--c-text-secondary);">' + (r.strategy_desc || r.strategy || '') + '</span>' +
-                            (r.holding_days_remaining !== undefined && r.holding_days_remaining > 0 ? ' <span style="font-size:10px;color:#4F46E5;font-weight:600;">持有余' + r.holding_days_remaining + '日</span>' : '') +
-                            (r.force_held ? ' <span style="font-size:10px;color:#52C41A;font-weight:600;">强制持有</span>' : '') +
+                        '<td data-label="Strategy">' +
+                            (qDisplay ? '<span style="font-size:10px;font-weight:600;">Quality ' + qDisplay + '</span> · ' : '') +
+                            (rDisplay ? '<span style="font-size:10px;font-weight:600;">RSI ' + rDisplay + '</span> · ' : '') +
+                            '<span style="font-size:11px;color:var(--c-text-secondary);">' + (r.strategy_desc || r.strategy || '') + '</span>' +
+                            (r.holding_days_remaining !== undefined && r.holding_days_remaining > 0 ? ' <span style="font-size:10px;color:#4F46E5;font-weight:600;">Hold ' + r.holding_days_remaining + 'd</span>' : '') +
+                            (r.force_held ? ' <span style="font-size:10px;color:#52C41A;font-weight:600;">🔒 Force</span>' : '') +
                         '</td>' +
                         '<td data-label="Position"><div class="pos-bar-wrap"><div class="pos-bar"><div class="pos-bar-fill ' + barCls + '" style="width:' + barPct + '%;"></div></div><span class="pos-text">' + pct.toFixed(1) + '%</span></div></td>' +
                         '<td data-label="Confidence" style="text-align:center;"><span class="conf-dot ' + confCls + '" title="Confidence: ' + confLabel + '"></span></td>' +

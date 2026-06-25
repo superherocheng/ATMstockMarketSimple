@@ -37,18 +37,18 @@ def _get_icir_mode(recent_icir: float) -> dict:
     Returns: {mode, multiplier, label_cn, force_hold, desc}
     """
     if recent_icir is None:
-        return {"mode": "caution", "multiplier": 0.5, "label_cn": "谨慎-数据不足",
+        return {"mode": "caution", "multiplier": 0.5, "label_cn": "Caution-No Data",
                 "force_hold": False, "desc": "Insufficient data, cautious mode"}
     if recent_icir >= _ICIR_FULL:
-        return {"mode": "full", "multiplier": 1.0, "label_cn": "全力出击",
+        return {"mode": "full", "multiplier": 1.0, "label_cn": "Full Power",
                 "force_hold": True, "desc": f"ICIR={recent_icir:.2f} strong, full force"}
     if recent_icir >= _ICIR_REDUCED:
-        return {"mode": "reduced", "multiplier": 0.7, "label_cn": "标准策略",
+        return {"mode": "reduced", "multiplier": 0.7, "label_cn": "Standard",
                 "force_hold": True, "desc": f"ICIR={recent_icir:.2f} usable, reduced position"}
     if recent_icir >= _ICIR_CAUTION:
-        return {"mode": "caution", "multiplier": 0.5, "label_cn": "谨慎模式",
+        return {"mode": "caution", "multiplier": 0.5, "label_cn": "Caution",
                 "force_hold": False, "desc": f"ICIR={recent_icir:.2f} weak, caution"}
-    return {"mode": "hibernate", "multiplier": 0.0, "label_cn": "冬眠模式",
+    return {"mode": "hibernate", "multiplier": 0.0, "label_cn": "Hibernate",
             "force_hold": False, "desc": f"ICIR={recent_icir:.2f} near random, hibernate"}
 
 
@@ -491,19 +491,19 @@ def build_investment_recommendation(preset_id: str = "short",
             "date": str(latest_date),
             "recommendations": [],
             "message": (
-                f"最新交易日 {latest_date} 的截面数据尚未齐全"
+                f"Latest trading day {latest_date} 的cross-section is incomplete"
                 f"（仅 {factor_valid_count}/{total_tracked_etfs} 只ETF有有效因子），"
-                f"暂不生成投资建议，待数据更新后自动恢复。"
+                f"Investment advice paused. Will resume when data completes."
             ),
             "strategy": {
                 "name": f"ETF Multi-Factor Rotation Strategy ({preset['label']})",
-                "description": "最新交易日截面数据不完整，等待数据更新后自动恢复",
+                "description": "Latest trading day截面数据不完整，Waiting for data update",
                 "holding_period": "",
             },
-            "reasons": ["最新交易日截面数据不完整，因子计算尚未完成，请等待数据更新"],
+            "reasons": ["Latest trading day截面数据不完整，Factor computation pending. Please wait for data update."],
             "risk_warning": [
-                f"⚠️ 最新交易日截面数据不完整（{factor_valid_count}/{total_tracked_etfs} "
-                f"只ETF有有效因子），当前建议不适用"
+                f"⚠️ Latest trading day截面数据不完整（{factor_valid_count}/{total_tracked_etfs} "
+                f"只ETF有有效因子），Current advice not applicable"
             ],
             "stats": {},
         }
@@ -673,11 +673,11 @@ def build_investment_recommendation(preset_id: str = "short",
             "recommendations": [],
             "strategy": {
                 "name": f"ETF Multi-Factor Rotation Strategy ({preset['label']})",
-                "description": f"ICIR门控: {icir_mode['label_cn']} — {icir_mode['desc']}. 因子预测力不足，暂停选股。",
+                "description": f"ICIR Gate: {icir_mode['label_cn']} — {icir_mode['desc']}. Factor predictive power insufficient. Pausing stock selection.",
                 "holding_period": "",
             },
             "reasons": [f"ICIR={recent_icir:.2f}, factor near random level. Holding cash recommended."],
-            "risk_warning": [f"⏸ ICIR={recent_icir:.2f}，因子信号接近随机。策略进入{icir_mode['label_cn']}，不推荐ETF。"],
+            "risk_warning": [f"⏸ ICIR={recent_icir:.2f}，Factor signal near random. Strategy entering {icir_mode['label_cn']}， No ETF recommendations."],
         }
 
     total_final_score = sum(s for _, s in top)
@@ -769,22 +769,22 @@ def build_investment_recommendation(preset_id: str = "short",
     # ICIR regime warning
     if icir_mode["mode"] == "full":
         risk_warnings.append(
-            f"✅ ICIR门控: {icir_mode['label_cn']} — 近期ICIR={recent_icir:.2f}，信号强劲。"
-            f"强制持仓{_ICIR_HOLDING_PERIOD}日，锁定完整预期收益。"
+            f"✅ ICIR Gate: {icir_mode['label_cn']} — Recent ICIR={recent_icir:.2f}，信号强劲。"
+            f"强制持仓{_ICIR_HOLDING_PERIOD} days to capture full expected return."
         )
     elif icir_mode["mode"] == "reduced":
         risk_warnings.append(
-            f"✅ ICIR门控: {icir_mode['label_cn']} — 近期ICIR={recent_icir:.2f}，信号可用。"
-            f"强制持仓{_ICIR_HOLDING_PERIOD}日，仓位降至{icir_mode['multiplier']*100:.0f}%。"
+            f"✅ ICIR Gate: {icir_mode['label_cn']} — Recent ICIR={recent_icir:.2f}，信号可用。"
+            f"强制持仓{_ICIR_HOLDING_PERIOD} days. Position reduced to {icir_mode['multiplier']*100:.0f}%。"
         )
     elif icir_mode["mode"] == "caution":
         risk_warnings.append(
-            f"⚠️ ICIR门控: {icir_mode['label_cn']} — 近期ICIR={recent_icir:.2f}，信号较弱。"
+            f"⚠️ ICIR Gate: {icir_mode['label_cn']} — Recent ICIR={recent_icir:.2f}，信号较弱。"
             f"不强制持有，仓位仅{icir_mode['multiplier']*100:.0f}%。"
         )
     elif icir_mode["mode"] == "hibernate":
         risk_warnings.append(
-            f"⏸ ICIR门控: {icir_mode['label_cn']} — 近期ICIR={recent_icir:.2f}，近乎随机。暂停选股。"
+            f"⏸ ICIR Gate: {icir_mode['label_cn']} — Recent ICIR={recent_icir:.2f}，Near random. Pausing stock selection."
         )
     if best_h in ic_summary and ic_summary[best_h]["icir"] is not None:
         icir_val = ic_summary[best_h]["icir"]
@@ -893,8 +893,8 @@ def build_investment_recommendation(preset_id: str = "short",
     holding_period = f"{preset['forward_periods'][0]}-day medium-term holding"
     strategy_desc = (
         f"{preset['description']}. "
-        f"V8权重: RSRS(28%) Mom(32%) Flow(20%) RSI(14%) Efficiency(6%). "
-        f"ICIR门控: {icir_mode['label_cn']} (近期ICIR={recent_icir:.2f}). "
+        f"V8 Weights: RSRS(28%) Mom(32%) Flow(20%) RSI(14%) Efficiency(6%). "
+        f"ICIR Gate: {icir_mode['label_cn']} (Recent ICIR={recent_icir:.2f}). "
         f"Market signal: {timing.get('regime_cn','Neutral')} (timing adjustment {timing_adj*100:+.0f}%)."
     )
 
@@ -943,7 +943,7 @@ def build_investment_recommendation(preset_id: str = "short",
 
 
 # ════════════════════════════════════════════════════════════
-#  变更追踪：调仓买入 / 调整权重 / 持有
+#  Change tracking: New Entry / Weight Adjust / Hold
 # ════════════════════════════════════════════════════════════
 
 _PREV_WEIGHT_THRESHOLD = 0.01
@@ -1003,7 +1003,7 @@ def _save_prev_recommendation(preset_id: str, recommendations: list, latest_date
 
 
 def _compute_change_action(rec: dict, prev_map: dict) -> str:
-    """Determine change action: 'new'(调仓买入), 'adjust'(调整权重), 'hold'(持有)."""
+    """Determine change action: 'new', 'adjust', 'hold'."""
     code = rec["code"]
     new_weight = rec.get("position_ratio", 0)
     prev = prev_map.get(code)

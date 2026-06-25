@@ -116,7 +116,7 @@
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 stagger-children">
 
         <div style="margin-bottom:8px;">
-                <input type="text" id="sectorSearch" placeholder="搜索 ETF 名称或代码..."
+                <input type="text" id="sectorSearch" placeholder="Search ETF name or code..."
                        style="width:100%;max-width:320px;padding:8px 12px;border:1px solid var(--c-border);border-radius:6px;background:var(--c-card);color:var(--c-text);font-size:13px;">
             </div>
 
@@ -144,7 +144,7 @@
                 <!-- Rendered by JS -->
             </div>
             <div id="pagination-bar" style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:16px;">
-              <button id="loadMoreBtn" class="tab-btn" onclick="loadMore()">加载更多</button>
+              <button id="loadMoreBtn" class="tab-btn" onclick="loadMore()">Load More</button>
               <span id="paginationInfo" style="font-size:12px;color:var(--c-text-tertiary);"></span>
             </div>
         </details>
@@ -253,20 +253,20 @@
     var pageSize = 10;
 
     var SECTOR_CATEGORIES = {
-        '半导体': '科技', '通信': '科技', '软件': '科技', '科技': '科技', '机器人': '科技',
-        '军工': '科技', '卫星': '科技', '高端装备': '科技', '电网设备': '科技',
-        '银行': '金融', '证券': '金融', '金融科技': '金融',
-        '消费': '消费', '白酒': '消费', '旅游': '消费', '传媒': '消费', '游戏': '消费', '养殖': '消费',
-        '医药': '医药', '医疗': '医药',
-        '有色': '周期', '煤炭': '周期', '钢铁': '周期', '化工': '周期', '稀土': '周期',
-        '新能源车': '新能源', '光伏': '新能源', '电池': '新能源',
-        '电力': '能源/公用', '能源': '能源/公用', '石油': '能源/公用', '黄金': '商品',
+        '半导体': 'Tech', '通信': 'Tech', '软件': 'Tech', 'Tech': 'Tech', '机器人': 'Tech',
+        '军工': 'Tech', '卫星': 'Tech', '高端装备': 'Tech', '电网设备': 'Tech',
+        '银行': 'Finance', '证券': 'Finance', '金融科技': 'Finance',
+        'Consumer': 'Consumer', '白酒': 'Consumer', '旅游': 'Consumer', '传媒': 'Consumer', '游戏': 'Consumer', '养殖': 'Consumer',
+        'Pharma': 'Pharma', '医疗': 'Pharma',
+        '有色': 'Cyclical', '煤炭': 'Cyclical', '钢铁': 'Cyclical', '化工': 'Cyclical', '稀土': 'Cyclical',
+        '新能源车': 'New Energy', '光伏': 'New Energy', '电池': 'New Energy',
+        '电力': 'Energy/Util', '能源': 'Energy/Util', '石油': 'Energy/Util', '黄金': 'Commodity',
     };
     function getCategory(name) {
         for (var key in SECTOR_CATEGORIES) {
             if (name.indexOf(key) !== -1) return SECTOR_CATEGORIES[key];
         }
-        return '其他';
+        return 'Other';
     }
 
     // Reusable: compute Z-score of latest daily share change % (same logic as Share Change Ranking)
@@ -401,12 +401,12 @@
             return;
         }
         bar.style.display = 'flex';
-        info.textContent = '显示 ' + Math.min(visible, total) + ' / ' + total + ' 只';
+        info.textContent = 'Showing ' + Math.min(visible, total) + ' / ' + total;
         if (visible >= total) {
             btn.style.display = 'none';
         } else {
             btn.style.display = '';
-            btn.textContent = '加载更多 (' + (total - visible) + ')';
+            btn.textContent = 'Load More (' + (total - visible) + ')';
         }
     }
 
@@ -428,7 +428,7 @@
         // Empty state
         if (sectors.length === 0) {
             el.style.display = 'block';
-            el.innerHTML = '<div class="glass p-3 text-center" style="grid-column:1/-1;color:var(--c-text-tertiary);">' + (searchQ ? '未找到匹配的 ETF' : 'No data available') + '</div>';
+            el.innerHTML = '<div class="glass p-3 text-center" style="grid-column:1/-1;color:var(--c-text-tertiary);">' + (searchQ ? 'No matching ETFs found' : 'No data available') + '</div>';
             var bar = document.getElementById('pagination-bar');
             if (bar) bar.style.display = 'none';
             return;
@@ -467,7 +467,7 @@
         });
 
         // Ordered category list for consistent output
-        var categoryOrder = ['科技', '金融', '消费', '医药', '周期', '新能源', '能源/公用', '商品', '其他'];
+        var categoryOrder = ['Tech', 'Finance', 'Consumer', 'Pharma', 'Cyclical', 'New Energy', 'Energy/Util', 'Commodity', 'Other'];
 
         // Flatten all cards (with category) for pagination slicing
         var allCards = [];

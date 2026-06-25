@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ETF 轮动策略 - ATM</title>
+    <title>ETF Rotation - ATM</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -145,10 +145,10 @@
         <div id="error-state" style="display:none;">
             <div class="empty-state-guide">
                 <div class="empty-state-guide-icon">🔄</div>
-                <div class="empty-state-guide-title" id="error-title">轮动数据未就绪</div>
-                <div class="empty-state-guide-desc" id="error-msg">暂无轮动策略数据。请先在首页运行「更新数据」完成 ETF 行情与因子计算。</div>
+                <div class="empty-state-guide-title" id="error-title">Rotation data not ready</div>
+                <div class="empty-state-guide-desc" id="error-msg">No rotation strategy data. Please run "Update + Backtest" from the homepage first.</div>
                 <div style="margin-top:20px;">
-                    <a href="/" class="btn btn-primary" style="display:inline-flex;">返回首页 → 更新数据</a>
+                    <a href="/" class="btn btn-primary" style="display:inline-flex;">Go to Homepage → Fetch Data</a>
                 </div>
             </div>
         </div>
@@ -158,34 +158,34 @@
             <div class="report-header">
                 <div class="report-header-top">
                     <div>
-                        <div class="report-title">ETF 行业轮动策略 · 中信期货框架</div>
+                        <div class="report-title">ETF Sector Rotation Strategy · CITIC Futures Framework</div>
                         <div class="report-date" id="data-date">--</div>
                     </div>
                     <div class="report-badges" id="badges"></div>
                 </div>
                 <p style="font-size:13px;color:var(--c-text-secondary);margin-top:10px;line-height:1.6;" id="action-line"></p>
-                <p style="font-size:11px;color:var(--c-text-tertiary);margin-top:6px;line-height:1.5;">市场情绪指标（宽基趋势 + 行业宽度）与行业轮动强度双轴驱动 → 总仓位 → 进攻层(Q1强势) + 防守层(Q2反转) 双层组合。本页为量化参考，不构成投资建议。</p>
+                <p style="font-size:11px;color:var(--c-text-tertiary);margin-top:6px;line-height:1.5;">Dual-axis: Market Sentiment (broad trend + sector breadth) × Rotation Intensity → Total Position → Attack(Q1 Strong) + Defense(Q2 Reversal). For reference only, not investment advice.</p>
             </div>
 
             <div class="kpi-row" id="kpi-row"></div>
 
             <div class="report-section">
-                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> 双轴决策矩阵（情绪 × 轮动强度）</h3>
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Dual-Axis Decision Matrix (Sentiment × Rotation)</h3>
                 <div class="regime-wrap">
-                    <div class="regime-ylabel">市场情绪（上=过热 → 下=低迷）</div>
+                    <div class="regime-ylabel">Market Sentiment (Top=Overheat → Bottom=Downturn)</div>
                     <div id="regime-matrix" class="regime-matrix"></div>
                 </div>
             </div>
 
             <div class="vis-grid">
-                <div class="vis-cell"><h3 class="vis-title">市场情绪仪表</h3><div id="chart-sentiment-gauge" class="vis-chart"></div></div>
-                <div class="vis-cell"><h3 class="vis-title">情绪分趋势 (120日)</h3><div id="chart-sentiment-line" class="vis-chart"></div></div>
-                <div class="vis-cell"><h3 class="vis-title">行业轮动强度 (60日)</h3><div id="chart-rotation-line" class="vis-chart"></div></div>
-                <div class="vis-cell"><h3 class="vis-title">持仓相关性矩阵</h3><div id="chart-corr-heatmap" class="vis-chart"></div></div>
+                <div class="vis-cell"><h3 class="vis-title">Market Sentiment Dashboard</h3><div id="chart-sentiment-gauge" class="vis-chart"></div></div>
+                <div class="vis-cell"><h3 class="vis-title">Sentiment Score Trend (120d)</h3><div id="chart-sentiment-line" class="vis-chart"></div></div>
+                <div class="vis-cell"><h3 class="vis-title">Sector Rotation Intensity (60d)</h3><div id="chart-rotation-line" class="vis-chart"></div></div>
+                <div class="vis-cell"><h3 class="vis-title">Holding Correlation Matrix</h3><div id="chart-corr-heatmap" class="vis-chart"></div></div>
             </div>
 
             <div class="report-section">
-                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> 进攻层 — Q1 强势主线（约 70% 仓位）</h3>
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Attack Layer — Q1 Strong Trend (~70% Position)</h3>
                 <div class="table-scroll">
                 <table class="rec-table responsive-card" id="attack-table">
                     <thead><tr><th style="width:28px;">#</th><th style="width:160px;">ETF</th><th style="width:36px;">Q</th><th style="width:64px;">Factor</th><th style="width:120px;">仓位</th></tr></thead>
@@ -195,7 +195,7 @@
             </div>
 
             <div class="report-section">
-                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> 防守层 — Q2 反转预期（约 30% 仓位）</h3>
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Defense Layer — Q2 Reversal (~30% Position)</h3>
                 <div class="table-scroll">
                 <table class="rec-table responsive-card" id="defense-table">
                     <thead><tr><th style="width:28px;">#</th><th style="width:160px;">ETF</th><th style="width:36px;">Q</th><th style="width:64px;">Factor</th><th style="width:120px;">仓位</th></tr></thead>
@@ -205,12 +205,12 @@
             </div>
 
             <div class="report-section">
-                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> 策略解读</h3>
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Strategy Notes</h3>
                 <ul class="reason-list" id="narrative-list"></ul>
             </div>
 
             <div class="report-section">
-                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01M12 3l9.66 17H2.34L12 3z"/></svg> 风险提示</h3>
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01M12 3l9.66 17H2.34L12 3z"/></svg> Risk Alerts</h3>
                 <ul class="risk-list" id="risk-list"></ul>
             </div>
 
@@ -254,8 +254,8 @@
             if (data.error || data.data_incomplete) {
                 document.getElementById('loading').style.display = 'none';
                 var es = document.getElementById('error-state'); es.style.display = 'block';
-                document.getElementById('error-title').textContent = '📊 数据未就绪';
-                document.getElementById('error-msg').textContent = data.error || 'ETF 数据覆盖不足，请先在首页运行「更新数据」。';
+                document.getElementById('error-title').textContent = '📊 Data Not Ready';
+                document.getElementById('error-msg').textContent = data.error || 'ETF data coverage insufficient. Please run data fetch from the homepage.';
                 return;
             }
 
@@ -267,9 +267,9 @@
             var M = data.regime_matrix || {};
             var P = data.portfolio || {};
 
-            document.getElementById('data-date').textContent = '数据日期: ' + (data.date || '--');
+            document.getElementById('data-date').textContent = 'Data Date: ' + (data.date || '--');
             document.getElementById('action-line').textContent =
-                '当前格局【' + (S.regime_label || '?') + ' × ' + (R.level_label || '?') + '】 → 建议总仓位 ' +
+                'Current Regime: ' + (S.regime_label || '?') + ' × ' + (R.level_label || '?') + ' → Recommended Position ' +
                 Math.round((M.recommended_position || 0) * 100) + '%（' + (M.level || '') + '）：' + (M.action || '');
 
             var badges = document.getElementById('badges'); badges.innerHTML = '';
@@ -281,12 +281,12 @@
             badges.innerHTML += '<span class="badge ' + pCls + '">总仓位 ' + Math.round((M.recommended_position||0)*100) + '%</span>';
 
             var kpis = [
-                { label: '情绪分', value: (S.score||0).toFixed(2), sub: '[-1 过冷, +1 过热]' },
-                { label: '情绪区间', value: S.regime_label || '-', sub: '趋势' + (((S.components||{}).trend_score)||0).toFixed(2) + ' / 宽度' + (((S.components||{}).breadth_score)||0).toFixed(2) },
-                { label: '轮动强度', value: (R.strength_pct||0).toFixed(0) + '%', sub: '历史百分位' },
-                { label: '轮动等级', value: R.level_label || '-', sub: '强度值 ' + (R.score||0).toFixed(2) },
-                { label: '建议总仓位', value: Math.round((M.recommended_position||0)*100) + '%', sub: M.level || '' },
-                { label: '组合持仓', value: (P.attack_count||0) + '攻 / ' + (P.defense_count||0) + '守', sub: '进攻+防守' },
+                { label: 'Sentiment', value: (S.score||0).toFixed(2), sub: '[-1 Cold, +1 Hot]' },
+                { label: 'Range', value: S.regime_label || '-', sub: 'Trend' + (((S.components||{}).trend_score)||0).toFixed(2) + ' / 宽度' + (((S.components||{}).breadth_score)||0).toFixed(2) },
+                { label: 'Rotation', value: (R.strength_pct||0).toFixed(0) + '%', sub: 'Hist Percentile' },
+                { label: 'Level', value: R.level_label || '-', sub: 'Value ' + (R.score||0).toFixed(2) },
+                { label: 'Rec Position', value: Math.round((M.recommended_position||0)*100) + '%', sub: M.level || '' },
+                { label: 'Portfolio', value: (P.attack_count||0) + '攻 / ' + (P.defense_count||0) + 'D', sub: 'Attack+Defense' },
             ];
             document.getElementById('kpi-row').innerHTML = kpis.map(function(k) {
                 return '<div class="kpi-card"><div class="kpi-label">' + k.label + '</div><div class="kpi-value">' + k.value + '</div><div class="kpi-sub">' + k.sub + '</div></div>';
@@ -316,14 +316,14 @@
                 else if (w.indexOf('ℹ') >= 0) { icon = 'ℹ️'; cls = 'var(--c-text-tertiary)'; }
                 else if (w.indexOf('🔗') >= 0) { icon = '🔗'; cls = 'var(--c-accent)'; }
                 return '<li class="risk-item"><span class="risk-icon" style="color:' + cls + ';">' + icon + '</span><span>' + w + '</span></li>';
-            }).join('') || '<li class="risk-item" style="color:var(--c-text-tertiary);">无风险提示</li>';
+            }).join('') || '<li class="risk-item" style="color:var(--c-text-tertiary);">无Risk Alerts</li>';
 
         } catch(e) {
             console.error('rotation load failed:', e);
             document.getElementById('loading').style.display = 'none';
             var es = document.getElementById('error-state'); es.style.display = 'block';
-            document.getElementById('error-title').textContent = '⚠️ 连接错误';
-            document.getElementById('error-msg').textContent = '加载轮动策略数据失败，请检查网络后刷新。';
+            document.getElementById('error-title').textContent = '⚠️ Connection Error';
+            document.getElementById('error-msg').textContent = 'Failed to load rotation data. Check connection and refresh.';
         }
 
         function renderRegimeMatrix(M) {
@@ -367,7 +367,7 @@
                     pointer:{ width:5, length:'65%' },
                     detail:{ valueAnimation:true, formatter:'{value}', fontSize:28, fontFamily:'JetBrains Mono', offsetCenter:[0,'30%'], color:'#111' },
                     title:{ offsetCenter:[0,'72%'], fontSize:11, color:'#737373' },
-                    data:[{ value:v, name:(S.regime_label||'') + ' 情绪' }],
+                    data:[{ value:v, name:(S.regime_label||'') + ' Sentiment' }],
                     axisTick:{ distance:-14, length:5, lineStyle:{ color:'#fff' } },
                     splitLine:{ distance:-14, length:10, lineStyle:{ color:'#fff', width:2 } },
                     axisLabel:{ distance:-8, color:'#999', fontSize:9 }
@@ -396,12 +396,12 @@
                 backgroundColor:'transparent',
                 grid:{ left:44, right:16, top:20, bottom:40 },
                 tooltip:{ trigger:'axis' },
-                legend:{ data:['滚动均值','日churn'], bottom:2, textStyle:{ fontSize:10 }, icon:'rect', itemWidth:10, itemHeight:10 },
+                legend:{ data:['Rolling Avg','Daily Churn'], bottom:2, textStyle:{ fontSize:10 }, icon:'rect', itemWidth:10, itemHeight:10 },
                 xAxis:{ type:'category', data:ser.map(function(p){ return p.date; }), axisLabel:{ fontSize:9, fontFamily:'JetBrains Mono', color:'#999', formatter:function(v){ return v.slice(4); } }, axisLine:{ lineStyle:{ color:'#999' } } },
                 yAxis:{ type:'value', axisLabel:{ fontSize:9, color:'#999' }, splitLine:{ lineStyle:{ color:'#eee' } }, axisLine:{ show:false } },
                 series:[
-                    { name:'滚动均值', type:'line', data:ser.map(function(p){ return p.rolling_mean; }), smooth:true, symbol:'none', lineStyle:{ width:2, color:'#111' } },
-                    { name:'日churn', type:'line', data:ser.map(function(p){ return p.churn; }), symbol:'none', lineStyle:{ width:1, color:'#8a857c', opacity:0.6 } }
+                    { name:'Rolling Avg', type:'line', data:ser.map(function(p){ return p.rolling_mean; }), smooth:true, symbol:'none', lineStyle:{ width:2, color:'#111' } },
+                    { name:'Daily Churn', type:'line', data:ser.map(function(p){ return p.churn; }), symbol:'none', lineStyle:{ width:1, color:'#8a857c', opacity:0.6 } }
                 ]
             });
         }
@@ -412,7 +412,7 @@
             var m = corr.matrix || [];
             var hdata = [];
             for (var i=0;i<labels.length;i++) for (var j=0;j<labels.length;j++) hdata.push([j, i, (m[i]&&m[i][j]!=null)?m[i][j]:0]);
-            if (!labels.length) { ch.setOption({title:{text:'暂无持仓', left:'center', top:'center', textStyle:{color:'#999', fontSize:13}}}); return; }
+            if (!labels.length) { ch.setOption({title:{text:'No holdings', left:'center', top:'center', textStyle:{color:'#999', fontSize:13}}}); return; }
             ch.setOption({
                 backgroundColor:'transparent',
                 grid:{ left:90, right:40, top:20, bottom:70 },

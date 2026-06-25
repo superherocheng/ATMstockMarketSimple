@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="ATMstockMarket - A股市场分析平台">
+    <meta name="description" content="ATMstockMarket - A-Share ETF Quantitative Analysis Platform">
     <meta name="theme-color" content="#F5F7FA">
     <title>ATMstockMarket</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
@@ -114,7 +114,7 @@
                     <div class="skeleton-pulse" style="height:200px;width:100%;"></div>
                 </div>
                 <div id="rec-summary-section" style="margin-top:12px;border-top:1px solid var(--c-border);padding-top:12px;">
-                    <div style="font-size:11px;font-weight:600;color:var(--c-text-secondary);margin-bottom:8px;">推荐配置</div>
+                    <div style="font-size:11px;font-weight:600;color:var(--c-text-secondary);margin-bottom:8px;">Recommended Allocation</div>
                     <div id="rec-summary-content">
                         <div class="skeleton-pulse" style="height:60px;width:100%;"></div>
                     </div>
@@ -231,7 +231,7 @@
 
     function renderDataStatus(info) {
         var rows = [
-            { group: 'ETF数据', items: ['index_etf_daily','sector_etf_daily','etf_share'] },
+            { group: 'ETF Data', items: ['index_etf_daily','sector_etf_daily','etf_share'] },
         ];
         var anyNeedUpdate = false;
         var html = '<div class="table-scroll"><table class="w-full text-sm zebra-table">';
@@ -485,7 +485,7 @@
         var el = document.getElementById('rec-summary-content');
         if (!el) return;
         if (!data || !data.recommendations || data.recommendations.length === 0) {
-            el.innerHTML = '<div style="color:var(--c-text-tertiary);font-size:12px;padding:4px 0;">暂无推荐</div>';
+            el.innerHTML = '<div style="color:var(--c-text-tertiary);font-size:12px;padding:4px 0;">No recommendations</div>';
             return;
         }
         var totalWeight = data.recommendations.reduce(function(sum, r) { return sum + (r.position_ratio || 0); }, 0);

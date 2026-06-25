@@ -170,8 +170,8 @@ def _investment_recommendation_sync(preset_id):
                 if "warnings" not in result:
                     result["warnings"] = []
                 result["warnings"].append(
-                    "Quality 因子数据为空：financial_factor 表无有效数据。"
-                    "请先运行财务数据提取或触发 recompute-financial API。"
+                    "Quality factor data is empty: financial_factor table has no valid data."
+                    "Please run financial data extraction or trigger recompute-financial API."
                 )
         except Exception as exc:
             logger.warning("Failed to load financial factors: %s", exc)
