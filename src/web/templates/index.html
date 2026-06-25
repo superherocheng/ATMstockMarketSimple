@@ -270,7 +270,10 @@
         disableAllButtons();
         setButtonLoading('btn-update', 'Starting...');
         try {
-            var resp = await fetch('/api/fetch/all', { method: 'POST' });
+            var resp = await fetch('/api/fetch/all', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer {{ page_api_token }}' }
+            });
             if (resp.status === 409) {
                 setButtonLoading('btn-update', 'Fetching...');
                 document.getElementById('fetch-progress').classList.remove('hidden');
