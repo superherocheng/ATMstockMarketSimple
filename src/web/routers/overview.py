@@ -182,10 +182,11 @@ def validate_analysis_data():
 
 @router.get("/", response_class=HTMLResponse)
 async def page_index(request: Request):
-    from config.config import API_TOKEN as _page_api_token
+    import os
+    _page_token = os.environ.get("API_TOKEN", "")
     return templates.TemplateResponse("index.html", {
         "request": request,
-        "page_api_token": _page_api_token or "",
+        "page_api_token": _page_token,
     })
 
 
