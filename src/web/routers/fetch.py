@@ -12,10 +12,10 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from src.core.db_manager_postgresql import get_conn, get_db_manager
+from src.core.db_manager_postgresql import get_conn, get_db_manager, bind_inlist
 from src.web.services.cache import _cache_invalidate
 from src.core.trading_calendar import now_beijing, get_latest_trading_date, get_open_trade_dates
-from src.core.db_manager_postgresql import close_db_manager, _ensure_db
+from src.core.db_manager_postgresql import _ensure_db
 from src.analysis import factor_engine, ic_analyzer
 from config.config import DATA_DIR, INDEX_ETF, SECTOR_ETF, get_pro
 
@@ -116,7 +116,10 @@ def _run_fetch(task_type):
         _fetch_status["current_step"] = "初始化..."
         _fetch_status["backtest_done"] = False
 
-    close_db_manager()
+    # NOTE: do NOT call close_db_manager() here. The fetch runs in a subprocess
+    # that does not share this process's connection pool, so disposing the pool
+    # only yanks connections from concurrent in-flight API requests. _ensure_db()
+    # below reuses/reinits the existing pool as needed.
 
     tushare_script = str(BASE_DIR.parent / "data_fetchers" / "tushare_fetcher.py")
     work_dir = str(BASE_DIR.parent.parent)
@@ -253,7 +256,7 @@ def _run_fetch(task_type):
         # 投资建议预生成（缓存预热）
         try:
             from src.analysis.recommendation_engine import build_investment_recommendation
-            for pid in ["short", "medium", "long"]:
+            for pid in ["optimized"]:
                 build_investment_recommendation(pid)
             _add_log("[OK] 投资建议已预生成（3个预设）")
         except Exception as e:
@@ -346,8 +349,7 @@ def _etf_share_status_sync():
         conn = get_conn()
 
         all_etf_codes = list(INDEX_ETF.keys()) + list(SECTOR_ETF.keys())
-        placeholders = ",".join([f":p{i}" for i in range(len(all_etf_codes))])
-        params = {f"p{i}": c for i, c in enumerate(all_etf_codes)}
+        placeholders, params = bind_inlist(all_etf_codes, prefix="p")
 
         sql = f"""
             SELECT ts_code, MAX(trade_date) as max_date, COUNT(*) as cnt
@@ -456,8 +458,7 @@ def _do_etf_share_update():
         all_etf = {**INDEX_ETF, **SECTOR_ETF}
         all_codes = list(all_etf.keys())
 
-        placeholders = ",".join([f":p{i}" for i in range(len(all_codes))])
-        params = {f"p{i}": c for i, c in enumerate(all_codes)}
+        placeholders, params = bind_inlist(all_codes, prefix="p")
 
         sql = f"""
             SELECT ts_code, MAX(trade_date) as max_date
@@ -536,16 +537,19 @@ def _do_etf_share_update():
         updated_count = 0
         update_details = []
 
+        # Use the same connection for DELETE + upsert to keep them in one transaction
         for code, df in fetched_data.items():
             name = all_etf.get(code, code)
             existing_max = db_dates.get(code)
 
             if existing_max:
+                # Use conn for both DELETE and upsert to ensure atomicity
                 n = db.upsert_dataframe(df, "etf_share", ["ts_code", "trade_date"])
             else:
+                # First-time insert: clear any stale data then insert in same transaction
                 conn.execute(text("DELETE FROM etf_share WHERE ts_code=:p0"), {"p0": code})
-                conn.commit()
                 n = db.insert_dataframe(df, "etf_share", if_exists='append')
+                conn.commit()
 
             updated_count += 1
             update_details.append({

@@ -18,11 +18,16 @@ from typing import List, Optional
 import numpy as np
 import pandas as pd
 from sqlalchemy import text
+from src.core.db_manager_postgresql import get_conn
 
 logger = logging.getLogger(__name__)
 
-# Module-level cache for schema column detection (avoids 4 queries per call)
+import time as _time
+
+# Module-level cache for schema column detection with TTL (avoids 4 queries per call)
 _SCHEMA_CACHE = None
+_SCHEMA_CACHE_TIME = 0.0
+_SCHEMA_CACHE_TTL = 300.0  # 5 minutes
 
 # ── ICIR regime constants ──
 _ICIR_HOLDING_PERIOD = 15
@@ -89,7 +94,10 @@ def _load_holdings(preset_id: str) -> dict:
 
 
 def _save_holdings(preset_id: str, recommendations: list, latest_date: str):
-    """Save current holdings (code + entry_date) to analysis_cache."""
+    """Save current holdings (code + entry_date) to analysis_cache.
+
+    Also saves a date-stamped snapshot for the 15-day holding history feature.
+    """
     from sqlalchemy import text as sa_text
     from src.core.db_manager_postgresql import get_conn
     prev_holdings = _load_holdings(preset_id)
@@ -116,6 +124,38 @@ def _save_holdings(preset_id: str, recommendations: list, latest_date: str):
                 "INSERT INTO analysis_cache (key, data_json, updated_at) VALUES (:key, :data, :now)"
             ), {"data": json.dumps(payload, ensure_ascii=False), "now": str(datetime.now()),
                 "key": f"holdings_{preset_id}"})
+
+        # ── V9: Save date-stamped snapshot for holding history ──
+        # Each snapshot records: date, positions (code, name, quadrant, factor, position_ratio)
+        history_snapshot = {
+            "date": latest_date,
+            "positions": [
+                {
+                    "code": r["code"],
+                    "name": r.get("name", r["code"]),
+                    "quadrant": r.get("quadrant", 0),
+                    "factor": r.get("factor_score", 0),
+                    "position_ratio": r.get("position_ratio", 0),
+                    "strategy": r.get("strategy", ""),
+                    "change_action": r.get("change_action", "hold"),
+                }
+                for r in recommendations
+            ],
+        }
+        history_key = f"holdings_history_{preset_id}_{latest_date}"
+        hist_existing = conn.execute(sa_text(
+            "SELECT 1 FROM analysis_cache WHERE key = :key"
+        ), {"key": history_key}).fetchone()
+        if hist_existing:
+            conn.execute(sa_text(
+                "UPDATE analysis_cache SET data_json = :data, updated_at = :now WHERE key = :key"
+            ), {"data": json.dumps(history_snapshot, ensure_ascii=False), "now": str(datetime.now()),
+                "key": history_key})
+        else:
+            conn.execute(sa_text(
+                "INSERT INTO analysis_cache (key, data_json, updated_at) VALUES (:key, :data, :now)"
+            ), {"data": json.dumps(history_snapshot, ensure_ascii=False), "now": str(datetime.now()),
+                "key": history_key})
         conn.commit()
     except Exception as exc:
         logger.warning(f"Could not save holdings: {exc}")
@@ -123,20 +163,48 @@ def _save_holdings(preset_id: str, recommendations: list, latest_date: str):
         conn.close()
 
 
-def _get_conn():
-    from src.core.db_manager_postgresql import get_conn
-    return get_conn()
-
-
 def _safe_dict(d):
     from src.core.db_manager_postgresql import safe_dict
     return safe_dict(d)
 
 
+def load_holding_history(preset_id: str = "optimized", days: int = 15) -> list:
+    """Load the last N days of holding history from analysis_cache.
+
+    Returns a list of daily snapshots, each containing:
+        date, positions[{code, name, quadrant, factor, position_ratio, strategy, change_action}]
+
+    Ordered by date descending (most recent first).
+    """
+    from src.core.db_manager_postgresql import get_conn
+    conn = get_conn()
+    try:
+        # Query all history keys for this preset, ordered by key (which includes date)
+        rows = conn.execute(text(
+            "SELECT key, data_json FROM analysis_cache "
+            "WHERE key LIKE :pattern ORDER BY key DESC LIMIT :limit"
+        ), {"pattern": f"holdings_history_{preset_id}_%", "limit": days}).fetchall()
+        results = []
+        for row in rows:
+            try:
+                data = json.loads(row[1])
+                if isinstance(data, dict) and "date" in data:
+                    results.append(data)
+            except (json.JSONDecodeError, TypeError):
+                continue
+        return results
+    except Exception as exc:
+        logger.warning(f"Could not load holding history: {exc}")
+        return []
+    finally:
+        conn.close()
+
+
 def _detect_factor_columns(conn):
-    """Check which optional columns exist in factor_daily (cached after first call)."""
-    global _SCHEMA_CACHE
-    if _SCHEMA_CACHE is not None:
+    """Check which optional columns exist in factor_daily (cached with TTL)."""
+    global _SCHEMA_CACHE, _SCHEMA_CACHE_TIME
+    now = _time.time()
+    if _SCHEMA_CACHE is not None and (now - _SCHEMA_CACHE_TIME) < _SCHEMA_CACHE_TTL:
         return _SCHEMA_CACHE
     has_rsrs = conn.execute(text(
         "SELECT column_name FROM information_schema.columns "
@@ -155,15 +223,16 @@ def _detect_factor_columns(conn):
         "WHERE table_name='factor_daily' AND column_name='z_rsi_momentum'"
     )).fetchone() is not None
     _SCHEMA_CACHE = (has_rsrs, has_quality, has_efficiency, has_rsi)
+    _SCHEMA_CACHE_TIME = now
     return _SCHEMA_CACHE
 
 
-def build_investment_recommendation(preset_id: str = "short",
+def build_investment_recommendation(preset_id: str = "optimized",
                                     existing_positions: Optional[List[str]] = None) -> dict:
     """Generate a professional investment recommendation report.
 
     Args:
-        preset_id: Factor preset to use ("short", "medium", "long")
+        preset_id: Factor preset to use ("optimized" — the single preset after the 2026-07-01 collapse)
         existing_positions: List of ETF codes currently held. If provided,
                             candidates highly correlated (>0.6) with any
                             existing position will have their score penalized
@@ -177,7 +246,7 @@ def build_investment_recommendation(preset_id: str = "short",
     from config.config import SECTOR_ETF
 
     preset = get_preset(preset_id)
-    conn = _get_conn()
+    conn = get_conn()
     # ICIR mode defaults (overridden inside try block when DB data available)
     icir_mode = _get_icir_mode(None)
     mode_multiplier = icir_mode["multiplier"]
@@ -545,6 +614,11 @@ def build_investment_recommendation(preset_id: str = "short",
         candidates.sort(key=lambda x: -x["factor"])
 
     # ── Force-hold: retain existing positions that haven't completed H days ──
+    # V9: Daily risk-exit override — if an ETF has dropped to Q3/Q4 with
+    # deteriorating capital flow (z_flow < -0.5), exit immediately regardless
+    # of remaining holding days. This prevents the force-hold mechanism from
+    # trapping capital in declining positions.
+    risk_exited_codes = set()
     if mode_force_hold and etf_data and holding_days:
         candidate_codes = {c["code"] for c in candidates}
         for code, hd in holding_days.items():
@@ -553,6 +627,15 @@ def build_investment_recommendation(preset_id: str = "short",
             if code not in etf_data or code in candidate_codes:
                 continue
             e = etf_data[code]
+            # ── Daily risk-exit: Q3/Q4 + severe flow deterioration → exit ──
+            if e["quadrant"] >= 3 and e.get("z_flow", 0) < -0.5:
+                risk_exited_codes.add(code)
+                logger.info(
+                    f"Risk-exit: {code} ({e['name']}) — quadrant={e['quadrant']}, "
+                    f"z_flow={e['z_flow']:.2f}, held {hd['days_held']}d. "
+                    f"Exiting despite {_ICIR_HOLDING_PERIOD - hd['days_held']}d remaining."
+                )
+                continue
             if e["quadrant"] == 4 and e.get("z_rsrs", 0) <= 0.3:
                 continue
             if e["factor"] <= 0:
@@ -766,25 +849,29 @@ def build_investment_recommendation(preset_id: str = "short",
     risk_warnings = []
     best_h = optimal_h  # highest ICIR period
 
+    # recent_icir may be None when there is too little daily IC history to
+    # compute a rolling ICIR — guard the warning formatters against that.
+    icir_display = f"{recent_icir:.2f}" if recent_icir is not None else "N/A"
+
     # ICIR regime warning
     if icir_mode["mode"] == "full":
         risk_warnings.append(
-            f"✅ ICIR Gate: {icir_mode['label_cn']} — Recent ICIR={recent_icir:.2f}，信号强劲。"
+            f"✅ ICIR Gate: {icir_mode['label_cn']} — Recent ICIR={icir_display}，信号强劲。"
             f"强制持仓{_ICIR_HOLDING_PERIOD} days to capture full expected return."
         )
     elif icir_mode["mode"] == "reduced":
         risk_warnings.append(
-            f"✅ ICIR Gate: {icir_mode['label_cn']} — Recent ICIR={recent_icir:.2f}，信号可用。"
+            f"✅ ICIR Gate: {icir_mode['label_cn']} — Recent ICIR={icir_display}，信号可用。"
             f"强制持仓{_ICIR_HOLDING_PERIOD} days. Position reduced to {icir_mode['multiplier']*100:.0f}%。"
         )
     elif icir_mode["mode"] == "caution":
         risk_warnings.append(
-            f"⚠️ ICIR Gate: {icir_mode['label_cn']} — Recent ICIR={recent_icir:.2f}，信号较弱。"
+            f"⚠️ ICIR Gate: {icir_mode['label_cn']} — Recent ICIR={icir_display}，信号较弱。"
             f"不强制持有，仓位仅{icir_mode['multiplier']*100:.0f}%。"
         )
     elif icir_mode["mode"] == "hibernate":
         risk_warnings.append(
-            f"⏸ ICIR Gate: {icir_mode['label_cn']} — Recent ICIR={recent_icir:.2f}，Near random. Pausing stock selection."
+            f"⏸ ICIR Gate: {icir_mode['label_cn']} — Recent ICIR={icir_display}，Near random. Pausing stock selection."
         )
     if best_h in ic_summary and ic_summary[best_h]["icir"] is not None:
         icir_val = ic_summary[best_h]["icir"]
@@ -894,7 +981,7 @@ def build_investment_recommendation(preset_id: str = "short",
     strategy_desc = (
         f"{preset['description']}. "
         f"V8 Weights: RSRS(28%) Mom(32%) Flow(20%) RSI(14%) Efficiency(6%). "
-        f"ICIR Gate: {icir_mode['label_cn']} (Recent ICIR={recent_icir:.2f}). "
+        f"ICIR Gate: {icir_mode['label_cn']} (Recent ICIR={icir_display}). "
         f"Market signal: {timing.get('regime_cn','Neutral')} (timing adjustment {timing_adj*100:+.0f}%)."
     )
 
@@ -907,6 +994,25 @@ def build_investment_recommendation(preset_id: str = "short",
     # Save holdings for next call's holding-day tracking
     if recommendations:
         _save_holdings(preset_id, recommendations, str_latest_date)
+
+    # ── Risk-exit warnings (daily risk detection) ──
+    risk_exited_list = []
+    if risk_exited_codes:
+        for code in risk_exited_codes:
+            if code in etf_data:
+                e = etf_data[code]
+                risk_exited_list.append({
+                    "code": code,
+                    "name": e["name"],
+                    "quadrant": e["quadrant"],
+                    "z_flow": round(e.get("z_flow", 0), 3),
+                    "factor": round(e["factor"], 3),
+                })
+        risk_warnings.append(
+            f"🚨 Daily Risk-Exit: {len(risk_exited_codes)} ETF(s) force-exited — "
+            + ", ".join(f"{r['name']}(Q{r['quadrant']},z_flow={r['z_flow']})" for r in risk_exited_list)
+            + " — Capital flow deterioration triggers immediate exit regardless of holding period."
+        )
 
     return {
         "date": str(latest_date),
@@ -922,6 +1028,7 @@ def build_investment_recommendation(preset_id: str = "short",
         "reasons": reasons,
         "recommendations": recommendations,
         "risk_warning": risk_warnings,
+        "risk_exited": risk_exited_list,
         "stats": stats,
         "etf_data_coverage": {
             "with_data": latest_etf_count,

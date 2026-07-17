@@ -5,36 +5,20 @@ Each preset defines:
 - flow_lookback: Share flow trend window (N)
 - mom_lookback: Momentum lookback (M)
 - forward_periods: Evaluation horizon(s) (H)
-- factor_weights: Six-factor combination weights
+- factor_weights: factor combination weights
 
-V4: Added financial quality factor (f_quality).
-V5: Added intraday efficiency factor (efficiency).
-V6: Added RSI momentum factor (rsi_momentum).
-V7: Added optimized preset with H=15, zeroed Quality/Efficiency based on
-    rolling ICIR validation showing they consistently harm composite IC.
+Simplification (2026-07-01): collapsed the former short/medium/long/optimized
+quartet to a single `optimized` preset. The UI only ever selected `optimized`
+(medium/long were never selectable; `short` was a latent inconsistency in the
+sector-cards path). `all_preset_ids()` now returns the one preset, so the
+compute loops in factor_engine/ic_analyzer run once instead of 4x — ~75% fewer
+factor_daily / ic_daily / ic_summary rows per recompute.
 
-V8: Rebalanced optimized weights by ICIR² on 34 industry ETFs
-    (2025-09~2026-06). RSRS(0.28) Mom(0.32) Flow(0.20) RSI_Mom(0.14)
-    Efficiency(0.06 reinstated). Quality removed (no valid data).
-
-Weight design (v8 optimized):
+Weight design (v8 optimized, ICIR² on 34 industry ETFs, 2025-09~2026-06):
   RSRS(ICIR=0.33→28%) Mom(ICIR=0.39→32%) Flow(ICIR=0.28→20%)
-  RSI_Mom(ICIR=0.22→14%) Efficiency(ICIR=0.14→6%) Quality=0%.
-  All single factors show positive IC at H=15 on 34 industry ETFs.
+  RSI_Mom(ICIR=0.22→14%) Efficiency(ICIR=0.14→6%) Quality=0% (no valid data).
 """
 PRESETS = {
-    "short": {
-        "id": "short",
-        "label": "Short-term",
-        "description": "RSRS=20, Flow=10, Mom=20, H=10 — Short-term parameter set",
-        "rsrs_lookback": 20,
-        "flow_lookback": 10,
-        "mom_lookback": 20,
-        "forward_periods": [10],
-        "factor_weights": {"rsrs": 0.258, "flow": 0.129, "mom": 0.258, "quality": 0.184, "efficiency": 0.092, "rsi_momentum": 0.08},
-        "eff_sma_window": 0,
-        "reversal_lookback": 5,
-    },
     "optimized": {
         "id": "optimized",
         "label": "Optimized",
@@ -49,33 +33,9 @@ PRESETS = {
         "rsrs_ma_dampening": 0.5,
         "portfolio_stickiness": 1.0,
     },
-    "medium": {
-        "id": "medium",
-        "label": "Medium-term",
-        "description": "RSRS=20, Flow=20, Mom=60, H=20 — Medium-term holding reference",
-        "rsrs_lookback": 20,
-        "flow_lookback": 20,
-        "mom_lookback": 60,
-        "forward_periods": [20],
-        "factor_weights": {"rsrs": 0.193, "flow": 0.193, "mom": 0.258, "quality": 0.184, "efficiency": 0.092, "rsi_momentum": 0.08},
-        "eff_sma_window": 5,
-        "reversal_lookback": 5,
-    },
-    "long": {
-        "id": "long",
-        "label": "Long-term",
-        "description": "RSRS=30, Flow=40, Mom=120, H=40 — Long-cycle trend judgment",
-        "rsrs_lookback": 30,
-        "flow_lookback": 40,
-        "mom_lookback": 120,
-        "forward_periods": [40],
-        "factor_weights": {"rsrs": 0.161, "flow": 0.161, "mom": 0.322, "quality": 0.184, "efficiency": 0.092, "rsi_momentum": 0.08},
-        "eff_sma_window": 5,
-        "reversal_lookback": 5,
-    },
 }
 
-DEFAULT_PRESET = "short"
+DEFAULT_PRESET = "optimized"
 
 
 def get_preset(preset_id: str) -> dict:
@@ -84,8 +44,8 @@ def get_preset(preset_id: str) -> dict:
 
 
 def all_preset_ids() -> list:
-    """Return all preset IDs in display order."""
-    return ["short", "optimized", "medium", "long"]
+    """Return all preset IDs in display order (single preset after the collapse)."""
+    return ["optimized"]
 
 
 def get_active_factors(preset_id: str) -> dict:

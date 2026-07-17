@@ -50,6 +50,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-cov
+      - name: Dependency security audit
+        # Advisory rollout: surface known vulnerabilities without blocking merges.
+        # Tighten (remove continue-on-error) once findings are triaged.
+        continue-on-error: true
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt
       - name: Run tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db

@@ -293,6 +293,44 @@ ATM.SECTOR_ICONS = {
     '机器人': '🤖'
 };
 
+// English name map for all 32 sector ETFs — used where r.code is available
+// (rotation & recommendation tables) to show English names instead of Chinese.
+// Keyed by ts_code for the reverse-lookups that powers the 2026-07 English-first UI.
+ATM.ETF_ENGLISH = {
+    "512480.SH": "Semiconductor ETF",
+    "515030.SH": "NEV ETF",
+    "512010.SH": "Pharma ETF",
+    "512800.SH": "Banking ETF",
+    "512880.SH": "Securities ETF",
+    "159928.SZ": "Consumer ETF",
+    "515880.SH": "Telecom ETF",
+    "159206.SZ": "Satellite ETF",
+    "515220.SH": "Coal ETF",
+    "512400.SH": "Metals ETF",
+    "562500.SH": "Robotics ETF",
+    "512690.SH": "Baijiu ETF",
+    "159611.SZ": "Power ETF",
+    "512980.SH": "Media ETF",
+    "515210.SH": "Steel ETF",
+    "159870.SZ": "Chemicals ETF",
+    "561360.SH": "Oil ETF",
+    "512710.SH": "Defense ETF",
+    "515790.SH": "Solar ETF",
+    "159934.SZ": "Gold ETF",
+    "159865.SZ": "Farming ETF",
+    "159766.SZ": "Tourism ETF",
+    "159852.SZ": "Software ETF",
+    "159851.SZ": "Fintech ETF",
+    "512170.SH": "Healthcare ETF",
+    "159869.SZ": "Gaming ETF",
+    "159755.SZ": "Battery ETF",
+    "516150.SH": "Rare Earth ETF",
+    "159638.SZ": "Hi-End Eqpt ETF",
+    "159930.SZ": "Energy ETF",
+    "515000.SH": "Tech ETF",
+    "159326.SZ": "Grid Eqpt ETF",
+};
+
 // ── P1.4: CSV export utility ──
 ATM.downloadCSV = function(rows, filename) {
     if (!rows || rows.length === 0) return;
@@ -383,21 +421,21 @@ ATM.getChartTheme = function() {
 window.ATMTheme = window.ATMTheme || {};
 
 ATMTheme.init = function() {
-    var saved = localStorage.getItem('atm-theme');
-    var preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    var theme = saved || preferred;
-    document.documentElement.dataset.theme = theme;
-    this._updateIcon(theme);
-
-    var self = this;
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-        if (!localStorage.getItem('atm-theme')) {
-            var t = e.matches ? 'dark' : 'light';
-            document.documentElement.dataset.theme = t;
-            self._updateIcon(t);
-            self._notifyCharts();
-        }
-    });
+    // Follow the OS preference only (2026-07-01): the manual toggle was removed
+    // to cut a user decision, so theme now tracks prefers-color-scheme live and
+    // nothing is read from / written to localStorage.
+    var btn = document.getElementById('theme-toggle-btn');
+    if (btn) btn.style.display = 'none';   // toggle removed — theme follows OS
+    var mql = window.matchMedia('(prefers-color-scheme: dark)');
+    var apply = function(e) {
+        var dark = (e && typeof e.matches === 'boolean') ? e.matches : mql.matches;
+        var t = dark ? 'dark' : 'light';
+        document.documentElement.dataset.theme = t;
+        ATMTheme._updateIcon(t);
+        ATMTheme._notifyCharts();
+    };
+    apply();
+    mql.addEventListener('change', apply);
 };
 
 ATMTheme.toggle = function() {
@@ -1799,5 +1837,37 @@ ATMChart.buildKlineOption = function(klineData, maDays) {
         series: series
     };
 };
+
+/* ── Back to top button ── */
+(function() {
+    var btn = document.createElement('button');
+    btn.className = 'back-to-top';
+    btn.setAttribute('aria-label', 'Back to top');
+    btn.setAttribute('title', 'Back to top');
+    btn.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>';
+    document.body.appendChild(btn);
+
+    var ticking = false;
+    function updateVisibility() {
+        var scrollY = window.scrollY || window.pageYOffset;
+        if (scrollY > 400) {
+            btn.classList.add('visible');
+        } else {
+            btn.classList.remove('visible');
+        }
+        ticking = false;
+    }
+
+    window.addEventListener('scroll', function() {
+        if (!ticking) {
+            requestAnimationFrame(updateVisibility);
+            ticking = true;
+        }
+    }, { passive: true });
+
+    btn.addEventListener('click', function() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+})();
 
 })();

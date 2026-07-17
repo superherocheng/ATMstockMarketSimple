@@ -14,64 +14,16 @@
     <script defer src="/static/js/vendor.js"></script>
     <script defer src="/static/js/app.js"></script>
     <script>
-        (function(){var t=localStorage.getItem('atm-theme');document.documentElement.dataset.theme=t||'light';})();
+        (function(){var d=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.dataset.theme=d?'dark':'light';})();
     </script>
     <style>
         @media (max-width: 640px) {
-            #share-rank-table th:nth-child(4),
-            #share-rank-table td:nth-child(4) { display: none; }
-        }
-        @media (max-width: 480px) {
-            #share-rank-table th:nth-child(5),
-            #share-rank-table td:nth-child(5) { display: none; }
-        }
-        /* ── Category grouping styles ── */
-        .category-header {
-            cursor: pointer;
-            padding: 10px 12px;
-            border-bottom: 1px solid #F0F2F5;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            user-select: none;
-            border-radius: 8px;
-            transition: background 0.15s;
-        }
-        .category-header:hover {
-            background: #F5F7FA;
-        }
-        .category-name {
-            font-weight: 600;
-            font-size: 13px;
-            color: var(--c-text);
-        }
-        .category-count {
-            font-size: 11px;
-            color: #999999;
-            background: #F0F2F5;
-            padding: 2px 8px;
-            border-radius: 999px;
-        }
-        .category-chevron {
-            margin-left: auto;
-            font-size: 10px;
-            color: #999999;
-            transition: transform 0.2s;
-        }
-        .category-body {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 10px;
-            padding: 10px 0;
-        }
-        @media (max-width: 480px) {
-            .category-body {
-                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            }
+            #detail-section .chart-pair { grid-column: span 1; }
         }
     </style>
 </head>
 <body class="min-h-screen">
+    <h1 class="sr-only">Sector ETF Overview</h1>
 
     <div class="tablet-topbar">
         <div class="tablet-topbar-logo"><a href="/">ATMstockMarket</a></div>
@@ -79,8 +31,6 @@
             <a href="/">Home</a>
             <a href="/etf">Index ETF</a>
             <a href="/sector" class="active">Sector ETF</a>
-            <a href="/analysis">Analysis</a>
-            <a href="/rotation">Rotation</a>
         </nav>
     </div>
 
@@ -96,8 +46,6 @@
                 <a href="/" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>Home</a>
                 <a href="/etf" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Index ETF</a>
                 <a href="/sector" class="sidebar-nav-link active"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Sector ETF</a>
-                <a href="/analysis" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>Analysis</a>
-                <a href="/rotation" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Rotation</a>
             </nav>
         </div>
         <div class="sidebar-nav-footer">
@@ -115,95 +63,43 @@
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 stagger-children">
 
-        <div style="margin-bottom:8px;">
-                <input type="text" id="sectorSearch" placeholder="Search ETF name or code..."
-                       style="width:100%;max-width:320px;padding:8px 12px;border:1px solid var(--c-border);border-radius:6px;background:var(--c-card);color:var(--c-text);font-size:13px;">
-            </div>
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb-nav" aria-label="Breadcrumb">
+            <a href="/">Home</a>
+            <span class="breadcrumb-sep">/</span>
+            <span class="breadcrumb-current">Sector ETF</span>
+        </nav>
 
-            <div class="flex gap-2 flex-wrap" style="align-items:center;">
-            <button class="tab-btn active" data-filter="all" onclick="setFilter(this)">ALL</button>
-            <button class="tab-btn" data-filter="top3" onclick="setFilter(this)">TOP-3</button>
-            <button class="tab-btn" data-filter="bottom3" onclick="setFilter(this)">BOTTOM-3</button>
-            <button class="tab-btn" data-filter="positive" onclick="setFilter(this)">POSITIVE</button>
-            <button class="tab-btn" data-filter="negative" onclick="setFilter(this)">NEGATIVE</button>
-            <button class="tab-btn" id="collapse-all-btn" onclick="toggleCollapseAll()" style="margin-left:auto;" title="Collapse/Expand all sections">
-                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="collapse-all-icon"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                <span id="collapse-all-label">Collapse</span>
-            </button>
+        <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <input type="text" id="sectorSearch" placeholder="Search ETF name or code..."
+                   style="width:100%;max-width:320px;padding:10px 14px;border:1px solid var(--c-border);border-radius:8px;background:var(--c-card);color:var(--c-text);font-size:14px;">
+            <span style="font-size:12px;color:var(--c-text-tertiary);">Showing ETFs with |Daily Change| > 3%</span>
         </div>
 
-        <!-- Collapsible Sections Wrapper -->
-        <div id="collapsible-sections">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;" id="sector-cards">
+            <!-- Rendered by JS -->
+        </div>
 
-        <details class="chart-group-details">
-            <summary class="chart-group-summary">
-                <span class="chart-group-title">Sector Cards</span>
-                <span class="chart-group-chevron"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></span>
-            </summary>
-            <div id="sector-cards" style="margin-top:var(--space-3);">
-                <!-- Rendered by JS -->
-            </div>
-            <div id="pagination-bar" style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:16px;">
-              <button id="loadMoreBtn" class="tab-btn" onclick="loadMore()">Load More</button>
-              <span id="paginationInfo" style="font-size:12px;color:var(--c-text-tertiary);"></span>
-            </div>
-        </details>
+        <div id="no-match" style="display:none;text-align:center;padding:60px 24px;">
+            <div style="font-size:14px;color:var(--c-text-tertiary);">No ETFs with |Daily Change| > 3% at the moment</div>
+        </div>
 
-        <details class="chart-group-details" open>
-            <summary class="chart-group-summary">
-                <span class="chart-group-title">Comparison Charts</span>
-                <span class="chart-group-chevron"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></span>
-            </summary>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" style="margin-top:var(--space-3);">
+        <div id="detail-section" class="hidden" style="margin-top:24px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                <button class="tab-btn" onclick="closeDetail()" style="font-size:12px;">← Back</button>
+                <span id="detail-title" style="font-weight:700;font-size:16px;"></span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
                 <div class="glass p-4 sm:p-6 chart-pair" style="display:flex;flex-direction:column;">
-                    <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
-                        Recent Change Comparison
-                    </h3>
-                    <div id="compare-chart" class="chart-main">
-                        <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
-                    </div>
+                    <h3 class="flex items-center gap-3 text-base font-semibold mb-4" style="font-size:13px;">K-Line Trend</h3>
+                    <div id="detail-kline" class="chart-main" style="flex:1;min-height:420px;"></div>
                 </div>
                 <div class="glass p-4 sm:p-6 chart-pair" style="display:flex;flex-direction:column;">
-                    <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
-                        Share Change Trends
-                    </h3>
-                    <div id="share-compare-chart" class="chart-main">
-                        <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
-                    </div>
-                </div>
-            </div>
-        </details>
-
-        <div id="detail-section" class="hidden">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="glass p-4 sm:p-6 chart-pair" style="display:flex;flex-direction:column;">
-                    <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
-                        <span id="detail-title">ETF Details</span>
-                    </h3>
-                    <div id="detail-kline" class="chart-main"></div>
-                </div>
-                <div class="glass p-4 sm:p-6 chart-pair" style="display:flex;flex-direction:column;">
-                    <h3 class="flex items-center gap-3 text-base font-semibold mb-4 border-b border-black pb-3">
-                        <span id="detail-share-title">Share Value</span>
-                    </h3>
-                    <div id="detail-share-chart" class="chart-main"></div>
+                    <h3 class="flex items-center gap-3 text-base font-semibold mb-4" style="font-size:13px;">Share Value</h3>
+                    <div id="detail-share-chart" class="chart-main" style="flex:1;min-height:420px;"></div>
                 </div>
             </div>
         </div>
-
-        <details class="chart-group-details" open>
-            <summary class="chart-group-summary">
-                <span class="chart-group-title">Share Change Ranking</span>
-                <span class="chart-group-chevron"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></span>
-            </summary>
-            <div style="margin-top:var(--space-3);">
-                <div id="share-rank-table" class="overflow-x-auto">
-                    <div class="hard-skeleton"><span class="hard-skeleton-text">[ AWAITING DATA ... ]</span></div>
-                </div>
-            </div>
-        </details>
-
-        </div><!-- /collapsible-sections -->
     </main>
     </div><!-- /page-layout -->
 
@@ -227,18 +123,6 @@
         </span>
         <span class="bottom-nav-label">Sector ETF</span>
       </a>
-      <a href="/analysis" class="bottom-nav-item" aria-label="Analysis">
-        <span class="bottom-nav-icon">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
-        </span>
-        <span class="bottom-nav-label">Analysis</span>
-      </a>
-      <a href="/rotation" class="bottom-nav-item" aria-label="Rotation">
-        <span class="bottom-nav-icon">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-        </span>
-        <span class="bottom-nav-label">Rotation</span>
-      </a>
     </div>
 
     <script>
@@ -247,174 +131,25 @@
 
     var allSectors = [];
     var selectedCode = null;
-    var filterMode = 'all';
     var searchQuery = '';
-    var currentPage = 1;
-    var pageSize = 10;
 
-    var SECTOR_CATEGORIES = {
-        '半导体': 'Tech', '通信': 'Tech', '软件': 'Tech', 'Tech': 'Tech', '机器人': 'Tech',
-        '军工': 'Tech', '卫星': 'Tech', '高端装备': 'Tech', '电网设备': 'Tech',
-        '银行': 'Finance', '证券': 'Finance', '金融科技': 'Finance',
-        'Consumer': 'Consumer', '白酒': 'Consumer', '旅游': 'Consumer', '传媒': 'Consumer', '游戏': 'Consumer', '养殖': 'Consumer',
-        'Pharma': 'Pharma', '医疗': 'Pharma',
-        '有色': 'Cyclical', '煤炭': 'Cyclical', '钢铁': 'Cyclical', '化工': 'Cyclical', '稀土': 'Cyclical',
-        '新能源车': 'New Energy', '光伏': 'New Energy', '电池': 'New Energy',
-        '电力': 'Energy/Util', '能源': 'Energy/Util', '石油': 'Energy/Util', '黄金': 'Commodity',
-    };
-    function getCategory(name) {
-        for (var key in SECTOR_CATEGORIES) {
-            if (name.indexOf(key) !== -1) return SECTOR_CATEGORIES[key];
-        }
-        return 'Other';
-    }
-
-    // Reusable: compute Z-score of latest daily share change % (same logic as Share Change Ranking)
-    function computeShareZScore(s) {
-        var shares = s.shares || [];
-        if (shares.length < 2) return null;
-        var values = shares.map(function(sh) { return parseFloat(sh.fd_share || 0); });
-        var pctChanges = [];
-        for (var i = 1; i < values.length; i++) {
-            if (values[i-1] > 0) {
-                pctChanges.push((values[i] - values[i-1]) / values[i-1] * 100);
-            }
-        }
-        if (pctChanges.length < 10) return null;
-        var mean = pctChanges.reduce(function(a, b) { return a + b; }, 0) / pctChanges.length;
-        var variance = pctChanges.reduce(function(a, b) { return a + Math.pow(b - mean, 2); }, 0) / pctChanges.length;
-        var std = Math.sqrt(variance) || 1;
-        var latestChange = pctChanges[pctChanges.length - 1];
-        var zScore = (latestChange - mean) / std;
-        return { sector: s, zScore: zScore, latestChange: latestChange };
-    }
-
-    function getFilteredSectors() {
-        if (filterMode === 'all') {
-            // Same ordering as Share Change Ranking: sort by Z-score of latest share change % descending
-            var scored = allSectors.map(computeShareZScore).filter(function(d) { return d !== null; });
-            scored.sort(function(a, b) { return b.zScore - a.zScore; });
-            return scored.map(function(d) { return d.sector; });
-        }
-
-        // Find the latest trade date where ALL sectors have share data
-        var latestDates = allSectors.map(function(s) {
-            var shares = s.shares || [];
-            return shares.length > 0 ? shares[shares.length - 1].trade_date : null;
-        }).filter(function(d) { return d !== null; });
-        // Use the minimum of all latest dates — guarantees completeness
-        var commonDate = latestDates.length > 0
-            ? latestDates.reduce(function(m, d) { return d < m ? d : m; })
-            : null;
-
-        // Compute Z-score for each sector using the Share Change Trends method:
-        // (latest_share - mean_of_6) / std_of_6
-        var scored = allSectors.map(function(s) {
-            var shares = s.shares || [];
-            // Pick the 6 values ending at commonDate (or latest available)
-            var vals;
-            if (commonDate) {
-                var idx = -1;
-                for (var i = shares.length - 1; i >= 0; i--) {
-                    if (shares[i].trade_date <= commonDate) { idx = i; break; }
-                }
-                if (idx < 0) return { sector: s, score: 0 };
-                var slice = shares.slice(Math.max(0, idx - 5), idx + 1);
-                vals = slice.map(function(sh) { return parseFloat(sh.fd_share || 0); });
-            } else {
-                vals = shares.slice(-6).map(function(sh) { return parseFloat(sh.fd_share || 0); });
-            }
-            if (vals.length < 2) return { sector: s, score: 0 };
-            var mean = vals.reduce(function(a, b) { return a + b; }, 0) / vals.length;
-            var std = Math.sqrt(vals.reduce(function(a, b) { return a + Math.pow(b - mean, 2); }, 0) / vals.length) || 1;
-            var latestZ = (vals[vals.length - 1] - mean) / std;
-            return { sector: s, score: latestZ };
-        });
-
-        scored.sort(function(a, b) { return b.score - a.score; });
-
-        if (filterMode === 'top3') return scored.slice(0, 3).map(function(d) { return d.sector; });
-        if (filterMode === 'bottom3') return scored.slice(-3).reverse().map(function(d) { return d.sector; });
-        if (filterMode === 'positive') return scored.filter(function(d) { return d.score >= 0; }).map(function(d) { return d.sector; });
-        if (filterMode === 'negative') return scored.filter(function(d) { return d.score < 0; }).map(function(d) { return d.sector; });
-        return allSectors;
-    }
-
-    function setFilter(btn) {
-        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
-        btn.classList.add('active');
-        filterMode = btn.getAttribute('data-filter');
-        currentPage = 1;
-        renderSectorCards();
-        renderCompareChart();
-        renderShareCompare();
-    }
-
-    window.setFilter = setFilter;
+    var detailChart = null;
+    var shareDetailChart = null;
+    var loadSectorsGen = 0;
+    var showDetailGen = 0;
 
     function filterSectorCards(query) {
         searchQuery = query;
-        currentPage = 1;
         renderSectorCards();
     }
     window.filterSectorCards = filterSectorCards;
 
-    var collapsed = false;
-    function toggleCollapseAll() {
-        collapsed = !collapsed;
-        var details = document.querySelectorAll('#collapsible-sections details.chart-group-details');
-        details.forEach(function(d) { d.open = !collapsed; });
-        var btn = document.getElementById('collapse-all-btn');
-        var label = document.getElementById('collapse-all-label');
-        var icon = document.getElementById('collapse-all-icon');
-        label.textContent = collapsed ? 'Expand' : 'Collapse';
-        if (icon) icon.style.transform = collapsed ? 'rotate(-90deg)' : '';
-    }
-    window.toggleCollapseAll = toggleCollapseAll;
-
-    /* ── Category toggle (collapse/expand) ── */
-    function toggleCategory(header) {
-        var body = header.nextElementSibling;
-        if (!body) return;
-        var isHidden = body.style.display === 'none';
-        body.style.display = isHidden ? 'grid' : 'none';
-        var chevron = header.querySelector('.category-chevron');
-        if (chevron) chevron.innerHTML = isHidden ? '&#9660;' : '&#9660;';
-    }
-    window.toggleCategory = toggleCategory;
-
-    /* ── Load more pagination ── */
-    function loadMore() {
-        currentPage++;
-        renderSectorCards();
-    }
-    window.loadMore = loadMore;
-
-    /* ── Update pagination bar visibility and info ── */
-    function updatePagination(total, visible) {
-        var bar = document.getElementById('pagination-bar');
-        var btn = document.getElementById('loadMoreBtn');
-        var info = document.getElementById('paginationInfo');
-        if (!bar || !btn || !info) return;
-        if (total <= pageSize) {
-            bar.style.display = 'none';
-            return;
-        }
-        bar.style.display = 'flex';
-        info.textContent = 'Showing ' + Math.min(visible, total) + ' / ' + total;
-        if (visible >= total) {
-            btn.style.display = 'none';
-        } else {
-            btn.style.display = '';
-            btn.textContent = 'Load More (' + (total - visible) + ')';
-        }
-    }
-
-    /* ── Render sector cards with category grouping and pagination ── */
     function renderSectorCards() {
         var el = document.getElementById('sector-cards');
+        var noMatch = document.getElementById('no-match');
         if (!el) return;
-        var sectors = getFilteredSectors();
+
+        var sectors = allSectors.slice();
 
         // Apply search filter
         var searchQ = searchQuery.toLowerCase().trim();
@@ -427,185 +162,107 @@
 
         // Empty state
         if (sectors.length === 0) {
-            el.style.display = 'block';
-            el.innerHTML = '<div class="glass p-3 text-center" style="grid-column:1/-1;color:var(--c-text-tertiary);">' + (searchQ ? 'No matching ETFs found' : 'No data available') + '</div>';
-            var bar = document.getElementById('pagination-bar');
-            if (bar) bar.style.display = 'none';
+            el.innerHTML = '';
+            noMatch.style.display = 'block';
             return;
         }
+        noMatch.style.display = 'none';
 
-        // Card HTML builder
+        // Card HTML builder — big, prominent change display
         function cardHtml(s) {
-            var signalTag = (s.signal && s.signal.tag) || 'none';
-            var signalLabel = (s.signal && s.signal.label) || '--';
-            var cardClass = 'sector-card';
-            if (signalTag !== 'none' && ['strong','lurk','exit','risk'].indexOf(signalTag) !== -1) {
-                cardClass += ' ' + signalTag;
-            }
             var kline = s.kline || [];
-            var lastClose = kline.length > 0 ? parseFloat(kline[kline.length-1].close || 0) : 0;
             var lastPct = kline.length > 0 ? parseFloat(kline[kline.length-1].pct_chg || 0) : 0;
             var pctColor = lastPct >= 0 ? 'var(--c-up)' : 'var(--c-down)';
+            var pctBg = lastPct >= 0 ? 'var(--c-up-bg)' : 'var(--c-down-bg)';
+            var shares = s.shares || [];
+            var shareChange = null;
+            if (shares.length >= 2) {
+                var lastShare = parseFloat(shares[shares.length-1].fd_share || 0);
+                var prevShare = parseFloat(shares[shares.length-2].fd_share || 0);
+                if (prevShare > 0) {
+                    shareChange = (lastShare - prevShare) / prevShare * 100;
+                }
+            }
+            var shareColor = shareChange !== null ? (shareChange >= 0 ? 'var(--c-up)' : 'var(--c-down)') : 'var(--c-text-tertiary)';
+            var sparklineHtml = '';
+            if (kline.length >= 2) {
+                var sparkPrices = kline.slice(-20).map(function(k) { return parseFloat(k.close || 0); });
+                sparklineHtml = '<div style="margin-top:6px;height:28px;overflow:hidden;">' + ATM.sparklineSVG(sparkPrices, pctColor) + '</div>';
+            }
+            var signalTag = (s.signal && s.signal.tag) || 'none';
+            var signalLabel = (s.signal && s.signal.label) || '';
+            var cardClass = 'sector-card';
+            if (['strong','lurk','exit','risk'].indexOf(signalTag) !== -1) cardClass += ' ' + signalTag;
             return '<div class="' + cardClass + '" role="button" tabindex="0" onclick="selectSector(\'' + s.ts_code + '\');return false;" onkeydown="if(event.key===\'Enter\'){selectSector(\'' + s.ts_code + '\');return false;}" data-code="' + s.ts_code + '">' +
-                '<div class="font-semibold text-sm truncate">' + s.name + '</div>' +
-                '<div class="flex items-center gap-2 mt-1">' +
-                '<span class="font-mono text-xs" style="color:' + pctColor + ';">' +
-                (lastClose > 0 ? lastClose.toFixed(2) : '--') + '</span>' +
-                '<span class="font-mono text-xs" style="color:' + pctColor + ';">' +
-                (lastPct >= 0 ? '+' : '') + lastPct.toFixed(2) + '%</span>' +
-                '</div>' +
-                '<div class="mt-1"><span class="text-xs px-1.5 py-0.5" style="background:var(--c-bg-tertiary);color:var(--c-text-secondary);">' + signalLabel + '</span></div>' +
+                '<div class="font-semibold truncate" style="font-size:13px;">' + s.name + '</div>' +
+                '<div style="font-size:22px;font-weight:800;font-family:var(--font-mono);color:' + pctColor + ';margin:4px 0 2px;">' +
+                (lastPct >= 0 ? '+' : '') + lastPct.toFixed(2) + '%</div>' +
+                '<div style="font-size:12px;color:' + shareColor + ';">' +
+                (shareChange !== null ? (shareChange >= 0 ? '+' : '') + shareChange.toFixed(2) + '%' : '--') + ' Shares</div>' +
+                sparklineHtml +
                 '</div>';
         }
 
-        // Group sectors by category
-        var groups = {};
-        sectors.forEach(function(s) {
-            var cat = getCategory(s.name);
-            if (!groups[cat]) groups[cat] = [];
-            groups[cat].push(s);
-        });
-
-        // Ordered category list for consistent output
-        var categoryOrder = ['Tech', 'Finance', 'Consumer', 'Pharma', 'Cyclical', 'New Energy', 'Energy/Util', 'Commodity', 'Other'];
-
-        // Flatten all cards (with category) for pagination slicing
-        var allCards = [];
-        categoryOrder.forEach(function(cat) {
-            if (groups[cat]) {
-                groups[cat].forEach(function(s) {
-                    allCards.push({ sector: s, category: cat });
-                });
-            }
-        });
-        // Append leftover categories not in the ordered list
-        for (var cat in groups) {
-            if (categoryOrder.indexOf(cat) === -1) {
-                groups[cat].forEach(function(s) {
-                    allCards.push({ sector: s, category: cat });
-                });
-            }
-        }
-
-        // Pagination: slice visible set
-        var totalCards = allCards.length;
-        var maxVisible = currentPage * pageSize;
-        var visibleCards = allCards.slice(0, maxVisible);
-
-        // Re-group visible cards by category
-        var visibleGroups = {};
-        visibleCards.forEach(function(item) {
-            if (!visibleGroups[item.category]) visibleGroups[item.category] = [];
-            visibleGroups[item.category].push(item.sector);
-        });
-
-        // Render grouped HTML
-        el.style.display = 'block';
-        var html = '';
-
-        // Helper: render one category group
-        function renderCategory(cat, sectors) {
-            var h = '<div class="sector-category-group">' +
-                '<div class="category-header" onclick="toggleCategory(this)">' +
-                '<span class="category-name">' + cat + '</span>' +
-                '<span class="category-count">' + sectors.length + '</span>' +
-                '<span class="category-chevron">&#9660;</span>' +
-                '</div>' +
-                '<div class="category-body">';
-            sectors.forEach(function(s) { h += cardHtml(s); });
-            h += '</div></div>';
-            return h;
-        }
-
-        // Ordered categories first
-        categoryOrder.forEach(function(cat) {
-            var catSectors = visibleGroups[cat];
-            if (!catSectors || catSectors.length === 0) return;
-            html += renderCategory(cat, catSectors);
-        });
-        // Leftover categories
-        for (var cat in visibleGroups) {
-            if (categoryOrder.indexOf(cat) === -1) {
-                html += renderCategory(cat, visibleGroups[cat]);
-            }
-        }
-
-        el.innerHTML = html;
-
-        // Update pagination controls
-        updatePagination(totalCards, maxVisible);
+        el.innerHTML = sectors.map(cardHtml).join('');
     }
 
-    var compareChart = null;
-    var shareCompareChart = null;
-    var detailChart = null;
-    var shareDetailChart = null;
-    var loadSectorsGen = 0;
-    var showDetailGen = 0;
     async function loadSectors() {
         var gen = ++loadSectorsGen;
         try {
             var resp = await fetch('/api/sector-etf');
             if (gen !== loadSectorsGen) return;
             allSectors = await resp.json();
-            // Filter out sectors with no kline data
+            // Filter: only ETFs with kline data AND |latest pct_chg| > 3%
             allSectors = allSectors.filter(function(s) {
-                return s.kline && s.kline.length > 0;
+                if (!s.kline || s.kline.length === 0) return false;
+                var lastPct = parseFloat(s.kline[s.kline.length-1].pct_chg || 0);
+                return Math.abs(lastPct) > 3;
+            });
+            // Sort by absolute change descending
+            allSectors.sort(function(a, b) {
+                var aPct = Math.abs(parseFloat((a.kline[a.kline.length-1]||{}).pct_chg || 0));
+                var bPct = Math.abs(parseFloat((b.kline[b.kline.length-1]||{}).pct_chg || 0));
+                return bPct - aPct;
             });
             try { await ATMChart.load(); } catch(e) { console.warn('ECharts load failed:', e); }
-            if (gen !== loadSectorsGen) return; // stale request
-            // runs outside the outer try-catch scope, so any throw here
-            // would trigger window.onerror and show the ⚠️ warning banner.
+            if (gen !== loadSectorsGen) return;
             requestAnimationFrame(function() {
-                try {
-                    if (typeof echarts !== 'undefined') {
-                        renderSectorCards();
-                        renderCompareChart();
-                        renderShareCompare();
-                        renderShareRankTable();
-                    } else {
-                        renderSectorCards();
-                        console.warn('echarts not available, skipping initial chart render');
-                    }
-                } catch(e) { console.error('Chart render error:', e); }
+                try { renderSectorCards(); } catch(e) { console.error('Render error:', e); }
             });
-            // Auto-select first ETF if no code in URL
             var urlCode = new URLSearchParams(window.location.search).get('code');
-            if (urlCode) {
+            if (urlCode && allSectors.find(function(s) { return s.ts_code === urlCode; })) {
                 selectSector(urlCode);
-            } else if (allSectors.length > 0) {
-                selectSector(allSectors[0].ts_code);
             }
         } catch(e) {
             console.error('Load failed:', e);
             document.getElementById('sector-cards').innerHTML =
-                '<div class="glass p-3 text-center" style="grid-column:1/-1;color:var(--c-text-tertiary);">No data available, please run fetch_data.py first</div>';
+                '<div style="text-align:center;padding:60px 20px;color:var(--c-text-tertiary);">No data available</div>';
         }
     }
 
-    var SIGNAL_STYLE = {
-        strong: { bg: 'var(--c-up-bg)', color: 'var(--c-up)', label: 'Strong' },
-        lurk:   { bg: 'var(--c-accent-bg)', color: 'var(--c-accent)', label: 'Lurk' },
-        exit:   { bg: 'var(--c-down-bg)', color: 'var(--c-down)', label: 'Exit' },
-        risk:   { bg: 'rgba(255,93,0,0.1)', color: '#ff5d00', label: 'Risk' },
-    };
-
     function selectSector(code) {
         selectedCode = code;
-        // Update URL so cards behave like navigation to /sector?code=XXX
         var url = new URL(window.location);
         url.searchParams.set('code', code);
         window.history.replaceState({}, '', url);
         var sector = allSectors.find(function(s) { return s.ts_code === code; });
         if (sector) showDetail(sector);
     }
+    window.selectSector = selectSector;
+
+    function closeDetail() {
+        document.getElementById('detail-section').classList.add('hidden');
+        var url = new URL(window.location);
+        url.searchParams.delete('code');
+        window.history.replaceState({}, '', url);
+    }
+    window.closeDetail = closeDetail;
 
     function showDetail(sector) {
         var gen = ++showDetailGen;
         var section = document.getElementById('detail-section');
         section.classList.remove('hidden');
-        document.getElementById('detail-title').textContent = sector.name + ' K-Line Trend';
-        document.getElementById('detail-share-title').textContent = sector.name + ' Share Value';
+        document.getElementById('detail-title').textContent = sector.name;
         // ── Kline chart rendering ──
         var el = document.getElementById('detail-kline');
         if (detailChart && !detailChart.isDisposed()) detailChart.dispose();
@@ -623,12 +280,31 @@
         var ohlc = kline.map(function(k) { return [parseFloat(k.open||0), parseFloat(k.close||0), parseFloat(k.low||0), parseFloat(k.high||0)]; });
         var volumes = kline.map(function(k) { return parseFloat(k.vol || 0); });
         var pcts = kline.map(function(k) { return parseFloat(k.pct_chg || 0); });
+        var closes = kline.map(function(k) { return parseFloat(k.close || 0); });
 
-        var sortedVols = volumes.slice().sort(function(a, b) { return a - b; });
+        var totalDays = dates.length;
+        var visibleDays = 15;
+        var zoomStart = totalDays > visibleDays ? ((totalDays - visibleDays) / totalDays * 100) : 0;
+        var zoomEnd = 100;
+
+        // MA calculation helper
+        function calcMA(data, period) {
+            var result = [];
+            for (var i = 0; i < data.length; i++) {
+                if (i < period - 1) { result.push(null); continue; }
+                var sum = 0;
+                for (var j = i - period + 1; j <= i; j++) sum += data[j];
+                result.push(parseFloat((sum / period).toFixed(2)));
+            }
+            return result;
+        }
+
+        var refWindow = 60;
+        var refVols = volumes.slice(-refWindow).sort(function(a, b) { return a - b; });
         var volPercentiles = volumes.map(function(v) {
-            if (sortedVols.length === 0) return 0;
-            var rank = sortedVols.filter(function(x) { return x <= v; }).length;
-            return Math.round(rank / sortedVols.length * 100);
+            if (refVols.length === 0) return 0;
+            var rank = refVols.filter(function(x) { return x <= v; }).length;
+            return Math.round(rank / refVols.length * 100);
         });
 
         detailChart.setOption({
@@ -664,12 +340,20 @@
                 { scale: true, gridIndex: 1, splitLine: { show: false }, axisLabel: { color: th.axisLabelColor, formatter: '{value}%' }, min: 0, max: 100 }
             ],
             dataZoom: [
-                { type: 'inside', xAxisIndex: [0, 1], start: 60, end: 100 },
-                { type: 'slider', xAxisIndex: [0, 1], start: 60, end: 100 }
+                { type: 'inside', xAxisIndex: [0, 1], start: zoomStart, end: zoomEnd },
+                { type: 'slider', xAxisIndex: [0, 1], start: zoomStart, end: zoomEnd }
             ],
             series: [
                 { name: 'K-Line', type: 'candlestick', data: ohlc, xAxisIndex: 0, yAxisIndex: 0,
                   itemStyle: { color: th.upColor, color0: th.downColor, borderColor: th.upColor, borderColor0: th.downColor } },
+                { name: 'MA5', type: 'line', data: calcMA(closes, 5), xAxisIndex: 0, yAxisIndex: 0,
+                  smooth: true, showSymbol: false, lineStyle: { width: 1, color: '#F97316' } },
+                { name: 'MA10', type: 'line', data: calcMA(closes, 10), xAxisIndex: 0, yAxisIndex: 0,
+                  smooth: true, showSymbol: false, lineStyle: { width: 1, color: '#4F46E5' } },
+                { name: 'MA20', type: 'line', data: calcMA(closes, 20), xAxisIndex: 0, yAxisIndex: 0,
+                  smooth: true, showSymbol: false, lineStyle: { width: 1, color: '#7C3AED' } },
+                { name: 'MA60', type: 'line', data: calcMA(closes, 60), xAxisIndex: 0, yAxisIndex: 0,
+                  smooth: true, showSymbol: false, lineStyle: { width: 1, color: '#EC4899' } },
                 { name: 'Volume Percentile', type: 'bar', xAxisIndex: 1, yAxisIndex: 1,
                   data: volPercentiles.map(function(pct, i) { return { value: pct, itemStyle: { color: pcts[i] >= 0 ? th.upColor + '66' : th.downColor + '66' } }; }),
                   label: { show: true, position: 'top', color: th.axisLabelColor, fontSize: 8, formatter: '{c}%' }
@@ -700,8 +384,8 @@
             return;
         }
 
-        // Take last 120 days of data
-        var chartData = shares.slice(-120);
+        // Take last 15 days of data
+        var chartData = shares.slice(-15);
         var dates = chartData.map(function(sh) {
             var d = sh.trade_date;
             // Date comes as ISO "2026-06-09" from safe_json after DATE migration
@@ -751,7 +435,7 @@
                 }
             },
             legend: {
-                data: ['Share Value (120-day)', 'Share Change Z-Score'],
+                data: ['Share Value (15-day)', 'Share Change Z-Score'],
                 textStyle: th.legend.textStyle
             },
             grid: { left: '8%', right: '8%', top: '15%', bottom: '12%' },
@@ -784,7 +468,7 @@
             ],
             series: [
                 {
-                    name: 'Share Value (120-day)',
+                    name: 'Share Value (15-day)',
                     type: 'line',
                     yAxisIndex: 0,
                     data: values,
@@ -815,275 +499,7 @@
         }); // end requestAnimationFrame
     }
 
-    // renderFinancialQuality removed — F_Quality display removed from sector page
 
-    function renderCompareChart() {
-        var el = document.getElementById('compare-chart');
-        if (compareChart && !compareChart.isDisposed()) compareChart.dispose();
-        el.innerHTML = '';
-        if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
-        var sectors = getFilteredSectors();
-        if (sectors.length === 0) { el.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--c-text-tertiary);">No matching ETFs</div>'; return; }
-        // Only show top 3 and bottom 3 (6 total)
-        if (sectors.length > 6) sectors = sectors.slice(0, 3).concat(sectors.slice(-3));
-        requestAnimationFrame(function() {
-        compareChart = echarts.init(el);
-        if (ATMChart._instances) ATMChart._instances.set(el, compareChart);
-        var th = ATM.getChartTheme();
-
-        var with20d = sectors.map(function(s) {
-            var kline = s.kline || [];
-            var p20 = 0;
-            if (kline.length >= 20) {
-                p20 = (parseFloat(kline[kline.length-1].close) - parseFloat(kline[kline.length-21].close))
-                       / parseFloat(kline[kline.length-21].close) * 100;
-            }
-            return { name: s.name, kline: kline, _p20: p20 };
-        }).sort(function(a, b) { return b._p20 - a._p20; });
-
-        var series5 = [], series10 = [], series20 = [], names = [];
-        with20d.forEach(function(s) {
-            var kline = s.kline;
-            var shortName = s.name.replace('ETF', '').replace('etf', '');
-            names.push(shortName);
-            if (kline.length >= 5) {
-                var p5 = (parseFloat(kline[kline.length-1].close) - parseFloat(kline[kline.length-6].close))
-                          / parseFloat(kline[kline.length-6].close) * 100;
-                series5.push(p5.toFixed(2));
-            } else series5.push(0);
-            if (kline.length >= 10) {
-                var p10 = (parseFloat(kline[kline.length-1].close) - parseFloat(kline[kline.length-11].close))
-                           / parseFloat(kline[kline.length-11].close) * 100;
-                series10.push(p10.toFixed(2));
-            } else series10.push(0);
-            series20.push(s._p20.toFixed(2));
-        });
-
-        compareChart.setOption({
-            backgroundColor: 'transparent',
-            textStyle: th.textStyle,
-            tooltip: { trigger: 'axis', backgroundColor: th.tooltip.backgroundColor, borderColor: th.tooltip.borderColor, textStyle: th.tooltip.textStyle },
-            legend: { data: ['5D', '10D', '20D'], textStyle: th.legend.textStyle },
-            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-            xAxis: { type: 'category', data: names, axisLabel: { color: th.axisLabelColor, rotate: 30, fontSize: 10 } },
-            yAxis: { type: 'value', axisLabel: { color: th.axisLabelColor, formatter: '{value}%' }, splitLine: { lineStyle: { color: th.splitLineColor } } },
-            series: [
-                { name: '5D', type: 'bar', data: series5, itemStyle: { color: '#000000' }, barMaxWidth: 15 },
-                { name: '10D', type: 'bar', data: series10, itemStyle: { color: '#737373' }, barMaxWidth: 15 },
-                { name: '20D', type: 'bar', data: series20, itemStyle: { color: '#777777' }, barMaxWidth: 15 }
-            ]
-        }, true);
-        }); // end requestAnimationFrame
-    }
-
-    function renderShareCompare() {
-        var el = document.getElementById('share-compare-chart');
-        if (shareCompareChart && !shareCompareChart.isDisposed()) shareCompareChart.dispose();
-        el.innerHTML = '';
-        if (typeof echarts === 'undefined') { console.warn('echarts not available'); return; }
-        var sectors = getFilteredSectors();
-        if (sectors.length === 0) { el.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--c-text-tertiary);">No matching ETFs</div>'; return; }
-        // Only show top 3 and bottom 3 (6 total)
-        if (sectors.length > 6) sectors = sectors.slice(0, 3).concat(sectors.slice(-3));
-        requestAnimationFrame(function() {
-        shareCompareChart = echarts.init(el);
-        if (ATMChart._instances) ATMChart._instances.set(el, shareCompareChart);
-        var th = ATM.getChartTheme();
-
-        // Build category dates from the first sector with data (last 6 trading days)
-        var dates = [];
-        var firstSector = sectors.find(function(s) { return s.shares && s.shares.length >= 6; });
-        if (firstSector) {
-            var sl = firstSector.shares.slice(-6);
-            dates = sl.map(function(sh) {
-                var d = sh.trade_date;
-                // Date comes as ISO "2026-06-09"; extract MM/DD
-                if (d && d.indexOf('-') > 0) {
-                    var parts = d.split('-');
-                    return parts[1] + '/' + parts[2];
-                }
-                return d ? d.slice(4,6) + '/' + d.slice(6,8) : d;
-            });
-        }
-
-        var seriesList = sectors.map(function(s) {
-            var shares = (s.shares || []).slice(-6);
-            var vals = shares.map(function(sh) { return parseFloat(sh.fd_share || 0); });
-            var mean = vals.reduce(function(a, b) { return a + b; }, 0) / vals.length;
-            var std = Math.sqrt(vals.reduce(function(a, b) { return a + Math.pow(b - mean, 2); }, 0) / vals.length) || 1;
-            return {
-                name: s.name, type: 'line',
-                data: vals.map(function(v) { return parseFloat(((v - mean) / std).toFixed(2)); }),
-                smooth: false, showSymbol: true, symbolSize: 4,
-                lineStyle: { width: 1.5 },
-                emphasis: { lineStyle: { width: 2 } }
-            };
-        });
-
-        if (seriesList.length === 0 || seriesList.every(function(s) { return s.data.length === 0; })) {
-            shareCompareChart.setOption({
-                backgroundColor: 'transparent',
-                title: { text: 'No share data available', left: 'center', top: 'center', textStyle: { color: th.axisLabelColor, fontSize: 14, fontWeight: 'normal' } }
-            }, true);
-            return;
-        }
-
-        shareCompareChart.setOption({
-            backgroundColor: 'transparent',
-            textStyle: th.textStyle,
-            tooltip: { trigger: 'axis', backgroundColor: th.tooltip.backgroundColor, borderColor: th.tooltip.borderColor, textStyle: th.tooltip.textStyle,
-                confine: true,
-                position: function(point, params, dom, rect, size) {
-                    var x = point[0] + 15;
-                    var y = point[1] + 15;
-                    var boxW = size.contentSize[0];
-                    var boxH = size.contentSize[1];
-                    if (x + boxW > size.viewSize[0]) x = point[0] - boxW - 10;
-                    if (y + boxH > size.viewSize[1]) y = point[1] - boxH - 10;
-                    return [x, y];
-                },
-                formatter: function(params) {
-                    var date = params[0] ? params[0].axisValueLabel : '';
-                    var tip = date + '<br/>';
-                    params.sort(function(a, b) { var va = Array.isArray(a.value) ? a.value[1] : a.value; var vb = Array.isArray(b.value) ? b.value[1] : b.value; return vb - va; });
-                    params.forEach(function(p) {
-                        var v = Array.isArray(p.value) ? p.value[1] : p.value;
-                        var color = v > 0 ? th.upColor : v < 0 ? th.downColor : th.axisLabelColor;
-                        tip += p.marker + ' <span style="color:' + color + '">' + p.seriesName + ': ' + (v > 0 ? '+' : '') + (typeof v === 'number' ? v.toFixed(2) : v) + 'σ</span><br/>';
-                    });
-                    return tip;
-                }
-            },
-            legend: { type: 'scroll', textStyle: { color: th.legend.textStyle.color, fontSize: 10 } },
-            grid: { left: '10%', right: '3%', top: '15%', bottom: '10%' },
-            xAxis: { type: 'category', data: dates, axisLabel: { color: th.axisLabelColor, fontSize: 10 }, boundaryGap: false },
-            yAxis: { type: 'value', axisLabel: { color: th.axisLabelColor, formatter: '{value}σ' }, splitLine: { lineStyle: { color: th.splitLineColor } } },
-            series: seriesList
-        }, true);
-        }); // end requestAnimationFrame
-    }
-
-    function renderShareRankTable() {
-        var el = document.getElementById('share-rank-table');
-        
-        var rankData = allSectors.map(function(s) {
-            var base = computeShareZScore(s);
-            if (!base) return null;
-            var zScore = base.zScore;
-            var latestChange = base.latestChange;
-            
-            var shares = s.shares || [];
-            var values = shares.map(function(sh) { return parseFloat(sh.fd_share || 0); });
-            var pctChanges = [];
-            for (var i = 1; i < values.length; i++) {
-                if (values[i-1] > 0) {
-                    pctChanges.push((values[i] - values[i-1]) / values[i-1] * 100);
-                }
-            }
-            
-            var mean = pctChanges.reduce(function(a, b) { return a + b; }, 0) / pctChanges.length;
-            var variance = pctChanges.reduce(function(a, b) { return a + Math.pow(b - mean, 2); }, 0) / pctChanges.length;
-            var std = Math.sqrt(variance) || 1;
-            
-            var recentChanges = pctChanges.slice(-5);
-            var trendSum = recentChanges.reduce(function(a, b) { return a + b; }, 0);
-            var trend = trendSum > 0 ? 1 : (trendSum < 0 ? -1 : 0);
-            
-            var kline = s.kline || [];
-            var latestVol = kline.length > 0 ? parseFloat(kline[kline.length-1].vol || 0) : 0;
-            var avgVol = kline.length > 5 ? kline.slice(-5).reduce(function(a, k) { return a + parseFloat(k.vol || 0); }, 0) / 5 : latestVol;
-            var volRatio = avgVol > 0 ? latestVol / avgVol : 1;
-            
-            var judgment = '';
-            var judgmentColor = '';
-            var judgmentBg = '';
-            
-            if (zScore > 1.5 && trend > 0) {
-                if (volRatio > 1.2) {
-                    judgment = 'Strong Inflow';
-                    judgmentColor = '#059669';
-                    judgmentBg = '#ecfdf5';
-                } else {
-                    judgment = 'Sustained Inflow';
-                    judgmentColor = '#10b981';
-                    judgmentBg = '#d1fae5';
-                }
-            } else if (zScore > 0.5 && trend > 0) {
-                judgment = 'Mild Inflow';
-                judgmentColor = '#0ea5e9';
-                judgmentBg = '#f0f9ff';
-            } else if (zScore < -1.5 && trend < 0) {
-                if (volRatio > 1.2) {
-                    judgment = 'Strong Outflow';
-                    judgmentColor = '#dc2626';
-                    judgmentBg = '#fef2f2';
-                } else {
-                    judgment = 'Sustained Outflow';
-                    judgmentColor = '#ef4444';
-                    judgmentBg = '#fee2e2';
-                }
-            } else if (zScore < -0.5 && trend < 0) {
-                judgment = 'Mild Outflow';
-                judgmentColor = '#f97316';
-                judgmentBg = '#fff7ed';
-            } else if (zScore > 0.5 && trend < 0) {
-                judgment = 'Divergence';
-                judgmentColor = '#8b5cf6';
-                judgmentBg = '#f5f3ff';
-            } else if (zScore < -0.5 && trend > 0) {
-                judgment = 'Stabilizing';
-                judgmentColor = '#06b6d4';
-                judgmentBg = '#ecfeff';
-            } else {
-                judgment = 'Consolidating';
-                judgmentColor = '#6b7280';
-                judgmentBg = '#f9fafb';
-            }
-            
-            return {
-                name: s.name,
-                ts_code: s.ts_code,
-                zScore: zScore,
-                latestChange: latestChange,
-                std: std,
-                judgment: judgment,
-                judgmentColor: judgmentColor,
-                judgmentBg: judgmentBg,
-                trend: trend
-            };
-        }).filter(function(d) { return d !== null; }).sort(function(a, b) { return b.zScore - a.zScore; });
-        
-        if (rankData.length === 0) {
-            el.innerHTML = '<div style="color:var(--c-text-tertiary);text-align:center;padding:1rem;">No share data available</div>';
-            return;
-        }
-        
-        var html = '<div class="table-scroll"><table class="w-full text-sm responsive-card">';
-        html += '<thead><tr style="background:var(--c-bg-secondary);">';
-        html += '<th class="px-3 py-2 text-left">Rank</th>';
-        html += '<th class="px-3 py-2 text-left">ETF Name</th>';
-        html += '<th class="px-3 py-2 text-center">Latest Change</th>';
-        html += '<th class="px-3 py-2 text-center">Std Dev</th>';
-        html += '<th class="px-3 py-2 text-center">Z-Score</th>';
-        html += '<th class="px-3 py-2 text-center">Trend Signal</th>';
-        html += '</tr></thead><tbody>';
-        
-        rankData.forEach(function(d, i) {
-            var zScoreColor = d.zScore > 0 ? 'var(--c-up)' : (d.zScore < 0 ? 'var(--c-down)' : '#888');
-            var changeColor = d.latestChange > 0 ? 'var(--c-up)' : (d.latestChange < 0 ? 'var(--c-down)' : '#888');
-            html += '<tr class="border-t" style="border-color:var(--c-border);">';
-            html += '<td data-label="Rank" class="px-3 py-2 font-bold" style="color:var(--c-accent);">' + (i + 1) + '</td>';
-            html += '<td data-label="ETF" class="px-3 py-2"><a href="#" onclick="selectSector(\'' + d.ts_code + '\');return false;" style="font-weight:600;color:var(--c-link);text-decoration:none;">' + d.name + '</a></td>';
-            html += '<td data-label="Change" class="px-3 py-2 text-center font-mono" style="color:' + changeColor + ';">' + (d.latestChange > 0 ? '+' : '') + d.latestChange.toFixed(4) + '%</td>';
-            html += '<td data-label="Std Dev" class="px-3 py-2 text-center font-mono" style="color:#888;">' + d.std.toFixed(4) + '%</td>';
-            html += '<td data-label="Z-Score" class="px-3 py-2 text-center font-mono font-bold" style="color:' + zScoreColor + ';">' + (d.zScore > 0 ? '+' : '') + d.zScore.toFixed(2) + 'σ</td>';
-            html += '<td data-label="Signal" class="px-3 py-2 text-center"><span class="px-2 py-1 text-xs font-medium" style="background:' + d.judgmentBg + ';color:' + d.judgmentColor + ';border:1px solid ' + d.judgmentColor + ';">' + d.judgment + '</span></td>';
-            html += '</tr>';
-        });
-        
-        html += '</tbody></table></div>';
-        el.innerHTML = html;
-    }
 
     ATMChart.initPage();
 
@@ -1099,8 +515,6 @@
     );
 
     window.addEventListener('beforeunload', function() {
-        if (compareChart && !compareChart.isDisposed()) compareChart.dispose();
-        if (shareCompareChart && !shareCompareChart.isDisposed()) shareCompareChart.dispose();
         if (detailChart && !detailChart.isDisposed()) detailChart.dispose();
         if (shareDetailChart && !shareDetailChart.isDisposed()) shareDetailChart.dispose();
     });

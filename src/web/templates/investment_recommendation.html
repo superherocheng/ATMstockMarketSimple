@@ -154,9 +154,10 @@
         .pos-text { font-size: 10px; min-width: 28px; }
     }
     </style>
-    <script>(function(){var t=localStorage.getItem('atm-theme');document.documentElement.dataset.theme=t||'light';})();</script>
+    <script>(function(){var d=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.dataset.theme=d?'dark':'light';})();</script>
 </head>
 <body class="min-h-screen">
+    <h1 class="sr-only">Investment Recommendation</h1>
 
     <div class="tablet-topbar">
         <div class="tablet-topbar-logo"><a href="/">ATMstockMarket</a></div>
@@ -164,8 +165,6 @@
             <a href="/">Home</a>
             <a href="/etf">Index ETF</a>
             <a href="/sector">Sector ETF</a>
-            <a href="/analysis" class="active">Analysis</a>
-            <a href="/rotation">Rotation</a>
         </nav>
     </div>
 
@@ -181,8 +180,6 @@
                 <a href="/" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>Home</a>
                 <a href="/etf" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Index ETF</a>
                 <a href="/sector" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Sector ETF</a>
-                <a href="/analysis" class="sidebar-nav-link active"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>Analysis</a>
-                <a href="/rotation" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Rotation</a>
             </nav>
         </div>
         <div class="sidebar-nav-footer">
@@ -200,7 +197,7 @@
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-8">
 
-        <a href="/analysis" class="back-link">&larr; Back to Analysis</a>
+        <a href="/" class="back-link">&larr; Back to Home</a>
 
         <!-- Loading -->
         <div id="loading" class="hard-skeleton" style="min-height:300px;">
@@ -292,6 +289,17 @@
                 <div class="stats-grid" id="stats-grid"></div>
             </div>
 
+            <!-- ═══════ Holding History (15-day) ═══════ -->
+            <div class="report-section">
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:2px;"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> 15-Day Holding History</h3>
+                <p style="font-size:11px;color:var(--c-text-tertiary);margin-bottom:12px;">
+                    Track daily position changes over the last 15 trading days. <b>New</b> = first entry, <b>Adjust</b> = weight change, <b>Hold</b> = unchanged, <b>Risk-Exit</b> = force-exited due to Q3/Q4 deterioration.
+                </p>
+                <div class="table-scroll" id="holding-history-table">
+                    <div class="hard-skeleton hard-skeleton-sm"><span class="hard-skeleton-text">[ LOADING HOLDING HISTORY ... ]</span></div>
+                </div>
+            </div>
+
             <!-- ═══════ Strategy Basis ═══════ -->
             <div class="report-section">
                 <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:2px;"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> Strategy Basis</h3>
@@ -322,18 +330,6 @@
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
         </span>
         <span class="bottom-nav-label">Sector ETF</span>
-      </a>
-      <a href="/analysis" class="bottom-nav-item active" aria-label="Analysis">
-        <span class="bottom-nav-icon">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
-        </span>
-        <span class="bottom-nav-label">Analysis</span>
-      </a>
-      <a href="/rotation" class="bottom-nav-item" aria-label="Rotation">
-        <span class="bottom-nav-icon">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-        </span>
-        <span class="bottom-nav-label">Rotation</span>
       </a>
     </div>
 
@@ -417,11 +413,6 @@
                 else if (sm.mode === 'reduced') { smCls = 'badge-amber'; smIcon = '✅'; }
                 else if (sm.mode === 'hibernate') { smCls = 'badge-red'; smIcon = '❌'; }
                 badges.innerHTML += '<span class="badge ' + smCls + '">' + smIcon + ' ' + (sm.label_cn || sm.mode) + '</span>';
-            }
-
-            // Quality weight badge
-            if (data.weight_allocation && data.weight_allocation.quality_active === false) {
-                badges.innerHTML += '<span class="badge badge-neutral" title="Quality factor had negative ICIR, removed from this preset">Quality 0%</span>';
             }
 
             // ── KPI row ──
@@ -706,7 +697,7 @@
 
                     return '<tr>' +
                         '<td data-label="Rank"><span class="rank-num ' + rank + '">' + rankText + '</span></td>' +
-                        '<td data-label="ETF"><strong>' + r.name + '</strong> <span style="font-size:10px;color:var(--c-text-muted);font-family:var(--font-mono);">' + r.code + '</span></td>' +
+                        '<td data-label="ETF"><strong><a href="/sector#' + r.code + '" style="color:inherit;text-decoration:none;">' + r.name + '</a></strong> <span style="font-size:10px;color:var(--c-text-muted);font-family:var(--font-mono);">' + r.code + '</span></td>' +
                         '<td data-label="Quadrant"><span class="quad-tag ' + quadCls + '">' + quadLabel + '</span></td>' +
                         '<td data-label="Score" style="font-family:var(--font-mono);font-size:12px;font-weight:600;">' + (r.factor_score !== undefined ? r.factor_score.toFixed(3) : '--') + '</td>' +
                         '<td data-label="Strategy">' +
@@ -786,6 +777,9 @@
                 reasonsList.innerHTML = '<li class="reason-item" style="color:var(--c-text-tertiary);">No strategy basis</li>';
             }
 
+            // ── V9: Load and render 15-day holding history ──
+            loadHoldingHistory();
+
         } catch(e) {
             console.error('Load failed:', e);
             document.getElementById('loading').style.display = 'none';
@@ -795,6 +789,104 @@
             document.getElementById('error-msg').textContent = 'Failed to load investment advice. Please check your connection and refresh the page.';
         }
     });
+
+    async function loadHoldingHistory() {
+        var container = document.getElementById('holding-history-table');
+        try {
+            var resp = await fetch('/api/analysis/holding-history?preset_id=optimized&days=15');
+            var history = await resp.json();
+            if (!history || history.length === 0) {
+                container.innerHTML = '<p style="font-size:13px;color:var(--c-text-tertiary);padding:16px;">No holding history yet. History will accumulate as you run investment recommendations daily.</p>';
+                return;
+            }
+
+            // Build a combined table: each row = one day's positions
+            var rows = [];
+            history.forEach(function(day) {
+                var dateStr = day.date;
+                // Format date: YYYYMMDD -> YYYY-MM-DD
+                if (dateStr.length === 8) {
+                    dateStr = dateStr.slice(0,4) + '-' + dateStr.slice(4,6) + '-' + dateStr.slice(6,8);
+                }
+                var positions = day.positions || [];
+                if (positions.length === 0) {
+                    rows.push({
+                        date: dateStr,
+                        code: '-',
+                        name: 'No positions',
+                        quadrant: '-',
+                        factor: '-',
+                        position_ratio: '-',
+                        strategy: '-',
+                        action: '-'
+                    });
+                } else {
+                    positions.forEach(function(pos, idx) {
+                        var actionLabel = pos.change_action || 'hold';
+                        var actionCls = '';
+                        if (actionLabel === 'new') { actionCls = 'color:var(--c-up);font-weight:700;'; actionLabel = 'New'; }
+                        else if (actionLabel === 'adjust') { actionCls = 'color:var(--c-warning);font-weight:700;'; actionLabel = 'Adjust'; }
+                        else if (actionLabel === 'exit') { actionCls = 'color:var(--c-down);font-weight:700;'; actionLabel = 'Exit'; }
+                        else { actionCls = 'color:var(--c-text-muted);'; actionLabel = 'Hold'; }
+
+                        var qTagHtml = '';
+                        if (pos.quadrant === 1) qTagHtml = '<span class="quad-tag quad-1">Q1</span>';
+                        else if (pos.quadrant === 2) qTagHtml = '<span class="quad-tag quad-2">Q2</span>';
+                        else if (pos.quadrant === 3) qTagHtml = '<span class="quad-tag" style="background:#FFF1F0;color:#FF4D4F;">Q3</span>';
+                        else if (pos.quadrant === 4) qTagHtml = '<span class="quad-tag" style="background:#F0F2F5;color:#999;">Q4</span>';
+                        else qTagHtml = '<span class="quad-tag">Q' + pos.quadrant + '</span>';
+
+                        rows.push({
+                            date: idx === 0 ? dateStr : '',
+                            code: pos.code,
+                            name: pos.name,
+                            qTagHtml: qTagHtml,
+                            factor: pos.factor !== undefined && pos.factor !== null ? pos.factor.toFixed(3) : '-',
+                            position_ratio: pos.position_ratio !== undefined ? (pos.position_ratio * 100).toFixed(1) + '%' : '-',
+                            strategy: pos.strategy || '-',
+                            actionLabel: actionLabel,
+                            actionCls: actionCls
+                        });
+                    });
+                }
+            });
+
+            var html = '<table class="rec-table responsive-card"><thead><tr>' +
+                '<th style="width:80px;">Date</th>' +
+                '<th style="width:80px;">Code</th>' +
+                '<th style="width:80px;">ETF</th>' +
+                '<th style="width:40px;">Q</th>' +
+                '<th style="width:50px;">Score</th>' +
+                '<th style="width:60px;">Pos%</th>' +
+                '<th style="width:100px;">Strategy</th>' +
+                '<th style="width:50px;">Action</th>' +
+                '</tr></thead><tbody>';
+
+            var lastDate = '';
+            rows.forEach(function(r) {
+                var dateBg = '';
+                if (r.date && r.date !== lastDate) {
+                    lastDate = r.date;
+                    dateBg = ' style="border-top:2px solid #D0D5DD;"';
+                }
+                html += '<tr' + dateBg + '>' +
+                    '<td style="font-size:11px;font-family:var(--font-mono);">' + (r.date || '') + '</td>' +
+                    '<td style="font-size:12px;font-family:var(--font-mono);">' + r.code + '</td>' +
+                    '<td style="font-size:13px;">' + r.name + '</td>' +
+                    '<td>' + r.qTagHtml + '</td>' +
+                    '<td style="font-family:var(--font-mono);font-size:12px;">' + r.factor + '</td>' +
+                    '<td style="font-family:var(--font-mono);font-size:12px;">' + r.position_ratio + '</td>' +
+                    '<td style="font-size:11px;color:var(--c-text-secondary);">' + r.strategy + '</td>' +
+                    '<td style="font-size:12px;' + (r.actionCls || '') + '">' + r.actionLabel + '</td>' +
+                    '</tr>';
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        } catch(e) {
+            console.error('Holding history load failed:', e);
+            container.innerHTML = '<p style="font-size:13px;color:var(--c-text-tertiary);padding:16px;">Failed to load holding history.</p>';
+        }
+    }
     </script>
 </body>
 </html>

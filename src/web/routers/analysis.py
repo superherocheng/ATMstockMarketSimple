@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from src.web.services.cache import _cached_persistent
-from src.analysis.presets import PRESETS, get_preset, all_preset_ids
+from src.analysis.presets import PRESETS
 from src.analysis import factor_engine, ic_analyzer, chart_builder, recommendation_engine
 
 logger = logging.getLogger(__name__)
@@ -23,10 +23,6 @@ async def _async_cached(cache_key, compute_fn, max_age_hours):
     """Run sync _cached_persistent in a thread to avoid blocking the event loop."""
     return await asyncio.to_thread(_cached_persistent, cache_key, compute_fn, max_age_hours)
 
-
-@router.get("/analysis", response_class=HTMLResponse)
-async def page_analysis(request: Request):
-    return templates.TemplateResponse("analysis.html", {"request": request})
 
 
 @router.get("/analysis/tech-notes", response_class=HTMLResponse)
@@ -160,21 +156,7 @@ def _investment_recommendation_sync(preset_id):
         max_age_hours=4,
     )
 
-    # Task 2.2/3.1: Inject quality warnings
-    if "error" not in result and "recommendations" in result:
-        try:
-            from src.analysis.financial_factor import load_latest_financial_factors
-            qf = load_latest_financial_factors()
-            non_zero = sum(1 for v in qf.values() if abs(v.get("f_quality", 0)) > 1e-10)
-            if len(qf) > 0 and non_zero == 0:
-                if "warnings" not in result:
-                    result["warnings"] = []
-                result["warnings"].append(
-                    "Quality factor data is empty: financial_factor table has no valid data."
-                    "Please run financial data extraction or trigger recompute-financial API."
-                )
-        except Exception as exc:
-            logger.warning("Failed to load financial factors: %s", exc)
+    # Quality-factor warning injection removed (2026-07-01): Quality factor deleted.
 
     # ── Dynamically compute change_action (always fresh, never cached) ──
     if "error" not in result and "recommendations" in result and result["recommendations"]:
@@ -199,61 +181,16 @@ async def api_market_timing():
     )
 
 
-@router.get("/api/analysis/financial-factors")
-async def api_financial_factors():
-    """Return latest financial quality factor data for all ETFs."""
-    return await asyncio.to_thread(_financial_factors_sync)
-
-
-def _financial_factors_sync():
-    """Sync implementation of financial factors fetch, run in a thread."""
-    try:
-        from src.analysis.financial_factor import load_latest_financial_factors
-        factors = load_latest_financial_factors()
-        return {"factors": factors, "count": len(factors)}
-    except Exception as exc:
-        logger.warning(f"Could not load financial factors: {exc}")
-        return {"factors": {}, "count": 0, "error": str(exc)}
-
-
-@router.post("/api/analysis/recompute-financial")
-async def api_recompute_financial():
-    """Trigger financial quality factor recomputation."""
-    import threading
-
-    def _run():
-        try:
-            from src.analysis.financial_factor import compute_and_persist
-            logger.info("Starting financial factor recomputation")
-            result = compute_and_persist()
-            logger.info(f"Financial factor recomputation complete: {len(result)} ETFs")
-        except Exception as e:
-            logger.error(f"Financial factor recomputation failed: {e}")
-
-    thread = threading.Thread(target=_run, daemon=True)
-    thread.start()
-    return {"status": "started", "message": "Factor calculation started"}
-
-
 @router.post("/api/analysis/recompute")
 async def api_recompute(preset_id: str = None):
-    """Trigger factor + IC recomputation in a background thread.
-
-    V4: Now also triggers financial factor recomputation before factor_engine.
-    """
+    """Trigger factor + IC recomputation in a background thread."""
     import threading
 
     def _run():
         try:
             logger.info(f"Starting analysis recomputation (preset={preset_id or 'all'})")
-            # First compute financial factors (if available)
-            try:
-                from src.analysis.financial_factor import compute_and_persist
-                finance_result = compute_and_persist()
-                logger.info(f"Financial factors computed: {len(finance_result)} ETFs")
-            except Exception as fe:
-                logger.warning(f"Financial factor computation skipped: {fe}")
-            # Then compute factor engine + IC
+            # Quality factor removed (2026-07-01) — no financial precompute step.
+            # Compute factor engine + IC
             factor_engine.compute_all_factors(preset_id)
             ic_analyzer.compute_all_ic(preset_id)
             logger.info("Analysis recomputation complete")
@@ -263,3 +200,15 @@ async def api_recompute(preset_id: str = None):
     thread = threading.Thread(target=_run, daemon=True)
     thread.start()
     return {"status": "started", "preset_id": preset_id or "all"}
+
+
+@router.get("/api/analysis/holding-history")
+async def api_holding_history(preset_id: str = "optimized", days: int = 15):
+    """Return the last N days of holding history.
+
+    Each entry contains date and positions with code, name, quadrant,
+    factor score, position ratio, strategy, and change action.
+    """
+    return await asyncio.to_thread(
+        recommendation_engine.load_holding_history, preset_id, days
+    )

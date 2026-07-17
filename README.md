@@ -222,10 +222,9 @@ uvicorn src.web.app:app --reload --port 5656
 
 | 路由 | 页面 | 功能描述 |
 |------|------|----------|
-| `/` | index.html | 首页 — 快速入门引导、32行业板块数据、数据管理 |
+| `/` | index.html | 首页 — 快速入门引导、Market Timing、数据管理 |
 | `/etf` | etf.html | 指数ETF详情 — K线走势、份额分析、异常检测 |
-| `/sector` | sector.html | 行业ETF轮动 — 32行业对比、信号排序、份额趋势 |
-| `/analysis` | analysis.html | 因子分析 — 因子分布、IC序列、四象限模型、收益预测 |
+| `/sector` | sector.html | 行业ETF轮动 — |pct_chg|>3%筛选、份额增减、K线下钻 |
 | `/analysis/investment-recommendation` | investment_recommendation.html | 投资建议 — ETF排名、仓位配置、风险提示 |
 | `/analysis/tech-notes` | tech_notes.html | 技术说明 — 因子模型文档、泛化测试结论 |
 
@@ -528,6 +527,35 @@ Alembic Migration 008（`008_convert_trade_date_to_date.py`）将 `trade_date` �
 **保留项**：涨跌配色(🔴#DC2626 涨 / 🟢#16A34A 跌)、全部功能、响应式断点、导航系统、ECharts 单色图表
 
 **修改统计**：9 个文件 +236/-257 行
+
+---
+
+## 📋 v25.0.0 更新日志
+
+### 🗑️ 页面精简
+
+| 模块 | 改动 |
+|------|------|
+| **/rotation 页面** | 已删除 — 该页面已不再需要 |
+| **/analysis 概览页** | 已删除 — 因子分析 API 端点保留，/analysis/investment-recommendation 和 /analysis/tech-notes 子页面保留但导航无入口 |
+| **导航栏精简** | 仅保留 Home / Index ETF / Sector ETF 三项 |
+
+### 🎨 首页改造
+
+| 模块 | 改动 |
+|------|------|
+| **Factor Validity Overview** | 移除首页 IC 汇总卡片，首页更简洁 |
+| **快速卡片** | 缩减为 2 张（Index ETF + Sector Rotation），内容居中放大 |
+| **卡片尺寸** | padding/font-size 增大，整体更醒目 |
+
+### 🎯 Sector 页面改造
+
+| 模块 | 改动 |
+|------|------|
+| **ETF 筛选** | 只显示 `|pct_chg| > 3%` 的行业 ETF，按绝对涨幅降序排列 |
+| **卡片内容** | 价格(¥) → 份额增减比例(%)，聚焦份额资金流向 |
+| **细节图表** | 图表高度增加至 420px，默认显示最近 15 个交易日 |
+| **成交量百分位** | 计算窗口从全量改为最近 60 个交易日，历史分位数更准确 |
 
 ---
 

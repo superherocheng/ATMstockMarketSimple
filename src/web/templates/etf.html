@@ -14,7 +14,7 @@
     <script defer src="/static/js/vendor.js"></script>
     <script defer src="/static/js/app.js"></script>
     <script>
-        (function(){var t=localStorage.getItem('atm-theme');document.documentElement.dataset.theme=t||'light';})();
+        (function(){var d=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.dataset.theme=d?'dark':'light';})();
     </script>
     <style>
         @media (max-width: 640px) {
@@ -27,6 +27,7 @@
     </style>
 </head>
 <body class="min-h-screen">
+    <h1 class="sr-only">Index ETF Overview</h1>
 
     <div class="tablet-topbar">
         <div class="tablet-topbar-logo"><a href="/">ATMstockMarket</a></div>
@@ -34,8 +35,6 @@
             <a href="/">Home</a>
             <a href="/etf" class="active">Index ETF</a>
             <a href="/sector">Sector ETF</a>
-            <a href="/analysis">Analysis</a>
-            <a href="/rotation">Rotation</a>
         </nav>
     </div>
 
@@ -51,8 +50,6 @@
                 <a href="/" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>Home</a>
                 <a href="/etf" class="sidebar-nav-link active"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Index ETF</a>
                 <a href="/sector" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Sector ETF</a>
-                <a href="/analysis" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>Analysis</a>
-                <a href="/rotation" class="sidebar-nav-link"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Rotation</a>
             </nav>
         </div>
         <div class="sidebar-nav-footer">
@@ -69,6 +66,13 @@
     </aside>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 stagger-children">
+
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb-nav" aria-label="Breadcrumb">
+            <a href="/">Home</a>
+            <span class="breadcrumb-sep">/</span>
+            <span class="breadcrumb-current">Index ETF</span>
+        </nav>
 
         <!-- 返回首页链接已移除 -->
         <div class="flex gap-2 sm:gap-3 flex-wrap">
@@ -176,18 +180,6 @@
         </span>
         <span class="bottom-nav-label">Sector ETF</span>
       </a>
-      <a href="/analysis" class="bottom-nav-item" aria-label="Analysis">
-        <span class="bottom-nav-icon">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
-        </span>
-        <span class="bottom-nav-label">Analysis</span>
-      </a>
-      <a href="/rotation" class="bottom-nav-item" aria-label="Rotation">
-        <span class="bottom-nav-icon">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-        </span>
-        <span class="bottom-nav-label">Rotation</span>
-      </a>
     </div>
 
     <script>
@@ -284,9 +276,16 @@
                 return;
             }
             container.style.display = '';
-            container.innerHTML = results.map(function(data, i) {
+            // Sort by absolute z-score descending so the most significant signals appear first
+            var scored = results.map(function(data, i) {
                 var etf = ZSCORE_CODES[i];
                 var z = (data && !data.error) ? data.z_score : null;
+                return { etf: etf, z: z, absZ: z !== null ? Math.abs(z) : -1 };
+            });
+            scored.sort(function(a, b) { return b.absZ - a.absZ; });
+            container.innerHTML = scored.map(function(item) {
+                var etf = item.etf;
+                var z = item.z;
                 if (z === null) {
                     return '<div style="flex:1;min-width:80px;text-align:center;padding:4px 6px;border-radius:4px;background:var(--c-bg-tertiary);">' +
                         '<div style="font-size:10px;color:var(--c-text-tertiary);">' + etf.name + '</div>' +
@@ -348,6 +347,19 @@
         var ohlc = kline.map(function(k) { return [parseFloat(k.open||0), parseFloat(k.close||0), parseFloat(k.low||0), parseFloat(k.high||0)]; });
         var volumes = kline.map(function(k) { return parseFloat(k.vol || 0); });
         var pcts = kline.map(function(k) { return parseFloat(k.pct_chg || 0); });
+        var closes = kline.map(function(k) { return parseFloat(k.close || 0); });
+
+        // MA calculation helper
+        function calcMA(data, period) {
+            var result = [];
+            for (var i = 0; i < data.length; i++) {
+                if (i < period - 1) { result.push(null); continue; }
+                var sum = 0;
+                for (var j = i - period + 1; j <= i; j++) sum += data[j];
+                result.push(parseFloat((sum / period).toFixed(2)));
+            }
+            return result;
+        }
 
         var sortedVols = volumes.slice().sort(function(a, b) { return a - b; });
         var volPercentiles = volumes.map(function(v) {
@@ -426,6 +438,14 @@
                     itemStyle: { color: th.upColor, color0: th.downColor, borderColor: th.upColor, borderColor0: th.downColor },
                     markPoint: { data: markPoints, symbol: 'pin', symbolSize: 30, label: { show: false } }
                 },
+                { name: 'MA5', type: 'line', data: calcMA(closes, 5), xAxisIndex: 0, yAxisIndex: 0,
+                  smooth: true, showSymbol: false, lineStyle: { width: 1, color: '#F97316' } },
+                { name: 'MA10', type: 'line', data: calcMA(closes, 10), xAxisIndex: 0, yAxisIndex: 0,
+                  smooth: true, showSymbol: false, lineStyle: { width: 1, color: '#4F46E5' } },
+                { name: 'MA20', type: 'line', data: calcMA(closes, 20), xAxisIndex: 0, yAxisIndex: 0,
+                  smooth: true, showSymbol: false, lineStyle: { width: 1, color: '#7C3AED' } },
+                { name: 'MA60', type: 'line', data: calcMA(closes, 60), xAxisIndex: 0, yAxisIndex: 0,
+                  smooth: true, showSymbol: false, lineStyle: { width: 1, color: '#EC4899' } },
                 {
                     name: 'Volume Percentile', type: 'bar',
                     data: volPercentiles.map(function(pct, i) {

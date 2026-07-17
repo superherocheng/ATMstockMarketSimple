@@ -60,7 +60,7 @@ for name in ('uvicorn.access', 'uvicorn'):
 from src.core.db_manager_postgresql import _ensure_db, close_db_manager
 from starlette.middleware.gzip import GZipMiddleware
 from src.web.services.middleware import rate_limit_middleware, add_cache_headers
-from src.web.routers import overview, etf, fetch, analysis, telemetry, rotation
+from src.web.routers import overview, etf, fetch, analysis, telemetry
 
 # ── 认证配置 ────────────────────────────────────────────────
 # 从环境变量读取 API_TOKEN，None 表示不启用认证（内网访问模式）
@@ -126,14 +126,15 @@ def _check_csrf(request: Request) -> bool:
     """
     对 POST 请求执行简单的 CSRF 检查：
     1. 检查 Origin 或 Referer header 是否匹配允许的来源
-    2. 如果两个 header 都不存在（如内网 curl），跳过检查
+    2. 如果两个 header 都不存在（如 curl、服务端调用），允许通过
+       — 认证由后续 auth_middleware 的 Bearer Token 兜底
     """
     origin = request.headers.get("Origin", "")
     referer = request.headers.get("Referer", "")
 
-    # 如果既没有 Origin 也没有 Referer，拒绝请求以防止 CSRF 绕过
+    # 无浏览器头的请求（curl/服务端调用）跳过 CSRF，依赖 Token 认证
     if not origin and not referer:
-        return False
+        return True
 
     allowed = _get_allowed_origins(request)
 
@@ -280,7 +281,6 @@ app.include_router(overview.router)
 app.include_router(etf.router)
 app.include_router(fetch.router)
 app.include_router(analysis.router)
-app.include_router(rotation.router)
 
 app.include_router(telemetry.router)
 

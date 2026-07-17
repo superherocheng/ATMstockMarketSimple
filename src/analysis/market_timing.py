@@ -117,15 +117,22 @@ def _compute_index_signals(ts_code: str, conn) -> dict:
     else:
         current_mom = 0.0
 
-    # 3. Share flow (10-day pct change)
+    # 3. Share flow (10-day pct change, using share data's own dates)
     current_share_flow = 0.0
     if latest_date in share_map:
-        idx_10 = max(0, len(dates) - SHARE_FLOW_PERIOD - 1)
-        date_10 = dates[idx_10]
-        if date_10 in share_map:
-            s_now = share_map[latest_date]
-            s_then = share_map[date_10]
-            current_share_flow = float((s_now - s_then) / s_then * 100)
+        share_dates = sorted(share_map.keys())
+        # Find the index of latest_date in share data
+        try:
+            latest_idx = share_dates.index(latest_date)
+        except ValueError:
+            latest_idx = -1
+        idx_10 = max(0, latest_idx - SHARE_FLOW_PERIOD)
+        if idx_10 < latest_idx:
+            date_10 = share_dates[idx_10]
+            if date_10 in share_map:
+                s_now = share_map[latest_date]
+                s_then = share_map[date_10]
+                current_share_flow = float((s_now - s_then) / s_then * 100)
 
     # ── Score components (each contributes [-0.5, +0.5]) ──
     rsi_score = 0.0
@@ -160,12 +167,9 @@ def _compute_index_signals(ts_code: str, conn) -> dict:
 def _compute_cross_sectional_dispersion(conn, latest_date: str) -> float:
     """Compute cross-sectional std ratio of all sector ETF returns.
 
-    The ratio measures how dispersed sector returns are on the latest
-    date relative to the historical median.  A high ratio (>1.5) signals
+    The ratio measures how dispersed sector returns are on the *latest_date*
+    relative to the historical median.  A high ratio (>1.5) signals
     market divergence, which reduces confidence in macro timing signals.
-
-    Rewrote with CTE to eliminate nested subquery + interval issues
-    and reduce the "operator does not exist: text - interval" error.
 
     Returns the dispersion ratio (current_std / historical_median_std).
     Defaults to 1.0 (neutral) on failure.

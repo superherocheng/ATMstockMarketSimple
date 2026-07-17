@@ -39,16 +39,16 @@ def _get_latest_date(preset_id: str, min_etf_ratio: float = 0.6) -> str:
     Falls back to the simple MAX(trade_date) if no date meets the threshold.
     """
     from config.config import SECTOR_ETF
+    from src.core.db_manager_postgresql import bind_inlist
     conn = _get_conn()
     try:
         total_configured = len(SECTOR_ETF)
-        placeholders = ",".join(f":c{i}" for i in range(total_configured))
+        placeholders, code_params = bind_inlist(list(SECTOR_ETF.keys()), prefix="c")
         params = {
             "pid": preset_id,
             "min_cnt": max(3, int(total_configured * min_etf_ratio)),
+            **code_params,
         }
-        for i, code in enumerate(SECTOR_ETF.keys()):
-            params[f"c{i}"] = code
 
         sql = text("""
             SELECT f.trade_date, COUNT(DISTINCT f.etf_code) as etf_cnt
@@ -72,15 +72,15 @@ def _get_latest_date(preset_id: str, min_etf_ratio: float = 0.6) -> str:
     finally:
         conn.close()
 
-    # Fallback: simple MAX
-    conn = _get_conn()
+    # Fallback: simple MAX (use new connection in case prior close() failed)
+    conn2 = _get_conn()
     try:
-        row = conn.execute(text(
+        row = conn2.execute(text(
             "SELECT MAX(trade_date) FROM factor_daily WHERE preset_id = :pid"
         ), {"pid": preset_id}).fetchone()
         return row[0] if row else None
     finally:
-        conn.close()
+        conn2.close()
 
 
 def build_factor_distribution(preset_id: str) -> dict:
@@ -148,7 +148,16 @@ def build_ic_series(preset_id: str) -> dict:
             "yAxis": {"type": "value", "name": "IC"},
             "series": [
                 {"name": "IC", "type": "line", "data": ics, "lineStyle": {"width": 1.5},
-                 "itemStyle": {"color": "#5a6f5a"}, "symbol": "none"},
+                 "itemStyle": {"color": "#5a6f5a"}, "symbol": "none",
+                 "markLine": {
+                     "silent": True,
+                     "symbol": "none",
+                     "lineStyle": {"color": "#FF4D4F", "type": "dashed", "width": 1},
+                     "data": [
+                         {"yAxis": 0.03, "label": {"formatter": "+0.03 meaningful", "fontSize": 9}},
+                         {"yAxis": -0.03, "label": {"formatter": "-0.03", "fontSize": 9}},
+                     ],
+                 }},
                 {"name": "IC均值", "type": "line", "data": [round(ic_mean, 4)] * len(dates),
                  "lineStyle": {"width": 2, "color": "#8b4513", "type": "dashed"}, "symbol": "none"},
                 {"name": "+2σ", "type": "line", "data": [round(ic_mean + 2 * ic_std, 4)] * len(dates),

@@ -173,7 +173,7 @@ class TestComputePresetFactors:
         from src.analysis.factor_engine import _compute_preset_factors
         # This test requires DB — skip if no DB connection
         try:
-            n = _compute_preset_factors("short")
+            n = _compute_preset_factors("optimized")
             assert n >= 0  # 0 if already computed, >0 if new
         except RuntimeError as e:
             if "not initialized" in str(e):

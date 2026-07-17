@@ -50,7 +50,7 @@ from src.core.trading_calendar import (
     verify_database,
     now_beijing,
 )
-from src.core.db_manager_postgresql import init_db_manager, get_db_manager, close_db_manager
+from src.core.db_manager_postgresql import init_db_manager, get_db_manager, close_db_manager, bind_inlist
 
 # ─── 调参区 ──────────────────────────────────────
 RETRY_MAX       = 3
@@ -261,8 +261,7 @@ def _all_codes_fresh(conn, table, code_list):
         return False
 
     try:
-        placeholders = ",".join([f":p{i}" for i in range(len(code_list))])
-        params = {f"p{i}": c for i, c in enumerate(code_list)}
+        placeholders, params = bind_inlist(code_list, prefix="p")
         sql = f"""
             SELECT ts_code, MAX(trade_date) as max_date
             FROM {table}

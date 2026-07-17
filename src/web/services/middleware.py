@@ -24,7 +24,10 @@ class RateLimiter:
 
     def _periodic_cleanup(self):
         """定时清理所有过期IP记录"""
-        self._cleanup()
+        try:
+            self._cleanup()
+        except Exception:
+            pass  # don't let a cleanup error break the periodic chain
         # 重新启动定时器
         timer = threading.Timer(300.0, self._periodic_cleanup)
         timer.daemon = True

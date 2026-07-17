@@ -63,6 +63,23 @@ def _retry_on_disconnect(max_retries: int = 3, base_delay: float = 0.5):
     return decorator
 
 
+def bind_inlist(values, prefix: str = "p"):
+    """Build an SQL ``IN (...)`` placeholder string plus its matching params dict.
+
+    Returns ``(placeholders, params)`` where ``placeholders`` is ``":p0,:p1,..."``
+    and ``params`` is ``{"p0": v0, "p1": v1, ...}`` — drop them into
+    ``WHERE col IN ({placeholders})`` and merge ``params`` into the query binds.
+
+    This replaces the copy-pasted ``",".join(f":x{i}" ...)`` + ``{f"x{i}": v ...}``
+    idiom scattered across the routers/analysis modules. Pass a distinct
+    ``prefix`` per IN-list when several share one query, to avoid bind-name
+    collisions (e.g. overview.py uses idx_/sec_/c_ for its three lists).
+    """
+    params = {f"{prefix}{i}": v for i, v in enumerate(values)}
+    placeholders = ",".join(f":{prefix}{i}" for i in range(len(values)))
+    return placeholders, params
+
+
 class PostgreSQLConnectionManager:
     """PostgreSQL连接管理器，使用SQLAlchemy连接池"""
     
@@ -167,8 +184,12 @@ class PostgreSQLConnectionManager:
             logger.error("Query error (re-raising) on sql=%s params=%s: %s", sql[:80], params, e, exc_info=True)
             raise
         except OperationalError as e:
+            # The @_retry_on_disconnect wrapper above already retries transient
+            # disconnects; reaching here means a real, exhausted-retry DB failure.
+            # Returning an empty DataFrame would silently make every downstream
+            # consumer read "no data" — re-raise so callers see the real error.
             logger.error("Query operational error on sql=%s params=%s: %s", sql[:80], params, e, exc_info=True)
-            return pd.DataFrame()
+            raise
     
     def _query_with_positional_params(self, conn, sql: str, params: tuple) -> pd.DataFrame:
         """将位置参数转换为命名参数查询"""

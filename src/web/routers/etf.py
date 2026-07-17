@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import text
 
 from src.web.services.cache import _cached_persistent
-from src.core.db_manager_postgresql import get_conn, query, safe_json
+from src.core.db_manager_postgresql import get_conn, query, safe_json, bind_inlist
 from src.core.db_manager_postgresql import get_db_manager
 from config.config import INDEX_ETF, SECTOR_ETF, ANOMALY_STD_THRESHOLD
 from src.core.trading_calendar import now_beijing
@@ -109,8 +109,7 @@ def _compute_sector_etf_all():
     # Batch-fetch all kline data in one query
     all_kline = {}
     if codes:
-        placeholders = ",".join(f":c{i}" for i in range(len(codes)))
-        params = {f"c{i}": c for i, c in enumerate(codes)}
+        placeholders, params = bind_inlist(codes, prefix="c")
         rows = query(
             f"SELECT ts_code, trade_date, open, high, low, close, vol, amount, pre_close, pct_chg "
             f"FROM sector_etf_daily WHERE ts_code IN ({placeholders}) ORDER BY ts_code, trade_date",
@@ -125,8 +124,7 @@ def _compute_sector_etf_all():
     # Batch-fetch all share data in one query
     all_shares = {}
     if codes:
-        placeholders = ",".join(f":s{i}" for i in range(len(codes)))
-        params = {f"s{i}": c for i, c in enumerate(codes)}
+        placeholders, params = bind_inlist(codes, prefix="s")
         params["today"] = today_str
         rows = query(
             f"SELECT ts_code, trade_date, fd_share FROM etf_share "
@@ -147,13 +145,13 @@ def _compute_sector_etf_all():
         from sqlalchemy import text
         with get_conn() as conn:
             row = conn.execute(text(
-                "SELECT MAX(trade_date) FROM factor_daily WHERE preset_id = 'short'"
+                "SELECT MAX(trade_date) FROM factor_daily WHERE preset_id = 'optimized'"
             )).fetchone()
             if row and row[0]:
                 latest_fdate = row[0]
                 frows = conn.execute(text(
                     "SELECT etf_code, quadrant FROM factor_daily "
-                    "WHERE preset_id = 'short' AND trade_date = :d",
+                    "WHERE preset_id = 'optimized' AND trade_date = :d",
                 ), {"d": latest_fdate}).fetchall()
                 for fr in frows:
                     factor_quadrants[fr[0]] = int(fr[1])
@@ -177,7 +175,7 @@ def _compute_sector_etf_all():
                     try:
                         qrows = conn.execute(text("""
                             SELECT etf_code, z_quality FROM factor_daily
-                            WHERE preset_id = 'short' AND trade_date = :d AND z_quality IS NOT NULL
+                            WHERE preset_id = 'optimized' AND trade_date = :d AND z_quality IS NOT NULL
                         """), {"d": latest_fdate}).fetchall()
                         for qr in qrows:
                             if qr[0] in financial_quality:
@@ -357,20 +355,41 @@ def _compute_sector_cards():
     conn = get_conn()
     result = []
     try:
-        for code, name in SECTOR_ETF.items():
+        codes = list(SECTOR_ETF.keys())
+        # Single window-function query replaces the previous 1-query-per-ETF loop
+        # (N+1 → 1). Mirrors the ROW_NUMBER() OVER (PARTITION BY ts_code) pattern
+        # used in overview._compute_overview. Returns the same 5 latest rows per code.
+        by_code = {}
+        if codes:
+            placeholders, params = bind_inlist(codes, prefix="sc")
             rows = conn.execute(
-                text("SELECT trade_date, open, high, low, close, pre_close, pct_chg "
-                     "FROM sector_etf_daily WHERE ts_code=:code ORDER BY trade_date DESC LIMIT 5"),
-                {"code": code}
+                text(f"""
+                    WITH ranked AS (
+                        SELECT ts_code, trade_date, open, high, low, close, pre_close, pct_chg,
+                               ROW_NUMBER() OVER (PARTITION BY ts_code ORDER BY trade_date DESC) as rn
+                        FROM sector_etf_daily
+                        WHERE ts_code IN ({placeholders})
+                    )
+                    SELECT ts_code, trade_date, open, high, low, close, pre_close, pct_chg
+                    FROM ranked WHERE rn <= 5
+                """),
+                params,
             ).fetchall()
-            if not rows:
+            if rows:
+                cols = ["ts_code", "trade_date", "open", "high", "low", "close", "pre_close", "pct_chg"]
+                df_all = pd.DataFrame(rows, columns=cols)
+                by_code = {code: g for code, g in df_all.groupby("ts_code")}
+        # Iterate SECTOR_ETF to preserve output order and the empty-card fallback.
+        for code, name in SECTOR_ETF.items():
+            df = by_code.get(code)
+            if df is None or df.empty:
                 result.append({
                     "ts_code": code, "name": name, "trade_date": "",
                     "pct_chg": 0, "close": 0, "amplitude": 0, "sparkline": [],
                 })
                 continue
-            cols = ["trade_date", "open", "high", "low", "close", "pre_close", "pct_chg"]
-            df = pd.DataFrame(rows, columns=cols)
+            # Sort DESC so iloc[0] is the latest row (original relied on ORDER BY ... LIMIT 5).
+            df = df.sort_values("trade_date", ascending=False).reset_index(drop=True)
             # P2.6: 应用前复权因子 (卡片也用调整后价格)
             df = _apply_etf_adj(df, code)
             latest = df.iloc[0]
@@ -403,11 +422,11 @@ def _compute_share_std(ts_code: str):
     try:
         rows = conn.execute(
             text("SELECT trade_date, fd_share FROM etf_share "
-                 "WHERE ts_code=:code ORDER BY trade_date DESC LIMIT 11"),
+                 "WHERE ts_code=:code ORDER BY trade_date DESC LIMIT 12"),
             {"code": ts_code}
         ).fetchall()
         
-        if len(rows) < 10:
+        if len(rows) < 11:
             return {"error": "insufficient_data"}
         
         shares = [float(r[1]) for r in reversed(rows)]
@@ -419,20 +438,19 @@ def _compute_share_std(ts_code: str):
                 change_pct = (shares[i] - shares[i-1]) / shares[i-1] * 100
                 share_changes.append(change_pct)
         
-        if len(share_changes) < 9:
-            return {"error": "insufficient_data"}
+        # Use the last 11 share_changes (spanning 12 data points)
+        recent_changes = share_changes[-11:]
         
-        recent_10_changes = share_changes[-10:]
-        
-        mean_change = sum(recent_10_changes) / len(recent_10_changes)
-        variance = sum((x - mean_change) ** 2 for x in recent_10_changes) / len(recent_10_changes)
+        mean_change = sum(recent_changes) / len(recent_changes)
+        n = len(recent_changes)
+        variance = sum((x - mean_change) ** 2 for x in recent_changes) / (n - 1) if n > 1 else 0.0
         std_change = variance ** 0.5
         
-        latest_change = recent_10_changes[-1]
+        latest_change = recent_changes[-1]
         z_score = (latest_change - mean_change) / std_change if std_change > 0 else 0
         
-        positive_count = sum(1 for x in recent_10_changes if x > 0)
-        negative_count = sum(1 for x in recent_10_changes if x < 0)
+        positive_count = sum(1 for x in recent_changes if x > 0)
+        negative_count = sum(1 for x in recent_changes if x < 0)
         
         return {
             "ts_code": ts_code,
@@ -443,9 +461,9 @@ def _compute_share_std(ts_code: str):
             "z_score": round(z_score, 2),
             "positive_days": positive_count,
             "negative_days": negative_count,
-            "max_change": round(max(recent_10_changes), 4),
-            "min_change": round(min(recent_10_changes), 4),
-            "total_change": round(sum(recent_10_changes), 4),
+            "max_change": round(max(recent_changes), 4),
+            "min_change": round(min(recent_changes), 4),
+            "total_change": round(sum(recent_changes), 4),
         }
     finally:
         conn.close()

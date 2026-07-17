@@ -117,7 +117,13 @@ def _auto_mock_db():
                 "regime_cn": "Slightly Bullish",
                 "narrative": "CSI500 RSI=45 oversold; CSI300 20d=5.2%",
             }
-            yield mock_get_conn, mock_timing
+            # _load_holdings / _save_holdings / _trading_days_between each do their own
+            # local `from ... import get_conn`, so the _get_conn patch above does not
+            # reach them. Patch the helpers directly to keep these tests DB-free.
+            with patch("src.analysis.recommendation_engine._load_holdings", return_value={}), \
+                 patch("src.analysis.recommendation_engine._save_holdings"), \
+                 patch("src.analysis.recommendation_engine._trading_days_between", return_value=10):
+                yield mock_get_conn, mock_timing
 
 
 class TestBuildInvestmentRecommendation:
@@ -133,6 +139,7 @@ class TestBuildInvestmentRecommendation:
                         z_quality, efficiency_raw, z_efficiency,
                         rsi_raw, z_rsi])
 
+    @patch("config.config.SECTOR_ETF", {"512480.SH": "半导体", "515030.SH": "新能源车", "512010.SH": "医药"})
     def test_return_structure(self, _auto_mock_db):
         """测试返回数据结构完整性"""
         from src.analysis.recommendation_engine import build_investment_recommendation
@@ -171,7 +178,7 @@ class TestBuildInvestmentRecommendation:
         }))
         mock_get_conn.return_value = conn
 
-        result = build_investment_recommendation("short")
+        result = build_investment_recommendation("optimized")
 
         assert "date" in result
         assert "strategy" in result
@@ -211,7 +218,7 @@ class TestBuildInvestmentRecommendation:
         }))
         mock_get_conn.return_value = conn
 
-        result = build_investment_recommendation("short")
+        result = build_investment_recommendation("optimized")
         # 空因子数据走 factor_rows 为空检查分支，返回 error + 空 recommendations
         assert "recommendations" in result
         assert len(result["recommendations"]) == 0
@@ -231,10 +238,11 @@ class TestBuildInvestmentRecommendation:
         conn.execute.side_effect = side_effect
         mock_get_conn.return_value = conn
 
-        result = build_investment_recommendation("short")
+        result = build_investment_recommendation("optimized")
         assert "error" in result
         assert "No factor data available" in result["error"]
 
+    @patch("config.config.SECTOR_ETF", {"512480.SH": "半导体", "515030.SH": "新能源车", "512010.SH": "医药", "512800.SH": "银行", "512880.SH": "证券"})
     def test_candidate_scoring_order(self, _auto_mock_db):
         """测试候选ETF评分排序逻辑"""
         from src.analysis.recommendation_engine import build_investment_recommendation
@@ -256,12 +264,13 @@ class TestBuildInvestmentRecommendation:
         }))
         mock_get_conn.return_value = conn
 
-        result = build_investment_recommendation("short")
+        result = build_investment_recommendation("optimized")
         recs = result["recommendations"]
         assert len(recs) > 0
         scores = [r["factor_score"] for r in recs]
         assert scores == sorted(scores, reverse=True)
 
+    @patch("config.config.SECTOR_ETF", {"512480.SH": "半导体", "515030.SH": "新能源车", "512010.SH": "医药", "512800.SH": "银行", "512880.SH": "证券", "515220.SH": "煤炭", "512400.SH": "有色", "562500.SH": "军工"})
     def test_correlation_penalty(self, _auto_mock_db):
         """测试相关度惩罚逻辑"""
         from src.analysis.recommendation_engine import build_investment_recommendation
@@ -298,13 +307,17 @@ class TestBuildInvestmentRecommendation:
         }))
         mock_get_conn.return_value = conn
 
-        result = build_investment_recommendation("short")
+        result = build_investment_recommendation("optimized")
         recs = result["recommendations"]
         assert len(recs) > 0
         for r in recs:
-            pct = float(r["position_ratio"].replace("%", ""))
+            # position_ratio is a float since commit 1e72e46 (was a "NN%" string);
+            # accept either form so this test is robust to the serialization.
+            pos = r["position_ratio"]
+            pct = float(pos.replace("%", "")) if isinstance(pos, str) else float(pos)
             assert pct <= 25.0, f"Position {pct}% exceeds 25% cap"
 
+    @patch("config.config.SECTOR_ETF", {"512480.SH": "半导体", "515030.SH": "新能源车"})
     def test_icir_decay_detection(self, _auto_mock_db):
         """测试ICIR衰减检测（衰减率 > 40% 时应有警告）"""
         from src.analysis.recommendation_engine import build_investment_recommendation
@@ -334,7 +347,7 @@ class TestBuildInvestmentRecommendation:
         }))
         mock_get_conn.return_value = conn
 
-        result = build_investment_recommendation("short")
+        result = build_investment_recommendation("optimized")
         risk_warnings = result.get("risk_warning", [])
         decay_warnings = [w for w in risk_warnings if "decay" in w.lower()]
         assert len(decay_warnings) > 0, (
@@ -368,13 +381,14 @@ class TestBuildInvestmentRecommendation:
         }))
         mock_get_conn.return_value = conn
 
-        result = build_investment_recommendation("short")
+        result = build_investment_recommendation("optimized")
         risk_warnings = result.get("risk_warning", [])
         decay_warnings = [w for w in risk_warnings if "decay" in w.lower()]
         assert len(decay_warnings) == 0, (
             f"Expected no decay warning with insufficient data, got: {decay_warnings}"
         )
 
+    @patch("config.config.SECTOR_ETF", {"512480.SH": "半导体", "515030.SH": "新能源车"})
     def test_market_timing_error_handling(self, _auto_mock_db):
         """市场择时失败时不会阻断推荐流程"""
         from src.analysis.recommendation_engine import build_investment_recommendation
@@ -394,12 +408,13 @@ class TestBuildInvestmentRecommendation:
         }))
         mock_get_conn.return_value = conn
 
-        result = build_investment_recommendation("short")
+        result = build_investment_recommendation("optimized")
         assert "recommendations" in result
         assert len(result["recommendations"]) > 0
         assert result["timing"]["score"] == 0
         assert result["timing"]["regime"] == "Unknown"
 
+    @patch("config.config.SECTOR_ETF", {"512480.SH": "半导体", "512010.SH": "医药", "512690.SH": "酒", "512800.SH": "银行"})
     def test_correlation_penalty_high_corr_pair(self, _auto_mock_db):
         """高相关度 ETF 对在 pool 内受惩罚"""
         from src.analysis.recommendation_engine import build_investment_recommendation
@@ -434,6 +449,6 @@ class TestBuildInvestmentRecommendation:
         }))
         mock_get_conn.return_value = conn
 
-        result = build_investment_recommendation("short")
+        result = build_investment_recommendation("optimized")
         recs = result.get("recommendations", [])
         assert len(recs) > 0

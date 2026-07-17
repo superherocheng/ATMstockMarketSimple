@@ -62,15 +62,19 @@ def _compute_rsrs_series(highs, lows, lookback: int, zscore_window: int = 300) -
         result[i] = beta * r2
 
     # ── Rolling Z-score standardization (time-series dimension) ──
-    # Only produce valid values after lookback + zscore_window data points.
+    # Use expanding window for early dates (before full zscore_window is available)
+    # so that early RSRS values are comparable to later ones.
     min_valid = 20
     start_idx = lookback + zscore_window - 1
     if start_idx >= n:
-        # Not enough data for standardization, leave raw result as-is
-        return result
+        start_idx = lookback + min_valid - 1  # fallback with minimum valid window
 
-    for i in range(start_idx, n):
-        window = result[i - zscore_window + 1 : i + 1]
+    for i in range(lookback + min_valid - 1, n):
+        if i < start_idx:
+            # Expanding window: use all available data from lookback onwards
+            window = result[lookback - 1 : i + 1]
+        else:
+            window = result[i - zscore_window + 1 : i + 1]
         valid = window[~np.isnan(window)]
         if len(valid) >= min_valid:
             mean = np.mean(valid)
@@ -79,10 +83,9 @@ def _compute_rsrs_series(highs, lows, lookback: int, zscore_window: int = 300) -
                 result[i] = (result[i] - mean) / std
             else:
                 result[i] = 0.0
-        # Insufficient valid history → leave result[i] as NaN (already set)
 
-    # Entries before start_idx lack sufficient Z-score history → NaN
-    result[:start_idx] = np.nan
+    # Entries before minimum valid history → NaN
+    result[:lookback + min_valid - 1] = np.nan
 
     return result
 
@@ -107,7 +110,7 @@ def _compute_flow_series(shares, lookback: int, halflife: int = 3) -> np.ndarray
     for i in range(lookback, n):
         recent = vals[i - lookback + 1 : i + 1]
         mean_val = recent.mean()
-        if mean_val == 0 or np.isnan(mean_val):
+        if abs(mean_val) < 1e-10 or np.isnan(mean_val):
             continue
         y = recent / mean_val  # normalize
 
@@ -148,11 +151,10 @@ def _compute_mom_series(closes, lookback: int, vol_window: int = 60) -> np.ndarr
         # Volatility adjustment
         if i >= vol_window + 1:
             daily_ret = np.diff(vals[i - vol_window : i + 1]) / vals[i - vol_window : i]
-            if len(daily_ret) >= 30:
-                vol = np.std(daily_ret, ddof=0)
-                if vol > 0:
-                    result[i] = mom / vol
-                    continue
+            vol = np.std(daily_ret, ddof=0)
+            if vol > 0:
+                result[i] = mom / vol
+                continue
 
         result[i] = mom
 
@@ -248,34 +250,31 @@ def _fetch_factor_base_data():
 
 
 def _get_latest_financial_factors() -> dict:
-    """Load the latest F_Quality values from the financial_factor table.
+    """Quality factor removed (2026-07-01 simplification).
 
-    Returns dict[etf_code] -> f_quality (raw float), or empty dict.
+    Returns {} so the downstream weight-0 / dead-factor-redistribution path
+    no-ops: factor assembly still writes f_quality/z_quality = 0, then the
+    dead-factor path drops them from the composite. Kept as a stub rather than
+    excising every Quality reference in the assembly loop — lower risk, same
+    end state (Quality already had weight 0 in the optimized preset).
     """
-    try:
-        from src.analysis.financial_factor import load_latest_financial_factors
-        factors = load_latest_financial_factors()
-        if not factors:
-            return {}
-        return {code: data["f_quality"] for code, data in factors.items()}
-    except Exception as exc:
-        logger.warning(f"Could not load financial factors: {exc}")
-        return {}
+    return {}
 
 
 def _get_adjusted_weights(base_weights: dict) -> dict:
     """Adjust quality factor weight based on market regime.
 
-    Strategy:
-    - Weak/bearish market (score < -0.3, momentum overheated):
-      reduce quality to 0.10, distribute to RSRS/Flow/Mom/Eff proportionally
-    - Strong recovery (score > 0.3, oversold bounce):
-      increase quality to 0.40, reduce others proportionally
-    - Neutral: keep base weights
+    NOTE: Quality factor removed (2026-07-01 simplification). The optimized preset
+    has quality=0.0 and _get_latest_financial_factors() returns {}. This function
+    is effectively dead code — kept for reference should quality data be re-enabled.
+    It still runs compute_market_timing() (a db query) but produces no effect.
 
     Returns adjusted weights dict with keys rsrs/flow/mom/quality summing to 1.0.
     """
-    base_q = base_weights.get("quality", 0.25)
+    base_q = base_weights.get("quality", 0.0)
+    if base_q <= 0:
+        return dict(base_weights)
+
     try:
         from src.analysis.market_timing import compute_market_timing
         timing = compute_market_timing()
@@ -322,9 +321,9 @@ def _compute_preset_factors(pid: str, *,
                             has_rsrs: bool = False) -> int:
     """Compute factors for one preset using vectorized per-ETF series.
 
-    V4: Now integrates Financial Quality Factor (F_Quality) as a 4th factor.
-    F_Quality is loaded from the financial_factor table and Z-scored
-    cross-sectionally alongside RSRS/Flow/Mom.
+    (Quality factor removed 2026-07-01; the model is now RSRS/Flow/Mom +
+    Efficiency + RSI_Mom. _get_latest_financial_factors() returns {} and the
+    dead-factor path drops the weight-0 quality column.)
 
     When called from ``compute_all_factors`` (multi‑preset path), the
     caller passes pre‑fetched *kline_df*, *share_df* and *has_rsrs* so
@@ -531,7 +530,7 @@ def _compute_preset_factors(pid: str, *,
         day_raw["z_efficiency"] = _cross_sectional_zscore(day_raw["efficiency"]).values
 
         # V7: RSRS MA trend filter — dampen z_rsrs when MA20 trend is bearish
-        rsrs_ma_damp = preset.get("rsrs_ma_dampening", 0.0)
+        # (rsrs_ma_damp already read from preset at L365)
         if rsrs_ma_damp > 0:
             for idx_r, row_r in day_raw.iterrows():
                 code = row_r["ts_code"]
@@ -620,16 +619,20 @@ def _compute_preset_factors(pid: str, *,
             if "rsi_momentum" in dead_factors:
                 dead_weight += w_rsi
                 w_rsi = 0.0
-            # Proportionally redistribute to RSRS/Flow/Mom
-            active_weight = w_rsrs + w_flow + w_mom
+            # Proportionally redistribute to ALL active factors (not just RSRS/Flow/Mom)
+            # Bug fix: previously only redistributed to RSRS/Flow/Mom, ignoring
+            # active Efficiency and RSI_Momentum factors.
+            active_weight = w_rsrs + w_flow + w_mom + w_efficiency + w_rsi
             if active_weight > 0:
                 scale = (active_weight + dead_weight) / active_weight
                 w_rsrs *= scale
                 w_flow *= scale
                 w_mom *= scale
+                w_efficiency *= scale
+                w_rsi *= scale
             logger.info(
                 f"  Weight redistribution: {','.join(dead_factors)} inactive, "
-                f"redistributed {dead_weight:.2f} weight to RSRS/Flow/Mom"
+                f"redistributed {dead_weight:.2f} weight to all active factors"
             )
 
         day_raw["factor"] = (w_rsrs * day_raw["z_rsrs"]

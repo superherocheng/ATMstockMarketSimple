@@ -207,9 +207,11 @@ def _compute_breadth(conn) -> Tuple[pd.Series, str]:
     返回 (daily_breadth_series[YYYYMMDD], latest_date)。
     """
     codes = _breadth_universe_codes()
-    df = _load_panel(conn, "sector_etf_daily", codes)
-    if df.empty:
-        df = _load_panel(conn, "index_etf_daily", codes)
+    # Query both sector_etf_daily and index_etf_daily, then concat
+    # to cover the full breadth universe (sector + broad-based ETFs)
+    df_sector = _load_panel(conn, "sector_etf_daily", codes)
+    df_index = _load_panel(conn, "index_etf_daily", codes)
+    df = pd.concat([df_sector, df_index], ignore_index=True)
     if df.empty:
         return pd.Series(dtype=float), ""
 
@@ -271,9 +273,9 @@ def compute_market_sentiment(conn=None) -> dict:
         # 宽度分项明细
         breadth_detail = {}
         try:
-            bdf = _load_panel(conn, "sector_etf_daily", _breadth_universe_codes())
-            if bdf.empty:
-                bdf = _load_panel(conn, "index_etf_daily", _breadth_universe_codes())
+            bdf_s = _load_panel(conn, "sector_etf_daily", _breadth_universe_codes())
+            bdf_i = _load_panel(conn, "index_etf_daily", _breadth_universe_codes())
+            bdf = pd.concat([bdf_s, bdf_i], ignore_index=True)
             if not bdf.empty:
                 bp = bdf.pivot(index="trade_date", columns="ts_code", values="close").sort_index()
                 bma20 = bp.rolling(MA20_WINDOW, min_periods=MA20_WINDOW // 2).mean()

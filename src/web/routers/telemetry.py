@@ -17,6 +17,6 @@ async def telemetry(request: Request):
         w = data.get("w", 0)
         ua = (data.get("ua", "") or "")[:60]
         logger.info(f"[TELEM] path={path} ref={ref} w={w} ua={ua}")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug(f"[TELEM] failed to record: {exc}")
     return JSONResponse({"ok": True})

@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import text
 
 from src.web.services.cache import _cached_persistent, _api_cache
-from src.core.db_manager_postgresql import get_conn, query, safe_json
+from src.core.db_manager_postgresql import get_conn, query, safe_json, bind_inlist
 from config.config import INDEX_ETF, SECTOR_ETF, DATA_DIR
 from src.core.trading_calendar import now_beijing, get_latest_trading_date
 from src.data_fetchers.tushare_fetcher import _apply_etf_adj
@@ -34,8 +34,7 @@ def _compute_overview():
         # ── Single query for all index ETFs ──
         index_codes = list(INDEX_ETF.keys())
         if index_codes:
-            placeholders = ",".join([f":idx_{i}" for i in range(len(index_codes))])
-            params = {f"idx_{i}": c for i, c in enumerate(index_codes)}
+            placeholders, params = bind_inlist(index_codes, prefix="idx_")
             rows_idx = conn.execute(
                 text(f"""
                     WITH ranked AS (
@@ -63,8 +62,7 @@ def _compute_overview():
         # ── Single query for all sector ETFs ──
         sector_codes = list(SECTOR_ETF.keys())
         if sector_codes:
-            placeholders = ",".join([f":sec_{i}" for i in range(len(sector_codes))])
-            params = {f"sec_{i}": c for i, c in enumerate(sector_codes)}
+            placeholders, params = bind_inlist(sector_codes, prefix="sec_")
             rows_sec = conn.execute(
                 text(f"""
                     WITH ranked AS (
@@ -96,8 +94,7 @@ def _compute_heatmap():
     with get_conn() as conn:
         sector_codes = list(SECTOR_ETF.keys())
         if sector_codes:
-            placeholders = ",".join([f":c_{i}" for i in range(len(sector_codes))])
-            params = {f"c_{i}": c for i, c in enumerate(sector_codes)}
+            placeholders, params = bind_inlist(sector_codes, prefix="c_")
             rows = conn.execute(
                 text(f"""
                     WITH ranked AS (

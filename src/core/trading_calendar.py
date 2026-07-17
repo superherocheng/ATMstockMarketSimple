@@ -266,13 +266,13 @@ def verify_database():
     """打印所有核心表的新鲜度报告，返回 dict 结果。"""
     latest = get_latest_trading_date()
     if not latest:
-        print("[ERR] 无法确定最新交易日，请检查 Tushare Token 和网络")
+        logger.error("无法确定最新交易日，请检查 Tushare Token 和网络")
         return {}
 
     header = "  数据库状态检查"
-    print(f"\n{'=' * 62}")
-    print(f"{header}  (最新交易日: {latest})")
-    print(f"{'=' * 62}")
+    logger.info("%s", "\n" + "=" * 62)
+    logger.info("%s  (最新交易日: %s)", header, latest)
+    logger.info("%s", "=" * 62)
 
     tables = [
         ("index_etf_daily", "指数ETF日线", "trade_date"),
@@ -300,10 +300,10 @@ def verify_database():
         else:
             status = "??  无数据"
 
-        print(f"  {desc:12s} ({table:22s}): {status}")
+        logger.info("  %-12s (%-22s): %s", desc, table, status)
         results[table] = {"max_date": db_max, "is_fresh": fresh, "gap_days": gap}
 
-    print(f"{'=' * 62}\n")
+    logger.info("%s", "=" * 62)
     return results
 
 
@@ -311,6 +311,10 @@ def verify_database():
 #  CLI 入口
 # ══════════════════════════════════════════════════
 if __name__ == "__main__":
+    # When run as a CLI, surface the INFO-level report that verify_database() now
+    # emits via logging (it is also called from the fetch subprocess, where these
+    # go through normal log routing instead of raw stdout).
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     print(f"  北京时间: {_now_beijing().strftime('%Y-%m-%d %H:%M:%S')}")
     latest = get_latest_trading_date()
     if latest:
