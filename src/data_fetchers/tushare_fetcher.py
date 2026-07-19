@@ -948,12 +948,22 @@ def _invalidate_web_cache():
         print(f"[SKIP] Redis 缓存清除异常: {e}")
 
     # 方式2：通过 HTTP 通知 Web 服务清除自身的内存缓存
+    # ponytail: URL + Bearer from env — the old hardcoded localhost:5656 + no-auth
+    # POST 401'd in prod (WRITE_ENDPOINT_PREFIXES requires Bearer) and failed in
+    # Docker (localhost ≠ web container). Redis (方式1) still clears regardless.
+    web_base = os.environ.get("WEB_INTERNAL_URL")
+    if not web_base:
+        print("[SKIP] WEB_INTERNAL_URL 未设置，跳过 HTTP 缓存通知（Redis 缓存已由方式1清除）")
+        return
     try:
         import urllib.request
+        headers = {"Content-Type": "application/json"}
+        api_token = os.environ.get("API_TOKEN", "")
+        if api_token:
+            headers["Authorization"] = f"Bearer {api_token}"
         req = urllib.request.Request(
-            "http://localhost:8000/api/cache/invalidate",
-            method="POST", data=b"{}",
-            headers={"Content-Type": "application/json"}
+            f"{web_base.rstrip('/')}/api/cache/invalidate",
+            method="POST", data=b"{}", headers=headers,
         )
         urllib.request.urlopen(req, timeout=3)
         print("[OK] Web 服务缓存已刷新")

@@ -1,4 +1,14 @@
-# ── Python backend with Jinja2 templates ──
+# ── Stage 1: build the React SPA (served by the backend via spa_fallback) ──
+FROM node:22-slim AS frontend
+WORKDIR /frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+# Build reads VITE_API_TOKEN only if the deployed SPA must do authenticated
+# write-ops. The public read-only build omits it (intranet/no-token mode).
+RUN npm run build
+
+# ── Stage 2: Python backend ──
 FROM python:3.12-slim
 LABEL maintainer="ATMstockMarket Team"
 
@@ -33,8 +43,11 @@ COPY .env.example .env.example
 # Create empty .env so load_dotenv doesn't fail
 RUN touch .env
 
+# ── Built SPA from stage 1 → /app/frontend/dist (app.py spa_fallback serves it) ──
+COPY --from=frontend /frontend/dist ./frontend/dist
+
 # ── Health check ──
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:5656/health || exit 1
 
 EXPOSE 5656

@@ -83,7 +83,12 @@ async def add_cache_headers(request: Request, call_next):
     response = await call_next(request)
     path = request.url.path
 
-    if path.startswith("/static/"):
+    # Hashed build assets (content-addressed filenames) — safe to cache immutably.
+    if path.startswith("/assets/"):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        response.headers["Vary"] = "Accept-Encoding"
+    # public/ root files served by spa_fallback (background, favicon).
+    elif path in ("/background.png", "/favicon.svg"):
         response.headers["Cache-Control"] = "public, max-age=86400"
         response.headers["Vary"] = "Accept-Encoding"
     elif path.startswith("/api/") and request.method == "GET":

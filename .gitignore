@@ -56,10 +56,13 @@ frontend/node_modules/
 .DS_Store
 Thumbs.db
 
-# IDE
+# IDE / agent tooling
 .vscode/
 .idea/
 .trae/
+.opencode/
+.mimocode/
+.codegraph/
 *.swp
 *.swo
 *~

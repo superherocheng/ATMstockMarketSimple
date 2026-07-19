@@ -271,6 +271,43 @@ class PostgreSQLConnectionManager:
             logger.error("Upsert error into %s: %s", table_name, e, exc_info=True)
             return 0
     
+    def upsert_dataframe_with_conn(self, conn, df: pd.DataFrame, table_name: str,
+                                    primary_key: List[str], chunk_size: int = 1000) -> int:
+        """使用UPSERT语义插入DataFrame，使用外部传入的connection（保持同一事务）"""
+        if df is None or len(df) == 0:
+            return 0
+        try:
+            columns = list(df.columns)
+            columns_str = ", ".join([f'"{col}"' for col in columns])
+            placeholders = ", ".join([f":{col}" for col in columns])
+            pk_constraint = ", ".join([f'"{pk}"' for pk in primary_key])
+            update_cols = [col for col in columns if col not in primary_key]
+            if update_cols:
+                update_str = ", ".join([f'"{col}" = EXCLUDED."{col}"' for col in update_cols])
+                sql = f"""
+                    INSERT INTO {table_name} ({columns_str})
+                    VALUES ({placeholders})
+                    ON CONFLICT ({pk_constraint})
+                    DO UPDATE SET {update_str}
+                """
+            else:
+                sql = f"""
+                    INSERT INTO {table_name} ({columns_str})
+                    VALUES ({placeholders})
+                    ON CONFLICT ({pk_constraint})
+                    DO NOTHING
+                """
+            total = 0
+            data = df.to_dict('records')
+            for i in range(0, len(data), chunk_size):
+                chunk = data[i:i + chunk_size]
+                conn.execute(text(sql), chunk)
+                conn.commit()
+            return total
+        except Exception as e:
+            logger.error("Upsert error into %s: %s", table_name, e, exc_info=True)
+            return 0
+
     def execute_batch(self, operations: List[tuple]) -> int:
         """批量执行SQL操作（事务性）"""
         count = 0

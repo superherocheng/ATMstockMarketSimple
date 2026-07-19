@@ -12,13 +12,13 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent.parent
-STATIC_DIR = BASE_DIR / "static"
 ENV_FILE = PROJECT_ROOT / ".env"
 if ENV_FILE.exists():
     load_dotenv(ENV_FILE)
@@ -60,11 +60,25 @@ for name in ('uvicorn.access', 'uvicorn'):
 from src.core.db_manager_postgresql import _ensure_db, close_db_manager
 from starlette.middleware.gzip import GZipMiddleware
 from src.web.services.middleware import rate_limit_middleware, add_cache_headers
-from src.web.routers import overview, etf, fetch, analysis, telemetry
+from src.web.routers import overview, etf, fetch, analysis
 
 # ── 认证配置 ────────────────────────────────────────────────
 # 从环境变量读取 API_TOKEN，None 表示不启用认证（内网访问模式）
 API_TOKEN = os.environ.get("API_TOKEN")
+
+
+def _cors_origins() -> list[str]:
+    """Allowed browser origins for the SPA.
+
+    Drives BOTH CORSMiddleware (browser preflight) and the CSRF allow-list
+    (_get_allowed_origins) so POST write-ops from the React app are not 403'd.
+    Comma-separated CORS_ORIGINS env; the Vite dev server is always included.
+    """
+    raw = os.environ.get("CORS_ORIGINS", "")
+    origins = [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
+    if "http://localhost:5173" not in origins:
+        origins.append("http://localhost:5173")
+    return origins
 
 
 # ── 统一响应模型 ────────────────────────────────────────────
@@ -83,7 +97,6 @@ WRITE_ENDPOINT_PREFIXES = (
     "/api/fetch/",
     "/api/cache/invalidate",
     "/api/etf-share/update",
-    "/api/analysis/recompute",
 )
 
 
@@ -109,7 +122,7 @@ def auth_required(request: Request) -> Optional[str]:
 # ── CSRF 保护 ──────────────────────────────────────────────
 
 def _get_allowed_origins(request: Request) -> list[str]:
-    """获取允许的来源列表，包含本机地址"""
+    """获取允许的来源列表，包含本机地址 + SPA 来源（CORS_ORIGINS）"""
     host = request.headers.get("Host", "")
     origins = [
         f"http://{host}",
@@ -119,6 +132,9 @@ def _get_allowed_origins(request: Request) -> list[str]:
     for addr in ("localhost", "127.0.0.1", "0.0.0.0"):
         if addr not in host:
             origins.append(f"http://{addr}:{host.split(':')[-1]}" if ":" in host else f"http://{addr}:5656")
+    # SPA 来源（Vite dev + 生产域名）—— 与 CORSMiddleware 共用同一白名单，
+    # 否则浏览器从 5173 发起的 POST 会被 CSRF 校验拦截（Host≠Origin）。
+    origins.extend(_cors_origins())
     return origins
 
 
@@ -274,15 +290,47 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.middleware("http")(rate_limit_middleware)
 app.middleware("http")(add_cache_headers)
 
-# ── 静态文件 ────────────────────────────────────────────────
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+# CORS —— 最后添加 → 位于中间件栈最外层，优先应答浏览器 OPTIONS 预检。
+# 开发期 Vite 已通过 /api 代理同源，CORS 主要服务于生产部署（前后端不同源）。
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(overview.router)
 app.include_router(etf.router)
 app.include_router(fetch.router)
 app.include_router(analysis.router)
 
-app.include_router(telemetry.router)
+# ── SPA 回退（生产单源部署）────────────────────────────────
+# 开发期：Vite 在 :5173 提供前端并代理 /api 到此处，本段不生效。
+# 生产期：`npm run build` → frontend/dist；此路由为所有非 API 的 GET
+# 返回 index.html（客户端路由），构建产物 JS/CSS 由 /assets 提供。
+FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
+if (FRONTEND_DIST / "assets").exists():
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="spa-assets")
+
+_SPA_GUARD = ("api/", "docs", "redoc", "openapi.json")
+
+
+@app.get("/{full_path:path}")
+async def spa_fallback(full_path: str):
+    """非 API 的 GET：先服务 frontend/dist 下的真实文件（public/ 产物如
+    favicon.svg、background.png），否则回退到 index.html 供客户端路由。"""
+    if full_path.startswith(_SPA_GUARD) or ".." in full_path:
+        raise HTTPException(status_code=404)
+    # public/ 资源落在 dist 根；hashed JS/CSS 走 /assets mount。
+    candidate = FRONTEND_DIST / full_path
+    if full_path and candidate.is_file():
+        return FileResponse(str(candidate))
+    index = FRONTEND_DIST / "index.html"
+    if index.exists():
+        return FileResponse(str(index))
+    raise HTTPException(status_code=404)
+
 
 if __name__ == "__main__":
     import uvicorn

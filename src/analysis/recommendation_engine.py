@@ -515,9 +515,12 @@ def build_investment_recommendation(preset_id: str = "optimized",
     if close_rows:
         cf = pd.DataFrame(close_rows, columns=["ts_code", "trade_date", "close"])
         cf["close"] = cf["close"].astype(float)
-        cf["ret"] = cf.groupby("ts_code")["close"].pct_change()
-        ret_pivot = cf.pivot(index="trade_date", columns="ts_code", values="ret").dropna()
-        etf_corr = ret_pivot.corr()
+        if len(cf["ts_code"].unique()) < 2:
+            etf_corr = pd.DataFrame()
+        else:
+            cf["ret"] = cf.groupby("ts_code")["close"].pct_change()
+            ret_pivot = cf.pivot(index="trade_date", columns="ts_code", values="ret").dropna()
+            etf_corr = ret_pivot.corr()
     else:
         etf_corr = pd.DataFrame()
 

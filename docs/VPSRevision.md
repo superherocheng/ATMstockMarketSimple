@@ -38,7 +38,7 @@ ImportError: cannot import name 'DATA_DIR' from 'src.core.config'
 **现象**：仓库中 `src/core/config.py` 硬编码了一个真实 Token：
 
 ```python
-TUSHARE_TOKEN = "30cf620b8617ca66aa5217ca56b8ed22c8f42063d4076d53340fa17e"
+TUSHARE_TOKEN = "<REDACTED-2026-07-19-请到 tushare.pro 轮换并清洗 git 历史>"
 ```
 
 **原因**：作者将含有个人 Token 的 `config.py` 提交到了 Git 仓库。
@@ -174,7 +174,7 @@ pip install "starlette<1.0" "fastapi>=0.104,<0.116"
 
 1. 修改 `src/core/config.py`，使 Token 优先读取环境变量，回退到硬编码值：
    ```python
-   TUSHARE_TOKEN = os.environ.get("TUSHARE_TOKEN", "") or "30cf620b8617ca66aa5217ca56b8ed22c8f42063d4076d53340fa17e"
+   TUSHARE_TOKEN = os.environ.get("TUSHARE_TOKEN", "") or "<REDACTED-2026-07-19-请到 tushare.pro 轮换并清洗 git 历史>"
    ```
 
 2. 将 `ALLSYMBOL.csv` 从项目根目录移至 `data/external/` 目录

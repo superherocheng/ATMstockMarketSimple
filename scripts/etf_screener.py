@@ -17,7 +17,13 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(project_root, ".env"))
 
 import tushare as ts
-ts.set_token(os.environ.get("TUSHARE_TOKEN", "30cf620b8617ca66aa5217ca56b8ed22c8f42063d4076d53340fa17e"))
+# ponytail: no hardcoded fallback — a leaked default token lived in this tracked
+# file for the repo's whole history. TUSHARE_TOKEN MUST come from the env (.env);
+# missing = fail loud instead of silently using a baked-in secret.
+_token = os.environ.get("TUSHARE_TOKEN")
+if not _token:
+    raise RuntimeError("TUSHARE_TOKEN env var is required (etf_screener cannot run without it)")
+ts.set_token(_token)
 pro = ts.pro_api()
 
 # Broad-market ETFs to EXCLUDE

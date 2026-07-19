@@ -85,9 +85,9 @@ def get_open_trade_dates(start_date=None, end_date=None):
     Returns:
         list[str] — 排序后的交易日字符串
     """
-    today = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y%m%d")
+    today = now_beijing().strftime("%Y%m%d")
     if start_date is None:
-        start_date = (datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=365)).strftime("%Y%m%d")
+        start_date = (now_beijing() - timedelta(days=365)).strftime("%Y%m%d")
     if end_date is None:
         end_date = today
 

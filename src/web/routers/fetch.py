@@ -16,7 +16,6 @@ from src.core.db_manager_postgresql import get_conn, get_db_manager, bind_inlist
 from src.web.services.cache import _cache_invalidate
 from src.core.trading_calendar import now_beijing, get_latest_trading_date, get_open_trade_dates
 from src.core.db_manager_postgresql import _ensure_db
-from src.analysis import factor_engine, ic_analyzer
 from config.config import DATA_DIR, INDEX_ETF, SECTOR_ETF, get_pro
 
 logger = logging.getLogger(__name__)
@@ -114,7 +113,6 @@ def _run_fetch(task_type):
         _fetch_status["finished_at"] = None
         _fetch_status["progress"] = 0
         _fetch_status["current_step"] = "初始化..."
-        _fetch_status["backtest_done"] = False
 
     # NOTE: do NOT call close_db_manager() here. The fetch runs in a subprocess
     # that does not share this process's connection pool, so disposing the pool
@@ -152,127 +150,8 @@ def _run_fetch(task_type):
 
         _add_log("[DONE] 数据获取完成！")
 
-        # ── 份额更新后清理旧因子数据 ──
-        # 如果份额数据刚刚更新，factor_daily 中可能已有用旧份额数据计算的结果
-        # 跳过清理会导致因子引擎复用旧数据，Flow 因子仍不准确
-        try:
-            _ensure_db()
-            from src.core.db_manager_postgresql import get_conn
-            from sqlalchemy import text
-            # 找到最新的份额日期，删除该日期的所有因子数据（4个预设）
-            with get_conn() as cleanup_conn:
-                share_max = cleanup_conn.execute(text(
-                    "SELECT MAX(trade_date) FROM etf_share"
-                )).fetchone()[0]
-                if share_max:
-                    deleted = cleanup_conn.execute(text(
-                        "DELETE FROM factor_daily WHERE trade_date >= :d"
-                    ), {"d": share_max})
-                # 同时清理 IC 数据（仅清理同日期范围的，IC 分析会重新计算）
-                if share_max:
-                    ic_deleted = cleanup_conn.execute(text(
-                        "DELETE FROM ic_daily WHERE trade_date >= :d"
-                    ), {"d": share_max})
-                    cleanup_conn.commit()
-                _add_log(f"[OK] 已清理旧因子数据，将用最新份额数据重新计算")
-        except Exception as cleanup_err:
-            _add_log(f"[WARN] 因子数据清理可选，跳过: {cleanup_err}")
-
-        # ── 检查份额数据截面完整性 ──
-        # 因子计算依赖完整的截面数据。份额数据通常T+1才公布，
-        # 如果最新交易日只有部分ETF有份额数据，说明截面不完整，
-        # 此时计算因子会引入偏差（缺失ETF的flow因子=NaN），应跳过。
-        try:
-            _ensure_db()
-            from config.config import SECTOR_ETF
-            from sqlalchemy import text
-            from src.core.db_manager_postgresql import get_conn
-            with get_conn() as conn:
-
-                # 找到最新的份额日期和日线日期
-                share_max = conn.execute(text(
-                    "SELECT MAX(trade_date) FROM etf_share"
-                )).fetchone()[0]
-                kline_max = conn.execute(text(
-                    "SELECT MAX(trade_date) FROM sector_etf_daily"
-                )).fetchone()[0]
-
-                share_max_str = str(share_max).replace("-", "")
-                kline_max_str = str(kline_max).replace("-", "")
-
-                # 统计最新份额日期有多少个ETF
-                share_count = conn.execute(text(
-                    "SELECT COUNT(DISTINCT ts_code) FROM etf_share WHERE trade_date = :d"
-                ), {"d": share_max}).fetchone()[0]
-
-                total_sector = len(SECTOR_ETF)
-
-                _add_log(f"[INFO] 最新日线日期: {kline_max_str}, 最新份额日期: {share_max_str}")
-                _add_log(f"[INFO] 份额截面: {share_count}/{total_sector} 只ETF有数据")
-
-                if share_count < total_sector:
-                    _add_log(f"[INFO] 份额数据不完整（{share_count}/{total_sector}），继续执行回测")
-                    _add_log("[INFO] 份额数据通常T+1公布，Flow 因子将使用可用数据计算")
-        except Exception as e:
-            _add_log(f"[WARN] 份额完整性检查失败: {e}，继续执行回测")
-
-        # ── 回测阶段：因子计算+IC分析 ──
-        try:
-            _ensure_db()
-        except Exception:
-            pass
-
-        backtest_start = time.time()
-        _add_log("")
-        _add_log("=" * 40)
-        _add_log("开始运行回测：因子计算 + IC 分析")
-        _add_log("=" * 40)
-
+        _cache_invalidate("etf", "overview")
         with _fetch_lock:
-            _fetch_status["current_step"] = "因子计算中..."
-            _fetch_status["progress"] = 80
-
-        try:
-            factor_rows = factor_engine.compute_all_factors()
-            _add_log(f"[OK] 因子计算完成: {factor_rows} 行")
-        except Exception as e:
-            _add_log(f"[ERROR] 因子计算失败: {e}")
-            logger.error(f"因子计算失败: {e}", exc_info=True)
-
-        with _fetch_lock:
-            _fetch_status["current_step"] = "IC分析中..."
-            _fetch_status["progress"] = 90
-
-        try:
-            ic_rows = ic_analyzer.compute_all_ic(log_func=_add_log)
-            _add_log(f"[OK] IC分析完成: {ic_rows} 行")
-        except Exception as e:
-            _add_log(f"[ERROR] IC分析失败: {e}")
-            logger.error(f"IC分析失败: {e}", exc_info=True)
-
-        total_elapsed = time.time() - backtest_start
-        _add_log(f"[DONE] 回测完成！总耗时约 {total_elapsed:.0f}s")
-
-        # 投资建议预生成（缓存预热）
-        try:
-            from src.analysis.recommendation_engine import build_investment_recommendation
-            for pid in ["optimized"]:
-                build_investment_recommendation(pid)
-            _add_log("[OK] 投资建议已预生成（3个预设）")
-        except Exception as e:
-            _add_log(f"[WARN] 投资建议预生成失败: {e}")
-
-        # 轮动策略报告预热（与投资建议同步，使 /rotation 看板反映最新行情）
-        try:
-            from src.analysis.rotation_strategy import build_rotation_report
-            build_rotation_report("optimized")
-            _add_log("[OK] 轮动策略报告已预生成")
-        except Exception as e:
-            _add_log(f"[WARN] 轮动策略报告预生成失败: {e}")
-
-        _cache_invalidate("etf", "overview", "analysis", "rotation")
-        with _fetch_lock:
-            _fetch_status["backtest_done"] = True
             _fetch_status["progress"] = 100
             _fetch_status["current_step"] = "全部完成"
     except Exception as e:
@@ -282,8 +161,6 @@ def _run_fetch(task_type):
         with _fetch_lock:
             _fetch_status["running"] = False
             _fetch_status["finished_at"] = now_beijing().strftime("%Y-%m-%d %H:%M:%S")
-            if not _fetch_status.get("backtest_done"):
-                _fetch_status["current_step"] = "完成（回测跳过）"
         try:
             _ensure_db()
             _add_log("[OK] 数据库连接已恢复")
@@ -449,130 +326,126 @@ def _do_etf_share_update():
     try:
         latest_td = get_latest_trading_date()
         if not latest_td:
-            return JSONResponse({"error": "无法确定最新交易日"}, status_code=500)
+            return {"error": "无法确定最新交易日", "status": "error"}
 
         acceptable_min_td = _get_previous_trading_date(latest_td)
 
-        conn = get_conn()
+        with get_conn() as conn:
 
-        all_etf = {**INDEX_ETF, **SECTOR_ETF}
-        all_codes = list(all_etf.keys())
+            all_etf = {**INDEX_ETF, **SECTOR_ETF}
+            all_codes = list(all_etf.keys())
 
-        placeholders, params = bind_inlist(all_codes, prefix="p")
+            placeholders, params = bind_inlist(all_codes, prefix="p")
 
-        sql = f"""
-            SELECT ts_code, MAX(trade_date) as max_date
-            FROM etf_share
-            WHERE ts_code IN ({placeholders})
-            GROUP BY ts_code
-        """
-        results = conn.execute(text(sql), params).fetchall()
-        db_dates = {}
-        for row in results:
-            db_dates[row[0]] = _normalise_date(row[1])
+            sql = f"""
+                SELECT ts_code, MAX(trade_date) as max_date
+                FROM etf_share
+                WHERE ts_code IN ({placeholders})
+                GROUP BY ts_code
+            """
+            results = conn.execute(text(sql), params).fetchall()
+            db_dates = {}
+            for row in results:
+                db_dates[row[0]] = _normalise_date(row[1])
 
-        need_update = []
-        for code in all_codes:
-            max_date = db_dates.get(code)
-            if not max_date or max_date < latest_td:
-                need_update.append(code)
+            need_update = []
+            for code in all_codes:
+                max_date = db_dates.get(code)
+                if not max_date or max_date < latest_td:
+                    need_update.append(code)
 
-        if not need_update:
-            conn.close()
-            return {
-                "status": "already_fresh",
-                "message": f"所有ETF份额数据已是最新 ({latest_td})",
-                "latest_trading_date": latest_td,
-                "total_etf": len(all_codes),
-                "index_etf_count": len(INDEX_ETF),
-                "sector_etf_count": len(SECTOR_ETF)
-            }
+            if not need_update:
+                return {
+                    "status": "already_fresh",
+                    "message": f"所有ETF份额数据已是最新 ({latest_td})",
+                    "latest_trading_date": latest_td,
+                    "total_etf": len(all_codes),
+                    "index_etf_count": len(INDEX_ETF),
+                    "sector_etf_count": len(SECTOR_ETF)
+                }
 
-        pro = get_pro()
-        default_start = (datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=365)).strftime("%Y%m%d")
+            pro = get_pro()
+            default_start = (datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=365)).strftime("%Y%m%d")
 
-        fetched_data = {}
-        not_ready = []
+            fetched_data = {}
+            not_ready = []
 
-        for code in need_update:
-            name = all_etf.get(code, code)
-            existing_max = db_dates.get(code)
-            start_date = existing_max or default_start
+            for code in need_update:
+                name = all_etf.get(code, code)
+                existing_max = db_dates.get(code)
+                start_date = existing_max or default_start
 
-            df = _fetch_etf_share_for_code(pro, code, start_date)
-            time.sleep(0.35)
+                df = _fetch_etf_share_for_code(pro, code, start_date)
+                time.sleep(0.35)
 
-            if df is not None and len(df) > 0:
-                max_date = df["trade_date"].max()
-                if max_date >= acceptable_min_td:
-                    fetched_data[code] = df
+                if df is not None and len(df) > 0:
+                    max_date = df["trade_date"].max()
+                    if max_date >= acceptable_min_td:
+                        fetched_data[code] = df
+                    else:
+                        not_ready.append({
+                            "code": code,
+                            "name": name,
+                            "max_date": max_date,
+                            "required_min": acceptable_min_td
+                        })
                 else:
                     not_ready.append({
                         "code": code,
                         "name": name,
-                        "max_date": max_date,
+                        "max_date": existing_max,
                         "required_min": acceptable_min_td
                     })
-            else:
-                not_ready.append({
+
+            if not_ready:
+                return {
+                    "status": "data_not_ready",
+                    "message": f"Tushare数据尚未更新到 {acceptable_min_td}，以下ETF份额数据不完整：",
+                    "latest_trading_date": latest_td,
+                    "acceptable_min_date": acceptable_min_td,
+                    "not_ready": not_ready,
+                    "ready_count": len(fetched_data),
+                    "total_need_update": len(need_update)
+                }
+
+            db = get_db_manager()
+            updated_count = 0
+            update_details = []
+
+            # Use the same connection for DELETE + upsert to keep them in one transaction
+            for code, df in fetched_data.items():
+                name = all_etf.get(code, code)
+                existing_max = db_dates.get(code)
+
+                if existing_max:
+                    # Same connection for both DELETE and upsert to ensure atomicity
+                    n = db.upsert_dataframe_with_conn(conn, df, "etf_share", ["ts_code", "trade_date"])
+                else:
+                    # First-time insert: clear any stale data then upsert in same connection
+                    conn.execute(text("DELETE FROM etf_share WHERE ts_code=:p0"), {"p0": code})
+                    n = db.upsert_dataframe_with_conn(conn, df, "etf_share", ["ts_code", "trade_date"])
+
+                updated_count += 1
+                update_details.append({
                     "code": code,
                     "name": name,
-                    "max_date": existing_max,
-                    "required_min": acceptable_min_td
+                    "rows": n,
+                    "new_max_date": df["trade_date"].max()
                 })
 
-        if not_ready:
-            conn.close()
+            _cache_invalidate("etf", "overview")
+
             return {
-                "status": "data_not_ready",
-                "message": f"Tushare数据尚未更新到 {acceptable_min_td}，以下ETF份额数据不完整：",
+                "status": "updated",
+                "message": f"成功更新 {updated_count} 只ETF份额数据",
                 "latest_trading_date": latest_td,
-                "acceptable_min_date": acceptable_min_td,
-                "not_ready": not_ready,
-                "ready_count": len(fetched_data),
-                "total_need_update": len(need_update)
+                "updated_count": updated_count,
+                "update_details": update_details
             }
-
-        db = get_db_manager()
-        updated_count = 0
-        update_details = []
-
-        # Use the same connection for DELETE + upsert to keep them in one transaction
-        for code, df in fetched_data.items():
-            name = all_etf.get(code, code)
-            existing_max = db_dates.get(code)
-
-            if existing_max:
-                # Use conn for both DELETE and upsert to ensure atomicity
-                n = db.upsert_dataframe(df, "etf_share", ["ts_code", "trade_date"])
-            else:
-                # First-time insert: clear any stale data then insert in same transaction
-                conn.execute(text("DELETE FROM etf_share WHERE ts_code=:p0"), {"p0": code})
-                n = db.insert_dataframe(df, "etf_share", if_exists='append')
-                conn.commit()
-
-            updated_count += 1
-            update_details.append({
-                "code": code,
-                "name": name,
-                "rows": n,
-                "new_max_date": df["trade_date"].max()
-            })
-
-        conn.close()
-        _cache_invalidate("etf", "overview")
-
-        return {
-            "status": "updated",
-            "message": f"成功更新 {updated_count} 只ETF份额数据",
-            "latest_trading_date": latest_td,
-            "updated_count": updated_count,
-            "update_details": update_details
-        }
 
     except Exception as e:
         logger.error(f"更新ETF份额失败: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return {"error": str(e), "status": "error"}
 
 
 @router.post("/api/etf-share/update")

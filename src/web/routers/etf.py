@@ -1,11 +1,8 @@
 import asyncio
 import logging
-from pathlib import Path
 
 import pandas as pd
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
+from fastapi import APIRouter
 from sqlalchemy import text
 
 from src.web.services.cache import _cached_persistent
@@ -21,9 +18,6 @@ logger = logging.getLogger(__name__)
 async def _async_cached(cache_key, compute_fn, max_age_hours):
     """Run sync _cached_persistent in a thread to avoid blocking the event loop."""
     return await asyncio.to_thread(_cached_persistent, cache_key, compute_fn, max_age_hours)
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 router = APIRouter()
 
@@ -60,16 +54,6 @@ def _detect_anomalies(df, df_share):
                         anomaly_share["chg_abs"] = abs_chg.loc[anomaly_idx].values
                         anomalies["share"] = safe_json(anomaly_share[["trade_date", "fd_share", "chg_pct", "chg_abs", "z_score"]])
     return anomalies
-
-
-@router.get("/etf", response_class=HTMLResponse)
-async def page_etf(request: Request):
-    return templates.TemplateResponse("etf.html", {"request": request})
-
-
-@router.get("/sector", response_class=HTMLResponse)
-async def page_sector(request: Request):
-    return templates.TemplateResponse("sector.html", {"request": request})
 
 
 def _compute_index_etf(ts_code):

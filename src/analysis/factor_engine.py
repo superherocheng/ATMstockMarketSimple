@@ -219,10 +219,12 @@ def _fetch_factor_base_data():
     try:
         kline_rows = conn.execute(text(
             "SELECT ts_code, trade_date, open, high, low, close, pct_chg FROM sector_etf_daily "
+            "WHERE trade_date >= (SELECT MAX(trade_date) - INTERVAL '365 days' FROM sector_etf_daily) "
             "ORDER BY ts_code, trade_date"
         )).fetchall()
         share_rows = conn.execute(text(
             "SELECT ts_code, trade_date, fd_share FROM etf_share "
+            "WHERE trade_date >= (SELECT MAX(trade_date) - INTERVAL '365 days' FROM etf_share) "
             "ORDER BY ts_code, trade_date"
         )).fetchall()
         has_rsrs = conn.execute(text(

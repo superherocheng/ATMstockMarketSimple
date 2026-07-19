@@ -1,11 +1,9 @@
 import asyncio
 import logging
-from pathlib import Path
 
 import pandas as pd
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from src.web.services.cache import _cached_persistent, _api_cache
@@ -15,9 +13,6 @@ from src.core.trading_calendar import now_beijing, get_latest_trading_date
 from src.data_fetchers.tushare_fetcher import _apply_etf_adj
 
 logger = logging.getLogger(__name__)
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 router = APIRouter()
 
@@ -86,6 +81,69 @@ def _compute_overview():
                         d["name"] = SECTOR_ETF.get(d["ts_code"], d["ts_code"])
                         d["pct_chg"] = d.get("pct_chg", 0) or 0
                         result["sector_summary"].append(d)
+
+        # ── Share data for all ETFs ──
+        all_codes = index_codes + sector_codes
+        share_data = {}
+        if all_codes:
+            placeholders, params = bind_inlist(all_codes, prefix="sh_")
+            rows = conn.execute(
+                text(f"""
+                    WITH ranked AS (
+                        SELECT ts_code, trade_date, fd_share,
+                               ROW_NUMBER() OVER (PARTITION BY ts_code ORDER BY trade_date DESC) as rn
+                        FROM etf_share
+                        WHERE ts_code IN ({placeholders}) AND fd_share IS NOT NULL
+                    )
+                    SELECT ts_code, trade_date, fd_share FROM ranked WHERE rn <= 11
+                """),
+                params,
+            ).fetchall()
+            for row in rows:
+                code = row[0]
+                if code not in share_data:
+                    share_data[code] = []
+                share_data[code].append({
+                    "date": str(row[1]),
+                    "share": float(row[2])
+                })
+
+        def _add_share_info(items, name_map):
+            for item in items:
+                code = item["ts_code"]
+                shares = share_data.get(code, [])
+                if len(shares) >= 2:
+                    latest = shares[0]["share"]
+                    prev = shares[1]["share"]
+                    item["share_change_qty"] = round(latest - prev, 2)
+                    item["share_change_pct"] = round(((latest - prev) / prev * 100) if prev > 0 else 0, 4)
+                    item["latest_share"] = latest
+                    item["share_date"] = shares[0]["date"]
+                    if len(shares) >= 11:
+                        ten_ago = shares[10]["share"]
+                        item["share_change_10d_qty"] = round(latest - ten_ago, 2)
+                        item["share_change_10d_pct"] = round(((latest - ten_ago) / ten_ago * 100) if ten_ago > 0 else 0, 4)
+                    else:
+                        item["share_change_10d_qty"] = None
+                        item["share_change_10d_pct"] = None
+                elif len(shares) == 1:
+                    item["share_change_qty"] = None
+                    item["share_change_pct"] = None
+                    item["share_change_10d_qty"] = None
+                    item["share_change_10d_pct"] = None
+                    item["latest_share"] = shares[0]["share"]
+                    item["share_date"] = shares[0]["date"]
+                else:
+                    item["share_change_qty"] = None
+                    item["share_change_pct"] = None
+                    item["share_change_10d_qty"] = None
+                    item["share_change_10d_pct"] = None
+                    item["latest_share"] = None
+                    item["share_date"] = None
+            return items
+
+        result["index_etf"] = _add_share_info(result["index_etf"], INDEX_ETF)
+        result["sector_summary"] = _add_share_info(result["sector_summary"], SECTOR_ETF)
     return result
 
 
@@ -175,16 +233,6 @@ def validate_analysis_data():
             "error": "Internal validation error",
             "checks": {}
         }
-
-
-@router.get("/", response_class=HTMLResponse)
-async def page_index(request: Request):
-    import os
-    _page_token = os.environ.get("API_TOKEN", "")
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "page_api_token": _page_token,
-    })
 
 
 @router.get("/api/overview")
