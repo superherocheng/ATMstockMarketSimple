@@ -4,9 +4,11 @@ WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
-# Build reads VITE_API_TOKEN only if the deployed SPA must do authenticated
-# write-ops. The public read-only build omits it (intranet/no-token mode).
-RUN npm run build
+# VITE_API_TOKEN baked at build so the deployed SPA can do authenticated
+# write-ops (refresh data). Passed as a build arg from the runtime API_TOKEN
+# via docker-compose. Empty -> read-only build (no write-ops from the SPA).
+ARG VITE_API_TOKEN=""
+RUN VITE_API_TOKEN="${VITE_API_TOKEN}" npm run build
 
 # ── Stage 2: Python backend ──
 FROM python:3.12-slim
