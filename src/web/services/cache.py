@@ -116,7 +116,10 @@ def _redis_delete(pattern):
 # ── 内存 LRU 缓存 ──────────────────────────────────────────
 
 CACHE_CATEGORIES = {
-    "overview": ["overview"],
+    # "heatmap" lives here so fetch.py's _cache_invalidate("etf", "overview")
+    # also clears it — otherwise the 行业热度 panel served stale data for up
+    # to its 4h TTL after every data refresh (heatmap key matched no category).
+    "overview": ["overview", "heatmap"],
     "etf": ["index_etf_*", "sector_etf_*", "sector_cards", "share_std_*"],
     "analysis": ["analysis_*", "investment_rec_v2_*", "investment_recommendation"],
     "rotation": ["rotation_*"],
