@@ -8,6 +8,9 @@ interface Props {
   height?: number | string;
   className?: string;
   loading?: boolean;
+  /** ECharts 事件绑定（如 { click: fn }）。按事件名在 mount/键变化时绑定一次，
+   * handler 本体经 ref 读取最新闭包，避免每次渲染重绑。 */
+  onEvents?: Partial<Record<string, (params: echarts.ECElementEvent) => void>>;
 }
 
 /** Count data points across all series to gate the perf constraint (>1000 → no animation). */
@@ -20,9 +23,13 @@ function countPoints(option: Record<string, unknown>): number {
   );
 }
 
-export function EChartsChart({ option, height = 280, className, loading }: Props) {
+export function EChartsChart({ option, height = 280, className, loading, onEvents }: Props) {
   const elRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
+  const onEventsRef = useRef(onEvents);
+  onEventsRef.current = onEvents;
+  // 事件键集合（"click,legendselectchanged"）——键列表变了才重绑。
+  const eventKeys = onEvents ? Object.keys(onEvents).join(",") : "";
 
   useEffect(() => {
     if (!elRef.current) return;
@@ -39,6 +46,26 @@ export function EChartsChart({ option, height = 280, className, loading }: Props
     } as echarts.EChartsOption;
     chartRef.current.setOption(opt, true);
   }, [option]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || !eventKeys) return;
+    const bound: Array<[string, (...args: unknown[]) => void]> = eventKeys
+      .split(",")
+      .map((key) => [
+        key,
+        (...args: unknown[]) => onEventsRef.current?.[key]?.(args[0] as echarts.ECElementEvent),
+      ]);
+    for (const [key, handler] of bound) chart.on(key, handler);
+    return () => {
+      // unbind 时实例可能已被 dispose（卸载顺序），静默忽略。
+      try {
+        for (const [key, handler] of bound) chart.off(key, handler);
+      } catch {
+        /* disposed */
+      }
+    };
+  }, [eventKeys]);
 
   useEffect(() => {
     const onResize = () => chartRef.current?.resize();

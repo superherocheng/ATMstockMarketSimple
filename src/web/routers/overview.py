@@ -156,12 +156,12 @@ def _compute_heatmap():
             rows = conn.execute(
                 text(f"""
                     WITH ranked AS (
-                        SELECT ts_code, pct_chg,
+                        SELECT ts_code, pct_chg, amount,
                                ROW_NUMBER() OVER (PARTITION BY ts_code ORDER BY trade_date DESC) as rn
                         FROM sector_etf_daily
                         WHERE ts_code IN ({placeholders})
                     )
-                    SELECT ts_code, pct_chg FROM ranked WHERE rn = 1
+                    SELECT ts_code, pct_chg, amount FROM ranked WHERE rn = 1
                 """),
                 params,
             ).fetchall()
@@ -171,7 +171,9 @@ def _compute_heatmap():
                 result.append({
                     "name": SECTOR_ETF.get(code, code),
                     "ts_code": code,
-                    "pct_chg": round(float(pct), 2)
+                    "pct_chg": round(float(pct), 2),
+                    # 最新成交额（tushare 千元）— treemap 面积维度
+                    "amount": round(float(row[2]), 2) if row[2] is not None else None,
                 })
     return result
 
@@ -242,7 +244,8 @@ async def api_overview():
 
 @router.get("/api/heatmap")
 async def api_heatmap():
-    return await _async_cached("heatmap", _compute_heatmap, max_age_hours=4)
+    # v2: 加了 amount 字段（treemap 用），换 key 绕开旧缓存条目
+    return await _async_cached("heatmap_v2", _compute_heatmap, max_age_hours=4)
 
 
 @router.get("/api/analysis/validate")

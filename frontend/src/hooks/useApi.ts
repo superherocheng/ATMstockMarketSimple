@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type {
+  DivergenceResponse,
   EtfDetail,
   EtfShareStatus,
   FetchStatus,
@@ -43,6 +44,29 @@ export function useSectorEtf(code: string | null) {
     queryKey: ["sector-etf", code],
     queryFn: () => api.get<EtfDetail>(`/sector-etf/${code}`).then((r) => r.data),
     enabled: !!code,
+    staleTime: 5 * 60_000,
+  });
+}
+
+// 详情接口二合一：宽基走 /index-etf、行业走 /sector-etf，两者返回同构 EtfDetail。
+export function useEtfDetail(code: string | null, kind: "index" | "sector") {
+  const base = kind === "index" ? "/index-etf" : "/sector-etf";
+  return useQuery({
+    queryKey: ["etf-detail", kind, code],
+    queryFn: () => api.get<EtfDetail>(`${base}/${code}`).then((r) => r.data),
+    enabled: !!code,
+    staleTime: 5 * 60_000,
+  });
+}
+
+// 价格×份额背离（多时间窗）。window ∈ 5/10/20/60，其它值后端回落到 10。
+export function useDivergence(window = 10) {
+  return useQuery({
+    queryKey: ["divergence", window],
+    queryFn: () =>
+      api
+        .get<DivergenceResponse>("/divergence", { params: { window } })
+        .then((r) => r.data),
     staleTime: 5 * 60_000,
   });
 }

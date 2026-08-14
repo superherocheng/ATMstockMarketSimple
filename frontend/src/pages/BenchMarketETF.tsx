@@ -1,7 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { EChartsChart } from "@/components/EChartsChart";
-import { useOverview } from "@/hooks/useApi";
+import { DivergenceScatter, RISK_COLOR, LURK_COLOR } from "@/components/DivergenceScatter";
+import { useDivergence, useOverview } from "@/hooks/useApi";
 import type { OverviewBar } from "@/types";
 
 // ECharts can't read CSS variables directly; resolve --up/--down so the bars
@@ -73,6 +76,15 @@ function buildBarOption(
 
 export default function BenchMarketETF() {
   const overview = useOverview();
+  const navigate = useNavigate();
+  // 价格×份额背离（宽基专属视图）：时间窗可切换
+  const [divWindow, setDivWindow] = useState<number>(10);
+  const divergence = useDivergence(divWindow);
+  const idxItems = useMemo(
+    () => (divergence.data?.items ?? []).filter((i) => i.type === "index"),
+    [divergence.data],
+  );
+  const divDate = divergence.data?.date;
 
   // Sort once by 当天涨跌 desc and reuse the order for all three charts so the
   // same ETF lines up across charts for easy cross-comparison.
@@ -131,6 +143,50 @@ export default function BenchMarketETF() {
         </Card>
       ) : (
         <>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle>
+                  价格 × 份额背离象限
+                  {divDate && divDate.length === 8 && (
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">
+                      数据 {divDate.slice(4, 6)}-{divDate.slice(6, 8)}
+                    </span>
+                  )}
+                </CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  <span style={{ color: RISK_COLOR }}>右下=价涨份额缩（涨势失血）</span> ·{" "}
+                  <span style={{ color: LURK_COLOR }}>左上=价跌份额增（跌势吸金）</span> · 气泡=成交额 · 点击查看详情
+                </p>
+              </div>
+              <div className="flex gap-1">
+                {[5, 10, 20, 60].map((w) => (
+                  <Button
+                    key={w}
+                    size="sm"
+                    variant={w === divWindow ? "default" : "ghost"}
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setDivWindow(w)}
+                  >
+                    {w}日
+                  </Button>
+                ))}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {idxItems.length > 0 ? (
+                <DivergenceScatter
+                  items={idxItems}
+                  labelAll
+                  height={300}
+                  onPick={(c) => navigate(`/etf?code=${c}`)}
+                />
+              ) : (
+                <p className="py-8 text-center text-sm text-muted-foreground">加载中…</p>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>当天涨跌 <span className="text-xs font-normal text-muted-foreground">%</span></CardTitle>
