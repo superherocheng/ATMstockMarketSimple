@@ -14,20 +14,23 @@ sector-cards path). `all_preset_ids()` now returns the one preset, so the
 compute loops in factor_engine/ic_analyzer run once instead of 4x — ~75% fewer
 factor_daily / ic_daily / ic_summary rows per recompute.
 
-Weight design (v8 optimized, ICIR² on 34 industry ETFs, 2025-09~2026-06):
-  RSRS(ICIR=0.33→28%) Mom(ICIR=0.39→32%) Flow(ICIR=0.28→20%)
-  RSI_Mom(ICIR=0.22→14%) Efficiency(ICIR=0.14→6%) Quality=0% (no valid data).
+Weight design (v9 optimized, 2026-08-24):
+  Efficiency 权重清零（泛化测试中 ICIR=-0.19，负贡献还占 6% 权重），
+  剩余四因子按原 V8 比例归一化：RSRS .298/.212/.341/.149 ≈ .30/.21/.34/.15。
+  Quality=0%（无有效数据，2026-07-01 移除）。
+  注意：权重标定样本仅 2025-09~2026-06 单一 regime，属样本内数字，
+  待 ≥3 年数据 walk-forward 复验后再固化。
 """
 PRESETS = {
     "optimized": {
         "id": "optimized",
         "label": "Optimized",
-        "description": "RSRS=20, Flow=10, Mom=20, H=15 — 34-ETF industry pool, ICIR=0.60, stickiness=1.0",
+        "description": "RSRS=20, Flow=10, Mom=20, H=15 — 4-factor (efficiency removed 2026-08), stickiness=1.0",
         "rsrs_lookback": 20,
         "flow_lookback": 10,
         "mom_lookback": 20,
         "forward_periods": [15],
-        "factor_weights": {"rsrs": 0.28, "flow": 0.20, "mom": 0.32, "quality": 0.0, "efficiency": 0.06, "rsi_momentum": 0.14},
+        "factor_weights": {"rsrs": 0.298, "flow": 0.212, "mom": 0.341, "quality": 0.0, "efficiency": 0.0, "rsi_momentum": 0.149},
         "eff_sma_window": 5,
         "reversal_lookback": 5,
         "rsrs_ma_dampening": 0.5,

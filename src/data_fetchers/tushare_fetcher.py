@@ -40,6 +40,7 @@ from sqlalchemy import text
 from config.config import (
     get_pro,
     INDEX_ETF, SECTOR_ETF, LOOKBACK_DAYS, ANOMALY_STD_THRESHOLD,
+    FAMILY_SHARE_CODES, INDEX_VALUATION_CODES,
 )
 from src.core.trading_calendar import (
     get_latest_trading_date,
@@ -203,6 +204,10 @@ def init_db():
         """CREATE TABLE IF NOT EXISTS etf_adj_factor (
             ts_code VARCHAR, trade_date VARCHAR, adj_factor DOUBLE PRECISION,
             PRIMARY KEY (ts_code, trade_date))""",
+        # ── 指数估值表（大盘温度计 PE/PB 分位）──
+        """CREATE TABLE IF NOT EXISTS index_daily_basic (
+            ts_code VARCHAR, trade_date DATE, pe DOUBLE PRECISION, pb DOUBLE PRECISION,
+            PRIMARY KEY (ts_code, trade_date))""",
     ]:
         conn.execute(text(extra_sql))
 
@@ -299,7 +304,7 @@ def _upsert_write(df, table, conn):
 
     db = get_db_manager()
 
-    if table in ['stock_daily', 'stock_daily_basic', 'stock_fina_indicator', 'index_etf_daily', 'sector_etf_daily', 'etf_share', 'etf_adj_factor']:
+    if table in ['stock_daily', 'stock_daily_basic', 'stock_fina_indicator', 'index_etf_daily', 'sector_etf_daily', 'etf_share', 'etf_adj_factor', 'index_daily_basic']:
         pk = ['ts_code', 'trade_date'] if 'fina' not in table else ['ts_code', 'end_date']
         n = db.upsert_dataframe(df, table, pk)
     else:
@@ -384,8 +389,18 @@ def fetch_index_etf():
         conn, pro, default_start, INDEX_ETF, "指数ETF"
     )
 
+    # ── 阶段2b: 家族成员份额（仅份额，供同指数聚合修正工具轮动）──
+    if FAMILY_SHARE_CODES:
+        family_dict = {c: f"家族成员{c[:6]}" for c in FAMILY_SHARE_CODES}
+        _fetch_etf_shares_write_ready(
+            conn, pro, default_start, family_dict, "家族成员份额"
+        )
+
     # ── 阶段3: 复权因子（P2.6: 前复权）──
     _fetch_etf_adj_factors(conn, pro, default_start, INDEX_ETF, "指数ETF")
+
+    # ── 阶段4: 指数估值（PE/PB，大盘温度计）──
+    _fetch_index_valuation(conn, pro, default_start)
 
     print("[OK] 指数ETF数据获取完成")
 
@@ -496,6 +511,31 @@ def _fetch_etf_adj_factors(conn, pro, default_start, etf_dict, label):
     if total_fetched > 0:
         print(f"  [OK] {label}复权因子写入完成 ({total_fetched} 条)")
     return total_fetched
+
+
+def _fetch_index_valuation(conn, pro, default_start):
+    """获取指数估值 (index_dailybasic: PE/PB) 写入 index_daily_basic 表。
+
+    用于大盘温度计的估值分位面板。权限不足时降级打印警告，不阻塞。
+    """
+    if not INDEX_VALUATION_CODES:
+        return
+    for ts_code, name in INDEX_VALUATION_CODES.items():
+        existing_max = _get_max_date(conn, "index_daily_basic", ts_code)
+        if existing_max and _is_fresh(existing_max):
+            continue
+        start = existing_max or default_start
+        try:
+            df = _api_call(pro.index_dailybasic, ts_code=ts_code, start_date=start)
+            if df is not None and len(df) > 0:
+                cols = [c for c in ("ts_code", "trade_date", "pe", "pb") if c in df.columns]
+                df = df[cols].dropna(subset=["pe", "pb"], how="all")
+                if len(df) > 0:
+                    n = _upsert_write(df, "index_daily_basic", conn)
+                    print(f"    {name} 估值: {n} 条 (从 {start})")
+        except Exception as e:
+            print(f"    [WARN] {name} 估值获取失败: {e}")
+        time.sleep(THROTTLE_SEC)
 
 
 def _apply_etf_adj(df, ts_code):
@@ -972,6 +1012,143 @@ def _invalidate_web_cache():
 
 
 # ══════════════════════════════════════════════════
+#  历史回补 (backfill)
+# ══════════════════════════════════════════════════
+def _year_chunks(start_yyyymmdd: str, end_yyyymmdd: str):
+    """把 [start, end] 切成按年的 (start, end) 列表，避免单次 API 返回截断。"""
+    chunks = []
+    s = datetime.strptime(start_yyyymmdd, "%Y%m%d")
+    e = datetime.strptime(end_yyyymmdd, "%Y%m%d")
+    while s <= e:
+        year_end = datetime(s.year, 12, 31)
+        chunk_end = min(year_end, e)
+        chunks.append((s.strftime("%Y%m%d"), chunk_end.strftime("%Y%m%d")))
+        s = datetime(s.year + 1, 1, 1)
+    return chunks
+
+
+def _get_min_date(conn, table, ts_code):
+    """表中该代码的最早 trade_date（YYYYMMDD），无数据返回 None。"""
+    try:
+        row = conn.execute(
+            text(f"SELECT MIN(trade_date) FROM {table} WHERE ts_code=:p0"),
+            {"p0": ts_code},
+        ).fetchone()
+        val = row[0] if row and row[0] else None
+        if val is not None:
+            if hasattr(val, "strftime"):
+                return val.strftime("%Y%m%d")
+            return str(val).replace("-", "")
+        return None
+    except Exception:
+        return None
+
+
+_BACKFILL_SPECS = {
+    # api_name → (target_table, required_cols, keep_cols)
+    "fund_daily": (
+        ("index_etf_daily", "sector_etf_daily"),
+        ["ts_code", "trade_date", "open", "high", "low", "close",
+         "vol", "amount", "pre_close", "pct_chg"],
+        None,
+    ),
+    "fund_share": (
+        ("etf_share",),
+        ["ts_code", "trade_date", "fd_share"],
+        ["ts_code", "trade_date", "fd_share"],
+    ),
+    "fund_adj": (
+        ("etf_adj_factor",),
+        ["ts_code", "trade_date", "adj_factor"],
+        ["ts_code", "trade_date", "adj_factor"],
+    ),
+}
+
+
+def _backfill_series(pro, conn, ts_code, name, api_name, table, year_chunks, target_table=None):
+    """按年分段回补单个代码的一个序列，全部 upsert（不动已有新数据）。"""
+    spec_tables, required, keep = _BACKFILL_SPECS[api_name]
+    target = target_table or table
+    total = 0
+    for chunk_start, chunk_end in year_chunks:
+        try:
+            df = _api_call(getattr(pro, api_name), ts_code=ts_code,
+                           start_date=chunk_start, end_date=chunk_end)
+            if df is None or len(df) == 0:
+                continue
+            df = _validate(df, required)
+            if len(df) == 0:
+                continue
+            if keep:
+                df = df[keep]
+            total += _upsert_write(df, target, conn)
+        except Exception as e:
+            print(f"    [ERR] {name} {api_name} {chunk_start}-{chunk_end}: {e}")
+        time.sleep(THROTTLE_SEC)
+    if total:
+        print(f"    [OK] {name}({ts_code}) {api_name}→{target}: 回补{total}条")
+    return total
+
+
+def _backfill_valuation(pro, conn, ts_code, name, year_chunks):
+    """按年分段回补指数估值 (index_dailybasic → index_daily_basic)。"""
+    total = 0
+    for chunk_start, chunk_end in year_chunks:
+        try:
+            df = _api_call(pro.index_dailybasic, ts_code=ts_code,
+                           start_date=chunk_start, end_date=chunk_end)
+            if df is None or len(df) == 0:
+                continue
+            cols = [c for c in ("ts_code", "trade_date", "pe", "pb") if c in df.columns]
+            if len(cols) < 3:
+                continue
+            df = df[cols].dropna(subset=[c for c in ("pe", "pb") if c in cols], how="all")
+            if len(df) > 0:
+                total += _upsert_write(df, "index_daily_basic", conn)
+        except Exception as e:
+            print(f"    [ERR] {name} 估值 {chunk_start}-{chunk_end}: {e}")
+        time.sleep(THROTTLE_SEC)
+    if total:
+        print(f"    [OK] {name}({ts_code}) 估值: 回补{total}条")
+    return total
+
+
+def backfill_etf_history(start_yyyymmdd: str):
+    """历史回补入口：从 start_yyyymmdd 起补全部已跟踪 ETF 的日线/份额/复权因子、
+    家族成员份额、指数估值。全部 upsert 语义，重复执行幂等。"""
+    pro = get_pro()
+    db = get_db_manager()
+    conn = db.get_connection()
+    end = _today()
+    year_chunks = _year_chunks(start_yyyymmdd, end)
+    print(f"[Backfill] {start_yyyymmdd} → {end} ({len(year_chunks)} 段)")
+
+    # 1) 已跟踪 ETF：日线 + 份额 + 复权因子
+    for table, code_map in (("index_etf_daily", INDEX_ETF), ("sector_etf_daily", SECTOR_ETF)):
+        print(f"── {table} ({len(code_map)}只) ──")
+        for ts_code, name in code_map.items():
+            if (_get_min_date(conn, table, ts_code) or "99999999") <= start_yyyymmdd:
+                print(f"  [SKIP] {name}({ts_code}) 日线已覆盖至 {start_yyyymmdd} 之前")
+            else:
+                _backfill_series(pro, conn, ts_code, name, "fund_daily", table, year_chunks)
+            _backfill_series(pro, conn, ts_code, name, "fund_share", "etf_share", year_chunks)
+            _backfill_series(pro, conn, ts_code, name, "fund_adj", "etf_adj_factor", year_chunks)
+
+    # 2) 家族成员：仅份额
+    print(f"── 家族成员份额 ({len(FAMILY_SHARE_CODES)}只) ──")
+    for c in FAMILY_SHARE_CODES:
+        _backfill_series(pro, conn, c, f"家族成员{c[:6]}", "fund_share", "etf_share", year_chunks)
+
+    # 3) 指数估值
+    print(f"── 指数估值 ({len(INDEX_VALUATION_CODES)}只) ──")
+    for ts_code, name in INDEX_VALUATION_CODES.items():
+        _backfill_valuation(pro, conn, ts_code, name, year_chunks)
+
+    _invalidate_web_cache()
+    print("[ALL DONE] 历史回补完成")
+
+
+# ══════════════════════════════════════════════════
 #  主入口
 # ══════════════════════════════════════════════════
 def main():
@@ -981,6 +1158,8 @@ def main():
     parser.add_argument("--funda", action="store_true", help="仅基本面数据")
     parser.add_argument("--init", action="store_true", help="仅初始化")
     parser.add_argument("--verify", action="store_true", help="仅检查数据库状态")
+    parser.add_argument("--backfill", metavar="YYYYMMDD",
+                        help="历史回补：从该日期起按年分段补 ETF 日线/份额/复权因子/家族份额/指数估值")
     args = parser.parse_args()
 
     print("=" * 50)
@@ -990,6 +1169,17 @@ def main():
 
     if args.verify:
         verify_database()
+        return
+
+    if args.backfill:
+        if not (len(args.backfill) == 8 and args.backfill.isdigit()):
+            print("[ERROR] --backfill 需要 YYYYMMDD 格式的起始日期")
+            sys.exit(1)
+        try:
+            init_db()
+            backfill_etf_history(args.backfill)
+        finally:
+            close_db_manager()
         return
 
     try:

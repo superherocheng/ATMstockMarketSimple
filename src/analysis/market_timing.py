@@ -54,6 +54,32 @@ def _compute_rsi(closes: np.ndarray, period: int = RSI_PERIOD) -> np.ndarray:
     return rsi_full
 
 
+def _compute_share_flow_pct(
+    share_map: dict, as_of_date: str, period: int = SHARE_FLOW_PERIOD
+) -> tuple:
+    """% change of fd_share over `period` share observations, as of `as_of_date`.
+
+    ETF share data is published T+1, so the anchor is the latest share date
+    <= as_of_date (normally the previous trading day).  Requiring an exact
+    date match leaves the signal dead on every fresh day.
+
+    Returns (flow_pct, anchor_date); (0.0, None) when insufficient data.
+    """
+    eligible = sorted(d for d in share_map if d <= as_of_date)
+    if len(eligible) < 2:
+        return 0.0, None
+    latest_idx = len(eligible) - 1
+    idx_then = max(0, latest_idx - period)
+    if idx_then >= latest_idx:
+        return 0.0, None
+    anchor = eligible[latest_idx]
+    s_now = share_map[anchor]
+    s_then = share_map[eligible[idx_then]]
+    if not s_then:
+        return 0.0, anchor
+    return float((s_now - s_then) / s_then * 100), anchor
+
+
 def _compute_index_signals(ts_code: str, conn) -> dict:
     """Compute RSI, momentum, and share flow signals for a single index ETF.
 
@@ -68,12 +94,20 @@ def _compute_index_signals(ts_code: str, conn) -> dict:
         ORDER BY trade_date
     """), {"code": ts_code}).fetchall()
 
-    share_rows = conn.execute(text("""
-        SELECT trade_date, fd_share
+    # 家族成员一并取份额：宽基单只份额被工具轮动污染，聚合才是真流量
+    from config.config import INDEX_ETF_FAMILY
+    from src.analysis.family import aggregate_family_share
+    family = INDEX_ETF_FAMILY.get(ts_code, [ts_code])
+    fam_ph, fam_params = [], {}
+    for i, c in enumerate(family):
+        fam_ph.append(f":fc{i}")
+        fam_params[f"fc{i}"] = c
+    share_rows = conn.execute(text(f"""
+        SELECT ts_code, trade_date, fd_share
         FROM etf_share
-        WHERE ts_code = :code
+        WHERE ts_code IN ({', '.join(fam_ph)})
         ORDER BY trade_date
-    """), {"code": ts_code}).fetchall()
+    """), fam_params).fetchall()
 
     if not price_rows or len(price_rows) < MIN_HISTORY:
         logger.warning(f"Insufficient price data for {ts_code}")
@@ -101,11 +135,18 @@ def _compute_index_signals(ts_code: str, conn) -> dict:
         pass  # staleness check is non-critical, don't block computation
 
     share_map = {}
+    member_series = {}
     for r in share_rows:
-        d = str(r[0])
-        v = float(r[1]) if r[1] else None
+        code_i, d, v = r[0], str(r[1]), float(r[2]) if r[2] else None
         if v and v > 0:
-            share_map[d] = v
+            member_series.setdefault(code_i, []).append((d, v))
+    if len(family) > 1 and len(member_series) >= 2:
+        # 家族聚合：按日期加总全部成员（各成员前向填充）
+        share_map = dict(aggregate_family_share(member_series))
+    else:
+        for series in member_series.values():
+            for d, v in series:
+                share_map[d] = v
 
     # 1. RSI(14)
     rsi_vals = _compute_rsi(closes, RSI_PERIOD)
@@ -117,22 +158,12 @@ def _compute_index_signals(ts_code: str, conn) -> dict:
     else:
         current_mom = 0.0
 
-    # 3. Share flow (10-day pct change, using share data's own dates)
-    current_share_flow = 0.0
-    if latest_date in share_map:
-        share_dates = sorted(share_map.keys())
-        # Find the index of latest_date in share data
-        try:
-            latest_idx = share_dates.index(latest_date)
-        except ValueError:
-            latest_idx = -1
-        idx_10 = max(0, latest_idx - SHARE_FLOW_PERIOD)
-        if idx_10 < latest_idx:
-            date_10 = share_dates[idx_10]
-            if date_10 in share_map:
-                s_now = share_map[latest_date]
-                s_then = share_map[date_10]
-                current_share_flow = float((s_now - s_then) / s_then * 100)
+    # 3. Share flow (10-day pct change).  Share data publishes T+1, so anchor
+    #    on the latest share date <= latest price date instead of an exact
+    #    match (which never holds on a fresh day).
+    current_share_flow, share_anchor = _compute_share_flow_pct(
+        share_map, latest_date, SHARE_FLOW_PERIOD
+    )
 
     # ── Score components (each contributes [-0.5, +0.5]) ──
     rsi_score = 0.0
@@ -160,6 +191,7 @@ def _compute_index_signals(ts_code: str, conn) -> dict:
         "mom_score": round(mom_score, 4),
         "share_flow_10d": round(current_share_flow, 2),
         "share_score": round(share_score, 4),
+        "share_anchor_date": share_anchor,
         "latest_date": latest_date,
     }
 

@@ -5,13 +5,12 @@
 ![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104%2B-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14%2B-336791?logo=postgresql&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
-![ICIR](https://img.shields.io/badge/ICIR-0.60-brightgreen)
-![ETF](https://img.shields.io/badge/ETF-34-blue)
 
-**A股ETF量化监控平台 | Chinese A-Share ETF Quantitative Monitoring Platform**
+**A股 ETF 量化监控平台 | Chinese A-Share ETF Quantitative Monitoring Platform**
 
-[功能特性](#功能特性) • [因子模型](#-多因子模型) • [快速开始](#快速开始) • [API文档](#api-端点) • [部署](#docker-部署)
+[功能特性](#-功能特性) • [页面](#-页面) • [快速开始](#-快速开始) • [API 端点](#-api-端点) • [数据模型](#-数据模型) • [择时方法论](#-择时方法论)
 
 </div>
 
@@ -19,567 +18,163 @@
 
 ## 📖 项目简介
 
-ATMstockMarketSimple 是一个专注于中国A股 **ETF市场** 的量化监控平台，提供指数ETF跟踪、行业轮动可视化、份额变化分析、**多因子分析**、**投资建议**等功能。采用 **FastAPI + PostgreSQL** 架构，前端使用 **Jinja2 + Design Tokens CSS + ECharts 5**。
+ATMstockMarketSimple 是一个 A股 ETF 量化监控平台，核心是**价格 × 份额背离分析**与**大盘择时仪表盘**，并保留一套多因子行业轮动引擎（ICIR 门控，因子失效时自动空仓）。
 
-> **核心定位**：基于多因子模型的ETF量化监控与投资决策辅助平台。
+技术栈：**FastAPI + PostgreSQL + Redis（可选）+ React 19 (Vite) + ECharts 5**。数据源为 **Tushare Pro**（ETF 日线 / 份额 / 复权因子 / 指数估值）。
 
-> 📄 **策略研究**：参见 [`NEW策略.md`](./NEW策略.md) —— 中信期货 ETF 行业轮动策略总结报告（市场情绪 + 行业轮动双指标框架）。
+> 📄 方法论参考：宽基ETF 20 年量价×份额择时研究（`etf_timing_analysis/REPORT.md`）与中信期货行业轮动框架（`NEW策略.md`）。
 
 ## ✨ 功能特性
 
-### 📊 数据监控
-- 🎯 **指数ETF监控** - 实时追踪沪深300、中证500、上证50、中证1000、科创50等核心指数
-- 📊 **行业ETF轮动** - 可视化32个行业ETF资金流向，发现板块轮动机会
-- 📈 **份额变化分析** - 自动计算份额变化标准差，提供趋势判断
-- 📉 **K线图表展示** - 基于ECharts 5的专业K线图，支持多维度数据分析
+### 📊 价格 × 份额背离（核心）
+- 全市场（5 宽基 + 32 行业）**背离散点图**：X=区间价格涨跌、Y=区间份额变化、气泡=成交额
+- 绝对背离标签：**风险背离**（价涨份额缩）/ **潜伏背离**（价跌份额增）+ 连续背离天数
+- **同指数家族份额聚合**：单只宽基 ETF 的份额被同指数内申赎搬家（工具轮动）污染，宽基背离统一按「同指数全部 ETF 家族」加总计算（如 510300+510310+159919+…）
+- 背离强度榜（rank_gap）、四象限**历史前瞻收益角标**（与散点同口径重算）
+- 5/10/20/60 日多窗口切换
 
-- 🔄 **一键更新+回测** - 更新ETF数据后自动运行因子计算+IC分析，一步到位
-- 🛡️ **份额完整性检查** - 因子计算前自动检查截面数据是否齐全，份额不全时跳过计算
-- 🏠 **首页因子概览** - 首页IC汇总卡片，展示各预设的IC均值/ICIR/胜率及六因子权重
+### 🌡️ 择时仪表盘（/timing）
+- **仓位合成卡**：波动乘数 × 恐慌叠加 × 估值修正（分解透明，非黑盒）
+- **估值温度计**：沪深300/中证500/创业板指 PE/PB 历史分位
+- **趋势状态**：MA200 上/下 + 距一年高低（状态标签，非交易信号）
+- **恐慌仪表**：5日跌≥5%+放量 → 历史前瞻均值/胜率（唯一 OOS 稳健方法族）
+- **波动状态**：20 日年化波动 → 仓位乘数（目标 12%）
+- **家族份额流**：同指数聚合份额 vs 价格 60 日滚动相关（越跌越买 regime 识别）
+- **轮动矩阵**：市场情绪 × 轮动强度 → 3×3 仓位决策（中信期货框架）
+- **底部定位器**：深跌≥20% + 家族份额逆势流入的历史事件与当前状态
+- **日历效应**：月度 × ETF 历史平均收益热力图
 
-### 🔬 量化分析
-- 🔬 **六因子评分模型 (V8)** - RSRS(28%) + 资金流(Flow,20%) + 动量(Mom,32%) + RSI动量(14%) + 日内效率(6%)，34只行业ETF ICIR=0.60👇
-- 🎯 **ICIR²权重优化** - V6→V8权重基于34只行业ETF的15日ICIR²重新分配，各子因子均为正向IC，剔除无效的Quality因子
-- 🎛️ **ICIR门控策略** - 60日滚动ICIR驱动四模式：全力出击(≥0.5) / 标准策略(0.3~0.5) / 谨慎模式(0.2~0.3) / 冬眠模式(<0.2)
-- 🔒 **强制15日持有窗口** - ICIR≥0.3时自动锁定持仓15日，防止日频对冲扭曲H=15的最佳预测窗口；ICIR<0.3时不强制，灵活调仓
-- 🏆 **投资建议引擎** - 因子得分 + RSRS象限覆盖 + IC置信度 + 两阶段相关性惩罚 + 大盘择时 + ICIR门控 + 滚动ICIR衰减检测 → 仓位配置
-- 🔄 **持仓日数追踪** - 自动记录每只ETF的建仓日期，推荐时显示"已持X日 余Y日"，跨日持续跟踪
-- 🏷️ **调仓变更标注** - 每条推荐对比前日输出自动标注：🟢调仓买入/🟡调整权重/持有，直观点明操作方向
-- 💪 **RSRS因子** - 基于高低点滚动OLS回归(β×R²)，衡量支撑/阻力结构强度，与动量极低共线性(Pearson<0.23)
-- ⚡ **向量化因子引擎** - 滑动窗口预计算RSRS/Flow/Mom，全量回测从~25s降至~5s，提速5-8x
-- 🔄 **并行预设计算+数据共享** - 4组预设并行计算，DB全表扫描仅执行一次，避免重复IO
-- 📈 **IC有效性检验** - Spearman Rank IC + ICIR + IC衰减曲线 + **滚动ICIR衰退检测**
-- 🎯 **四象限分类+RSRS覆盖** - Q1强势/Q2潜伏/Q3撤离/Q4风险；Q3中RSRS>0.3的品种按信号强度纳入候选
-- 🏆 **投资建议引擎** - 因子得分 + RSRS象限覆盖 + IC置信度 + 两阶段相关性惩罚 + 大盘择时 + 滚动ICIR衰减检测 → 仓位配置
-- 📡 **大盘择时** - 基于中证500 RSI+动量+份额变化的市场状态判断
-- 🛡️ **数据覆盖回退** - 最新交易日数据不全时自动回退到最近完整日期
-- 🧪 **泛化性验证** - 32-ETF池滚动3月验证：ICIR=0.91，年化超额22.5%（扣0.10%成本），换手率76%
+### 🔬 因子模型（V9，ICIR 门控）
+- 六因子 → **四因子**：RSRS(0.30) + Flow(0.21) + Mom(0.34) + RSI_Mom(0.15)，Quality 与 Efficiency 权重归零（无有效数据 / 样本内负 IC）
+- 横截面 rank-Z 标准化、RSRS MA 趋势衰减、组合粘性
+- **ICIR 门控**：近 60 日 ICIR 驱动 四模式（全力出击≥0.5 / 标准 0.3~0.5 / 谨慎 0.2~0.3 / **冬眠 <0.2 暂停选股**）
+- 强制 15 日持有 + 两阶段相关性惩罚 + 单只仓位上限 25%
+- ⚠️ 权重标定样本仅 2025-09~2026-06 单一 regime，属**样本内数字**，需 walk-forward 复验
 
-### 🎨 用户体验
-- 📋 **专业投资报告** - 报告式投资建议页，含KPI指标+排名表+风险提示
-- 📱 **全端适配** - 响应式布局，桌面+移动端统一体验
-- 🌙 **暗色模式** - 完整支持light/dark主题切换
-- 🎯 **Modern Minimalist 设计系统** - Inter + PingFang SC 字体，软阴影卡片系统，圆角6-16px标尺
-- 📊 **增强KPI仪表板** - 因子分析页KPI卡片含趋势箭头(▲▼)、悬停蓝色指示条
-- ⓘ **富文本信息提示** - 悬停ⓘ图标弹出260px宽度专业解读卡片
-- 📡 **数据新鲜度状态栏** - 全站顶部显示数据日期+大盘择时信号
-- 🔍 **Sector 页面搜索** - 实时搜索ETF名称/代码，分类分组折叠面板，分页加载
-- 📊 **ETF 份额Z-score汇总** - 指数ETF页面显示5只ETF最新份额标准差
-- 📌 **固定侧边栏+底部横幅** - 导航栏和底部版权信息固定不随页面滚动
-- 🎨 **统一涨跌配色** - 全站统一红涨绿跌（A股惯例），移除可切换配色功能
-- 🏠 **增强市场择时横幅** - 带状态图标的择时信号卡片，百分比大字突出显示
-- 📭 **引导式空状态** - 投资建议页数据缺失时显示操作引导而非报错
+### 🛠️ 数据管理
+- 首页「刷新数据」→ 后台抓行情→份额→复权→估值，**完成后自动重算因子+IC**（修复了推荐引擎长期冻结的问题）
+- `--backfill YYYYMMDD`：一键回补 ETF 历史（日线/份额/复权/估值），按年分段、幂等 upsert
 
-## 🔬 多因子模型
+## 📄 页面
 
-### 因子组合
-
-```
-综合因子 = w_rsrs × z_rsrs + w_flow × z_flow + w_mom × z_mom
-         + w_quality × z_quality + w_efficiency × z_efficiency
-         + w_rsi × z_rsi_momentum
-```
-
-| 子因子 | 计算方式 | 说明 |
-|--------|----------|------|
-| **RSRS(阻力支撑)** | 高低点滚动OLS回归(β×R²)，N日窗口 | 支撑/阻力结构强度，与动量极低共线性(Pearson<0.23) |
-| **资金流(Flow)** | EWMA加权斜率 (半衰期3天) → Rank标准化 | 份额变化趋势，近期敏感 |
-| **动量(Mom)** | 累计收益率 / 60日波动率 | 风险调整后动量 |
-| **财务质量(Quality)** | ROE/毛利率/负债率/现金流质量综合评分 | 基本面防御力（V4） |
-| **日内效率(Efficiency)** | OHLC排列熵与趋势效率代理 | 交易结构稳定性（V5） |
-| **RSI动量(RSI_Mom)** | RSI(5)-RSI(20)，规模中性化后Rank标准化 | 短期均值回归信号（V6） |
-
-### 权重配置（V8）
-
-| 预设 | RSRS | Flow | Mom | Quality | Efficiency | RSI_Mom | 适用场景 |
-|------|:----:|:----:|:---:|:-------:|:----------:|:-------:|----------|
-| **Optimized (V8)** | 0.28 | 0.20 | **0.32** | 0 | **0.06** | **0.14** | **推荐** (H=15, ICIR=0.60) |
-| **short** | 0.258 | 0.129 | 0.258 | 0.184 | 0.092 | 0.08 | 短线 (H=10) |
-| **medium** | 0.193 | 0.193 | 0.258 | 0.184 | 0.092 | 0.08 | 中线 (H=20) |
-| **long** | 0.161 | 0.161 | 0.322 | 0.184 | 0.092 | 0.08 | 长线 (H=40) |
-
-> V8 权重基于34只行业ETF的15日ICIR²优化（2025-09~2026-06样本）。RSRS(ICIR=0.33) Mom(0.39) Flow(0.28) RSI_Mom(0.22) Efficiency(0.14)。Quality因子因数据无效已剔除，Efficiency重新启用。
-
-### ICIR 门控策略模式
-
-| 模式 | 滚动ICIR阈值 | 仓位 | 强制持有 | 触发条件 |
-|:---:|:----------:|:---:|:-------:|:--------|
-| 🟢 **全力出击** | ≥ 0.50 | 100% | ✅ 15日锁定 | 60日ICIR≥0.5，信号强劲 |
-| 🟡 **标准策略** | 0.30~0.50 | 70% | ✅ 15日锁定 | 信号可用，减仓执行 |
-| 🟠 **谨慎模式** | 0.20~0.30 | 50% | ❌ 灵活调仓 | 信号较弱，不强制持有 |
-| 🔴 **冬眠模式** | < 0.20 | 0% | — | 近乎随机，暂停选股 |
-
-### Optimized预设回测结果
-
-34只行业ETF日频验证（32只全截面，2025-09~2026-06，183个交易日）：
-
-| 指标 | 值 | 说明 |
-|------|:--:|------|
-| **ICIR** | **0.60** | 15日前瞻周期因子信号稳定性 |
-| **IC方向一致性** | **72%** | IC符号与均值一致方向占比 |
-| **选股跑赢中位胜率** | **81%** | 前1/3组合回报>全样本中位数 |
-| **多空收益差** | **+2.74%/15日** | 高分组-低分组，t=9.19*** |
-| **策略正收益概率** | **65.5%** | 前1/3组合收益>0的交易日占比 |
-| **V8 IC提升(vs V7)** | **+0.11** | 20日周期ICIR从0.56→0.67 |
-
-### 数据处理
-
-- **Rank秩标准化** — 标准分排名替代Z-Score，更适应小样本(32只)截面
-- **横截面标准化** — 所有因子经Rank标准化后合成复合因子
-- **RSRS MA20趋势过滤** — 当MA20下降时，z_rsrs信号衰减50%
-- **组合粘性(Stickiness)** — 对非持仓ETF的因子得分施加惩罚，降低换手率
-
-### 投资建议引擎
-
-```
-因子得分 + RSRS覆盖 + ICIR门控 + 持仓追踪 + 两阶段相关惩罚 + ICIR衰减检测 + 大盘择时 → 风险预算分配 → 仓位
-```
-
-- 主要推荐Q1(强势)+Q2(潜伏)象限ETF；Q3中RSRS>0.3且综合因子>0的品种按信号强度纳入候选
-- ETF间相关性采用两阶段惩罚：先取前10名候选，在池内成对惩罚高相关者，重排序后取前5
-- 大盘择时信号(RSI+动量+份额流)调整总仓位 ±30%
-- 单ETF仓位上限25%
-- **滚动ICIR衰退检测** — 近60日滚动ICIR较全样ICIR衰减>40%时提示因子预测力下降
-
-## 🛠️ 技术栈
-
-| 层级 | 技术 | 说明 |
+| 路由 | 页面 | 内容 |
 |------|------|------|
-| **后端** | Python 3.12 · FastAPI · Uvicorn | 高性能异步Web框架 |
-| **数据库** | PostgreSQL · SQLAlchemy | 关系型数据库 + ORM |
-| **缓存** | Redis + 内存LRU | 双重缓存策略 |
-| **前端** | Jinja2 · vanilla CSS (Design Tokens) · vanilla JS | 服务端渲染 + 现代CSS |
-| **可视化** | ECharts 5 (bundled) | 无需CDN，离线可用 |
-| **数据源** | Tushare Pro | 专业金融数据接口 |
+| `/` | 概览 | 行业热度 treemap、价格×份额背离散点 + 背离榜、宽基/行业份额表格 |
+| `/etf` | ETF 详情 | 前复权 K线 + MA、量能 60 日百分位、份额面积图 + 异常点标注、10日背离统计条 |
+| `/benchmarketf` | 指数ETF | 宽基背离象限 + 当日涨跌/份额变化/10日份额三张横向条形图 |
+| `/timing` | **择时仪表盘** | 仓位合成 + 五面板 + 轮动矩阵 + 底部定位 + 日历效应 |
 
 ## 🚀 快速开始
-
-### 环境要求
-
-- Python 3.12+
-- PostgreSQL 14+
-- Redis (可选，用于缓存)
-- Tushare Pro Token ([获取地址](https://tushare.pro/))
-
-### Docker 部署（推荐，VPS一键部署）
-
-```bash
-# 1. 克隆仓库
-git clone https://github.com/superherocheng/ATMstockMarketSimple.git
-cd ATMstockMarketSimple
-
-# 2. 配置环境变量（只需填写 Tushare Token）
-cp .env.example .env
-nano .env
-# 必填：TUSHARE_TOKEN=your_token_here
-# 可选：修改 POSTGRES_PASSWORD（默认 password）
-
-# 3. 一键启动（含PostgreSQL + Redis + 自动迁移）
-docker compose up -d --build
-
-# 4. 查看启动日志
-docker logs -f atmstockmarket
-
-# 5. 拉取ETF历史数据（首次部署必须执行）
-docker exec atmstockmarket python3 -u /app/src/data_fetchers/tushare_fetcher.py --etf
-
-# 6. 访问 http://your-vps-ip:5656
-#    首页点击 "Update + Backtest" 开始使用
-```
-
-**日常更新**：直接在首页点击 "Update + Backtest" 按钮即可，无需SSH登录。
-
-> 💡 **网络说明**：`docker-compose.yml` 默认仅使用内部 `atm_network`，开箱即用。如需与本机其它 compose 项目共享网络（跨项目通信），先执行 `docker network create docker_network`，再在 `app` 服务的 `networks:` 与文件底部 `networks:` 处取消 `docker_network` 的注释。
-
-**更新代码**：
-```bash
-cd ATMstockMarketSimple
-git pull
-docker compose up -d --build
-```
 
 ### 本地开发
 
 ```bash
-# 安装依赖
-pip install -r requirements.txt
+# 1. 安装依赖（Python 3.12+）
+python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt -e ".[dev]"
+cd frontend && npm install && cd ..
 
-# 配置环境变量
+# 2. 配置 .env（复制 .env.example，填 TUSHARE_TOKEN 与 DATABASE_URL）
 cp .env.example .env
-# 编辑 .env 文件，填入 TUSHARE_TOKEN 和 DATABASE_URL
 
-# 初始化数据库
-alembic upgrade head
+# 3. 初始化数据库
+.venv/bin/alembic upgrade head
 
-# 获取ETF数据
-python3 -u src/data_fetchers/tushare_fetcher.py --etf
+# 4. 拉取历史（可选：回补 5 年）
+.venv/bin/python src/data_fetchers/tushare_fetcher.py --backfill 20210824
 
-# 启动服务
-uvicorn src.web.app:app --reload --port 5656
+# 5. 启动后端 + 前端
+.venv/bin/python -m uvicorn src.web.app:app --port 5656 &
+cd frontend && npm run dev
 ```
 
-## 📊 路由 & 页面
+### Docker 部署
 
-| 路由 | 页面 | 功能描述 |
-|------|------|----------|
-| `/` | index.html | 首页 — 快速入门引导、Market Timing、数据管理 |
-| `/etf` | etf.html | 指数ETF详情 — K线走势、份额分析、异常检测 |
-| `/sector` | sector.html | 行业ETF轮动 — |pct_chg|>3%筛选、份额增减、K线下钻 |
-| `/analysis/investment-recommendation` | investment_recommendation.html | 投资建议 — ETF排名、仓位配置、风险提示 |
-| `/analysis/tech-notes` | tech_notes.html | 技术说明 — 因子模型文档、泛化测试结论 |
+```bash
+docker compose up -d --build
+docker exec atmstockmarket python3 -u /app/src/data_fetchers/tushare_fetcher.py --etf   # 首次拉数据
+# 访问 http://<host>:5656，首页点「刷新数据」
+```
 
-## 🎯 监控ETF列表
-
-### 指数ETF（5只）
-
-| ETF代码 | 名称 | 说明 |
-|---------|------|------|
-| 510300.SH | 沪深300ETF | A股核心资产代表 |
-| 510500.SH | 中证500ETF | 中盘股风向标（含择时信号） |
-| 510050.SH | 上证50ETF | 蓝筹中的蓝筹 |
-| 512100.SH | 中证1000ETF | 小盘股代表 |
-| 588000.SH | 科创50ETF | 科技创新龙头 |
-
-### 行业ETF（32只）
-
-| ETF代码 | 名称 | ETF代码 | 名称 |
-|---------|------|---------|------|
-| 512480.SH | 半导体ETF | 515030.SH | 新能源车ETF |
-| 512010.SH | 医药ETF | 512800.SH | 银行ETF |
-| 512880.SH | 证券ETF | 159928.SZ | 消费ETF |
-| 515880.SH | 通信ETF | 159206.SZ | 卫星ETF |
-| 515220.SH | 煤炭ETF | 512400.SH | 有色ETF |
-| 562500.SH | 机器人ETF | 512690.SH | 白酒ETF |
-| 159611.SZ | 电力ETF | 512980.SH | 传媒ETF |
-| 515210.SH | 钢铁ETF | 159870.SZ | 化工ETF |
-| 561360.SH | 石油ETF | 512710.SH | 军工龙头ETF |
-| 515790.SH | 光伏ETF | 159934.SZ | 黄金ETF |
-| 159865.SZ | 养殖ETF | 159766.SZ | 旅游ETF |
-| 159852.SZ | 软件ETF | 159851.SZ | 金融科技ETF |
-| 512170.SH | 医疗ETF | 159869.SZ | 游戏ETF |
-| 159755.SZ | 电池ETF | 516150.SH | 稀土ETF |
-| 159638.SZ | 高端装备ETF | 159930.SZ | 能源ETF |
-| 515000.SH | 科技ETF | 159326.SZ | 电网设备ETF |
+**日常更新**：首页「刷新数据」按钮 = 行情更新 + 因子/IC 自动重算，无需 SSH。
 
 ## 🔌 API 端点
 
 ### 数据查询
-
 | 方法 | 路由 | 描述 |
 |------|------|------|
-| GET | `/api/overview` | 首页概览（指数ETF + 行业摘要） |
-| GET | `/api/data-range` | 各数据表状态与日期范围 |
-| GET | `/api/index-etf/{code}` | 单只指数ETF完整数据 |
-| GET | `/api/sector-etf` | 全部行业ETF数据（含因子信号标签） |
-| GET | `/api/share-std/{code}` | ETF份额变化标准差分析 |
+| GET | `/api/overview` | 概览（宽基+行业最新日线 + 家族聚合份额变化） |
+| GET | `/api/heatmap` | 行业热度 treemap |
+| GET | `/api/data-range` | 各表日期范围与记录数 |
+| GET | `/api/index-etf/{code}` | 单只宽基完整 K线+份额+异常点 |
+| GET | `/api/sector-etf/{code}` | 单只行业同上 |
+| GET | `/api/divergence?window=5/10/20/60` | 价格×份额背离（含家族聚合、象限前瞻收益） |
+| GET | `/api/market-timing` | 大盘择时合成信号 |
+
+### 择时仪表盘
+| 方法 | 路由 | 描述 |
+|------|------|------|
+| GET | `/api/timing/thermometer` | 温度计（估值/趋势/恐慌/波动/家族份额流 + 仓位合成） |
+| GET | `/api/timing/rotation` | 轮动矩阵（情绪×轮动强度 → 3×3） |
+| GET | `/api/timing/calendar` | 月度×ETF 平均收益热力图 |
+| GET | `/api/timing/locator` | 底部定位器 |
 
 ### 量化分析
-
 | 方法 | 路由 | 描述 |
 |------|------|------|
-| GET | `/api/analysis/presets` | 因子预设列表 |
-| GET | `/api/analysis/summary` | 因子摘要（IC均值、ICIR、胜率） |
-| GET | `/api/analysis/ic-summary-all` | 首页因子概览（全预设IC汇总） |
-| GET | `/api/analysis/factor-distribution` | 因子分布直方图 |
-| GET | `/api/analysis/ic-series` | IC时间序列 |
-| GET | `/api/analysis/quadrant-heatmap` | 四象限收益热力图 |
-| GET | `/api/analysis/group-returns` | 分组累计收益 |
-| GET | `/api/analysis/rolling-icir` | 滚动ICIR |
-| GET | `/api/investment-recommendation` | 投资建议报告（含仓位配置） |
-| GET | `/api/market-timing` | 大盘择时信号 |
-| POST | `/api/analysis/recompute` | 触发因子+IC重算 |
+| GET | `/api/investment-recommendation` | 投资建议（ICIR 门控 + 仓位配置） |
+| GET | `/api/analysis/holding-history` | 持仓历史快照 |
 
 ### 数据管理
-
 | 方法 | 路由 | 描述 |
 |------|------|------|
-| POST | `/api/fetch/all` | 一键更新+回测 |
-| GET | `/api/fetch/status` | 数据获取+回测任务状态轮询 |
-| GET | `/api/etf-share/status` | ETF份额数据状态检查 |
-| POST | `/api/etf-share/update` | ETF份额智能更新 |
+| POST | `/api/fetch/all\|etf\|tushare` | 数据更新 + 自动因子/IC 重算 |
+| GET | `/api/fetch/status` | 更新任务进度轮询 |
+| GET | `/api/etf-share/status` | 份额覆盖度检查 |
+| POST | `/api/etf-share/update` | 智能份额更新 |
+| POST | `/api/cache/invalidate` | 清缓存 |
 
-## 🔬 因子分析术语
+## 📚 数据模型
 
-| 术语 | 说明 |
-|------|------|
-| **Q1 强势** | z_flow ≥ 0, z_mom ≥ 0 — 资金流入+价格上涨，趋势最强 |
-| **Q2 潜伏** | z_flow ≥ 0, z_mom < 0 — 资金流入但价格下跌，左侧布局 |
-| **Q3 撤离** | z_flow < 0, z_mom < 0 — 资金流出+价格下跌，回避 |
-| **Q4 风险** | z_flow < 0, z_mom ≥ 0 — 资金流出但价格上涨，警惕诱多 |
-| **IC** | 信息系数，衡量因子预测力（>0.03为有效） |
-| **ICIR** | IC均值/标准差，衡量因子稳定性（>0.3为可用） |
+| 表 | 内容 | 说明 |
+|------|------|------|
+| `index_etf_daily` / `sector_etf_daily` | 宽基/行业 ETF 日线 | 前复权经 `_apply_etf_adj` |
+| `etf_share` | ETF 份额 fd_share（万份） | **T+1 发布**，天然滞后一天 |
+| `etf_adj_factor` | 复权因子 | 处理分红/拆分/折算 |
+| `index_daily_basic` | 指数估值 PE/PB | 温度计估值面板 |
+| `factor_daily` | 因子日截面 | RSRS/Flow/Mom/RSI_Mom + composite |
+| `ic_daily` / `ic_summary` | IC / ICIR | 前瞻 15 日 Spearman IC |
+| `quadrant_perf` | 因子四象限前瞻收益 | |
 
-## 📋 v20.0.0 更新日志
+**同指数家族聚合**：`INDEX_ETF_FAMILY`（config.py）定义 5 个宽基家族的成员名单（基于 fund_basic+fund_share 实际规模核验）。家族份额按日加总、成员缺席日前向填充，消除工具轮动假信号。份额专用代码只进 `etf_share`，不进行情/因子流程。
 
-### 🧪 模型泛化性验证 (V8)
+## 🌡️ 择时方法论（关键诚实声明）
 
-| 模块 | 改动 |
-|------|------|
-| **ETF池扩充** | 从17只扩充至32只行业ETF，覆盖半导体、医药、军工、光伏、黄金、农业、旅游、软件等32个板块 |
-| **ETF筛选器** | 新增 `scripts/etf_screener.py` — 基于Tushare API自动筛选高流动性ETF，按行业/跨境/债券分类去重 |
-| **泛化测试** | 新增 `scripts/generalization_test.py` — 滚动3月训练+1月预测验证框架，8个窗口 |
-| **部署优化器** | 新增 `scripts/deployment_optimizer.py` — 换手率优化、极端窗口稳健性、因子归因三方向测试 |
-| **Optimized预设** | Quality/Efficiency因子权重归零（ICIR分别为-0.24/-0.19），RSRS MA20趋势过滤，组合粘性stickiness=1.0 |
-| **回测结果** | 32-ETF池ICIR=0.91，年化超额22.5%（扣0.10%成本），胜率71.1%，夏普1.76 |
+基于宽基ETF 20 年（31,595 个 ETF-交易日）量价×份额研究，以下结论直接落地为面板：
 
-### 📊 网站更新
+| 信号 | 可行性 | 落地 |
+|------|:---:|------|
+| 日线方向预测（RSI/动量/MA） | ✗ 高置信不可行 | 不做「明日涨跌」型信号 |
+| **恐慌反转**（5日跌5%+放量） | △ 弱可行、OOS 最稳 | 恐慌仪表（5日超额+1.4%/胜率60%，高β更强） |
+| 波动/量能预测 | ✓ 可行 | 波动面板 → 仓位乘数 |
+| 深跌+家族份额逆势流入=底部区域 | △ 区域定位、非精确择时 | 底部定位器 |
+| 估值分位 | ✓ 长周期 | 估值温度计 |
+| 日历效应（二月/端午/季末） | ✓（FDR 筛过） | 日历热力图 |
 
-| 模块 | 改动 |
-|------|------|
-| **技术文档** | 新增"模型泛化与回测结果"章节：完整回测指标、因子归因、W5分析 |
-| **投资建议** | 策略描述包含ICIR/超额/换手率指标；数据更新后自动重算因子+IC+建议 |
-| **首页** | "17 Sectors" → "32 Sectors"；热力图展示32个板块 |
-| **分析页** | Optimized preset作为默认；图表自动使用36-ETF数据 |
-| **IC重算** | 全部预设IC基于扩大ETF池重新计算 |
+**仓位 = 仓位管理工具，不是收益引擎**：空仓资金计入货基收益后，回测总回报接近买入持有而最大回撤约减半。方向判断请勿依赖单一信号。
 
-### 📝 新增脚本
+## ⚠️ 已知局限与诚实性
 
-| 脚本 | 用途 |
-|------|------|
-| `scripts/etf_screener.py` | Tushare ETF筛选器：流动性≥5000万/日，排除宽基，行业去重 |
-| `scripts/generalization_test.py` | 滚动验证框架：3月训练+1月预测，ICIR/WR/超额评估 |
-| `scripts/deployment_optimizer.py` | 部署优化器：换手率粘性、W5稳健性、因子归因 |
-| `scripts/goal_cost_generalize.py` | 成本侵蚀+泛化测试 |
-| `scripts/robustness_tests.py` | 稳健性压力测试 |
+1. **回测数字是样本内的**：README 中的 ICIR/超额均为同一段（2025-09~2026-06 单一 regime）的样本内评估，需回补 ≥3 年数据后跑 `scripts/generalization_test.py` walk-forward 复验。
+2. **份额 T+1 滞后**：实操中「当日份额」次日晚才可知，实盘提示滞后一天。
+3. **科创50 无估值**：Tushare `index_dailybasic` 不提供 000688，估值面板自动降级为空。
+4. **工具轮动**：单只 ETF 份额 = 投资者流量 × 工具轮动，2026 年起宽基份额信号必须看家族聚合口径。
 
-## 📋 v21.1.0 更新日志
+## 📋 主要变更记录
 
-### 🐛 修复：数据库连接泄露导致网站崩溃
-
-| 模块 | 改动 |
-|------|------|
-| **fetch.py** | 修复 `份额完整性检查` 中 `conn = get_conn()` 未关闭导致的数据库连接泄露，改为 `with get_conn() as conn:` 确保连接自动归还连接池 |
-| **db_manager_postgresql.py** | 连接池优化，增强稳定性 |
-| **CSS** | 移动端底部导航栏高度调整 |
-
-**问题现象**：容器运行一段时间后，数据库连接池被耗尽，健康检查 `/health` 阻塞超时，Docker 标记容器为 `unhealthy`，导致 `https://stock.gaodeqingchuda.icu/` 无法访问。
-
-**修复验证**：重启后容器立即恢复 `healthy` 状态，首页 `/` 返回 HTTP 200，健康检查通过。
+- **2026-08-24**：修复择时份额腿 T+1 死条件；复活「更新后自动因子+IC 重算」；象限口径统一（散点与 chip 同源）；同指数家族份额聚合（overview/divergence/market-timing）；历史回补 `--backfill`；新增择时仪表盘（温度计/轮动/日历/定位器）；Efficiency 权重清零（V9）；前端新增 /timing 页。
+- **2026-07-18**：删除因子分析页与 `/api/analysis/recompute`（导航仅保留 3 页）。
+- **2026-07-01**：Quality 因子移除，预设收敛为单 `optimized`。
 
 ---
 
-## 📋 v21.0.0 更新日志
-
-### 🎨 UI/UX 全面优化
-
-| 模块 | 改动 |
-|------|------|
-| **Sector 页面** | 新增实时搜索栏（按名称/代码筛选）、分类分组折叠面板（科技/金融/消费/医药/周期/新能源/公用/商品）、分页加载（每页10只） |
-| **ETF 页面** | 新增5只指数ETF份额变化Z-score汇总行，显示在标签按钮下方 |
-| **固定布局** | 左侧导航栏改为 `position: fixed`，不随页面滚动；底部版权横幅固定于屏幕底部 |
-| **涨跌配色统一** | 全站统一红涨绿跌（`--c-up: #DC2626` / `--c-down: #16A34A`），移除可切换配色开关 |
-
-### 🔧 数据层改进
-
-| 模块 | 改动 |
-|------|------|
-| **份额日期修正** | `etf_share` 数据日期限制在最后一个交易日，避免T+1数据造成日期显示异常 |
-| **数据不完整保护** | 份额数据覆盖<50%时投资建议API返回空状态，防止展示过时推荐 |
-| **market_timing 修复** | 修复 `text - interval` PostgreSQL 类型错误（添加 `::date` 类型转换） |
-
----
-
-## 📋 v21.2.0 更新日志
-
-### 🐛 修复：Migration 008 DATE类型转换导致数据获取全面崩溃
-
-#### 问题描述
-
-Alembic Migration 008（`008_convert_trade_date_to_date.py`）将 `trade_date` 列从 `VARCHAR` 转换为 PostgreSQL 原生 `DATE` 类型。然而，Python 代码中多处日期比较逻辑未同步适配，导致**所有数据获取流程全面崩溃**：
-
-- **`tushare_fetcher.py`** — `_get_max_date()` 返回 `datetime.date` 对象，而 `_is_fresh()` 将其与 `str` 类型比较，引发 `TypeError: '>=' not supported between instances of 'datetime.date' and 'str'`
-- **`fetch.py`** — `api_etf_share_status()` 和 `api_etf_share_update()` 中存在同样的 `datetime.date` vs `str` 比较问题
-
-**影响范围**：
-- `POST /api/fetch/{task_type}` — Update按钮不可用
-- `GET /api/etf-share/status` — 份额状态检查失败
-- `POST /api/etf-share/update` — 份额更新失败
-- 命令行 `tushare_fetcher.py --etf` — 全部数据获取失败
-
-#### 修复内容
-
-| 模块 | 改动 |
-|------|------|
-| **`tushare_fetcher.py`** | `_get_max_date()` 增加日期规范化：检测 `datetime.date` 返回值时自动转换为 `YYYYMMDD` 字符串（`strftime`），与 `trading_calendar.get_db_max_date()` 的处理方式保持一致 |
-| **`fetch.py`** | 新增 `_normalise_date()` 工具函数，修复 `api_etf_share_status()` 和 `api_etf_share_update()` 中数据库 DATE 值与字符串的比较逻辑 |
-
-**修复验证**：
-- 数据获取：37/37 只ETF的6月9日份额数据全部成功写入 ✅
-- 因子计算：5857 行 ✅
-- IC分析：599 行 ✅
-- ETF份额状态API：正常返回 ✅
-- 完整 Update+Backtest 流程：正常运行，耗时约16秒 ✅
-
----
-
-## 📋 v22.0.0 更新日志
-
-### 🛡️ 全方位 BUG 审计 + 修复（212项扫描，42项确认修复）
-
-> 基于6维度并行审计（代码质量、安全、数据库、性能、前端、投资引擎），经对抗性验证后确认修复。
-
-| 优先级 | 修复数 | 关键修复 |
-|--------|:------:|----------|
-| **P0 阻断性** | 6 | 限流器死锁(RLock)、同步阻塞事件循环(asyncio.to_thread)、asyncio.run崩溃、暗色模式不可读、前视偏差、重复API调用 |
-| **P1 严重** | 30 | CSRF/XSS安全加固、DB连接泄漏(9处)、Redis KEYS→SCAN、异常吞没→日志、因子引擎除零防护、NaN→None保留、IC原子化写入 |
-| **P2 性能** | 6 | LRU list→OrderedDict O(1)、pool dispose移除、DataFrame预groupby、schema缓存、import优化 |
-| **测试修复** | 7 | 通过率 91.8%→**100%**（96/96） |
-
-### 🎨 UI/UX 专业投研工作台改造
-
-> 从"数据面板"升级为"专业投研工作台"，全面优化视觉体验和交互设计。
-
-| 模块 | 改动 |
-|------|------|
-| **设计令牌系统** | 圆角 0→4/6/8/12px、分层阴影体系（card/card-hover/nav）、按钮悬停上移+蓝色投影 |
-| **KPI仪表板** | 卡片悬停蓝色顶部指示条、24px加粗数值、▲▼趋势箭头、●中性点 |
-| **ⓘ富文本提示** | 浏览器原生title→CSS悬停弹出框（260px宽、圆角、阴影、深色背景白字） |
-| **卡片/表面** | 所有card/glass/data-card/home-card增加border-radius + box-shadow + 悬停阴影升级 |
-| **表格** | zebra-table border-collapse:separate + border-radius + overflow:hidden |
-| **按钮系统** | border-radius:6px、主按钮蓝色投影+hover translateY(-1px)、tab/标签圆角化 |
-| **ECharts图表** | tooltip圆角6px + box-shadow、主题色自动适配暗色模式 |
-| **市场择时横幅** | 状态图标(📈📉➡️)+大字百分比(2xl/800)+背景色编码(涨/跌/中性) |
-| **投资建议空状态** | 错误→引导式空状态（图标+标题+描述+操作按钮跳转首页） |
-| **暗色模式** | 所有新组件圆角/阴影在暗色模式下完整适配 |
-
-**修改统计**：21个文件 +664/-346行（BUG修复）+ 5个文件 UI/UX改造
-
----
-
-## 📋 v24.0.0 更新日志
-
-### 🎨 Modern Minimalist 重设计 — 从 Linen 到 Fintech 现代风
-
-> 从 Linen Design System（米色基底、发丝线边框、零阴影）全面迁移至 Modern Minimalist Design System（灰白基底、软阴影卡片、圆角6-16px）。
-
-| 模块 | 改动 |
-|------|------|
-| **配色** | 米色(#f1ede3) → 灰白(#F5F7FA)；墨色(#111) → 深灰(#1A1A1A)；红色(#c8462c → #FF4D4F)；绿色(#3a7a3a → #52C41A) |
-| **字体** | Times New Roman + KaiTi → **Inter + PingFang SC**，全站字体尺寸缩小约30% |
-| **阴影** | 全部 `none` → 分层软阴影体系（4级+卡片悬停+导航） |
-| **圆角** | 全部 `0px` → 6/8/12/16px 统一圆角标尺 |
-| **间距** | 32px gutter → 20px；40px page padding → 32px |
-| **卡片** | `transparent` → `#FFFFFF` 白色卡片背景，`box-shadow` 层级区分 |
-| **边框** | 发丝线 `1px solid #1f1d1a` → 浅分隔线 `1px solid #F0F2F5` |
-| **表格** | 表头灰底(#F5F7FA)、条纹0.02透明度、行边框#F0F2F5 |
-| **输入框** | 透明背景 → 白色背景 + #D0D5DD 边框 |
-| **侧边栏** | 新增 `--sidebar-width: 240px` / `--sidebar-collapsed: 64px` 变量体系 |
-
-### 🌙 暗色模式重构
-
-| 模块 | 改动 |
-|------|------|
-| **暗色基底** | 暖碳(#1a1814) → 深空灰(#0F1117) |
-| **暗色面板** | 暖灰(#23211c) → 深蓝灰(#1A1D27) |
-| **暗色文字** | 暖白(#e6dfd3) → 冷白(#E8EAED) |
-| **暗色分隔** | 暖棕发丝线(#3a3530) → 冷深灰(#2A2D37) |
-| **暗色卡片** | 透明 → 深蓝灰(#1A1D27) 含悬停色(#22252F) |
-
-### 📱 页面优化
-
-| 模块 | 改动 |
-|------|------|
-| **投资建议页** | KPI卡片和报告区块由边框区分改为阴影卡片；渐变仓位条(Q1红橙/Q2蓝紫)；排名标签配色优化；移除 `letter-spacing` |
-| **ETF页面** | 样式统一为阴影卡片体系 |
-| **首页/Sector** | 卡片阴影、间距、排版对齐新设计系统 |
-| **因子分析页** | KPI卡片阴影化，布局紧凑优化 |
-| **技术笔记** | 表格与文字排版适配新系统 |
-| **Archivo Narrow 字体** | 移除 Archivo Narrow Google Fonts 加载，统一使用 Inter |
-
-**修改统计**：10 个文件 +1258/-656 行
-
----
-
-## 📋 v23.1.0 更新日志
-
-### 🎨 字体更换：Times New Roman + 宋体
-
-> 全线字体从 Geist 更换为 Times New Roman（英文/数字）和 SimSun 宋体（中文），提升中文阅读体验。
-
-| 模块 | 改动 |
-|------|------|
-| **字体变量** | `--font-body/--font-display`: `"Inter", system-ui` → `"Times New Roman", "SimSun", serif` |
-| **等宽字体** | `--font-mono`: `"JetBrains Mono"` → `"Times New Roman", "SimSun", monospace` |
-| **Favicon** | `font-family`: `system-ui, sans-serif` → `"Times New Roman", "SimSun", serif` |
-
-**修改统计**：2 个文件 +3/-3 行
-
----
-
-## 📋 v23.0.0 更新日志
-
-### 🎨 Brutalist Swiss UI/UX 重设计 — 单色石墨粉笔风格
-
-> 从多色 Wikipedia 风格全面迁移至严格的消色 Brutalist Swiss 设计体系（Geist 字体、1px 发丝边框、零阴影）。
-
-| 模块 | 改动 |
-|------|------|
-| **配色** | 蓝色强调色(#2563EB) → 石墨黑(#0a0a0a)、纯白画布(#ffffff) |
-| **边框** | #D4D4D8 → 发丝线 #e5e5e5，所有结构分隔改用 1px 边框 |
-| **阴影** | 全部 box-shadow → **none**（边框优先哲学） |
-| **圆角** | 6/8/12px → 10/14/26px 新标尺 |
-| **间距** | rem 基准 → px 基准（4/8/10/12/16/20/24/32/40） |
-| **字体** | Inter + Playfair + IBM Plex Mono → **Geist + Geist Mono** |
-| **标题** | serif 700/900 → sans 600 紧密字距(-0.05em) |
-| **链接** | Wikipedia 蓝 → 石墨色悬停下划线 |
-| **暗色模式** | 蓝色强调 → 石墨(#e5e5e5) 在碳黑(#171717) 上 |
-
-**保留项**：涨跌配色(🔴#DC2626 涨 / 🟢#16A34A 跌)、全部功能、响应式断点、导航系统、ECharts 单色图表
-
-**修改统计**：9 个文件 +236/-257 行
-
----
-
-## 📋 v25.0.0 更新日志
-
-### 🗑️ 页面精简
-
-| 模块 | 改动 |
-|------|------|
-| **/rotation 页面** | 已删除 — 该页面已不再需要 |
-| **/analysis 概览页** | 已删除 — 因子分析 API 端点保留，/analysis/investment-recommendation 和 /analysis/tech-notes 子页面保留但导航无入口 |
-| **导航栏精简** | 仅保留 Home / Index ETF / Sector ETF 三项 |
-
-### 🎨 首页改造
-
-| 模块 | 改动 |
-|------|------|
-| **Factor Validity Overview** | 移除首页 IC 汇总卡片，首页更简洁 |
-| **快速卡片** | 缩减为 2 张（Index ETF + Sector Rotation），内容居中放大 |
-| **卡片尺寸** | padding/font-size 增大，整体更醒目 |
-
-### 🎯 Sector 页面改造
-
-| 模块 | 改动 |
-|------|------|
-| **ETF 筛选** | 只显示 `|pct_chg| > 3%` 的行业 ETF，按绝对涨幅降序排列 |
-| **卡片内容** | 价格(¥) → 份额增减比例(%)，聚焦份额资金流向 |
-| **细节图表** | 图表高度增加至 420px，默认显示最近 15 个交易日 |
-| **成交量百分位** | 计算窗口从全量改为最近 60 个交易日，历史分位数更准确 |
-
----
-
-## 📋 v21.3.0 更新日志
-
-### 🐛 修复：交易日历多表回退 + 异步调用修复
-
-| 模块 | 改动 |
-|------|------|
-| **`trading_calendar.py`** | 增强交易日判断：新增多表回退机制（`stock_daily` / `sector_etf_daily` / `index_etf_daily`），避免单表过期导致日期错误；优化未收盘时的回退逻辑，优先使用日历数据 |
-| **`fetch.py`** | 修复 `api_etf_share_update()` 异步调用问题，使用 `asyncio.run()` 确保协程正确执行 |
-| **日志** | 新增结构化日志记录，交易日判定过程可追溯 |
-
-**修复验证**：
-- 多表回退：任一数据表最新日期可用即可作为候选 ✅
-- ETF份额更新：异步调用正常完成 ✅
-- 完整 Update+Backtest 流程正常运行 ✅
-
----
-
-## 📄 License
-
-MIT License
-
----
-
-<p align="center">数据来源: Tushare Pro / AKShare | 仅供学习研究，不构成投资建议</p>
+<p align="center">数据来源: Tushare Pro · 仅供学习研究，不构成投资建议</p>

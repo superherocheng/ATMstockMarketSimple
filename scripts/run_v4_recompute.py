@@ -2,8 +2,9 @@
 Full recomputation script (factor engine + IC analysis).
 
 Simplified 2026-07-01: the financial-quality step was removed along with the
-Quality factor; the script now runs the two live stages. Use the live
-``/api/analysis/recompute`` endpoint for the same thing from the UI.
+Quality factor; the script now runs the two live stages. The web "刷新数据"
+button (POST /api/fetch/all) runs the same two stages automatically after
+data lands, so this script is only needed for manual/offline recomputes.
 """
 import os, sys
 from pathlib import Path

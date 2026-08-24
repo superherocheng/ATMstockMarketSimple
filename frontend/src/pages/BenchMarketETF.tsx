@@ -179,6 +179,7 @@ export default function BenchMarketETF() {
                   items={idxItems}
                   labelAll
                   height={300}
+                  quadrantStats={divergence.data?.quadrant_stats}
                   onPick={(c) => navigate(`/etf?code=${c}`)}
                 />
               ) : (

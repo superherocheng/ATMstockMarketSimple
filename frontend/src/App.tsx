@@ -4,6 +4,7 @@ import { useEtfShareStatus, useFetchStatus, useInvalidateOnFetchDone } from "@/h
 import Overview from "@/pages/Overview";
 import ETFDetail from "@/pages/ETFDetail";
 import BenchMarketETF from "@/pages/BenchMarketETF";
+import Timing from "@/pages/Timing";
 
 const navCls = ({ isActive }: { isActive: boolean }) =>
   isActive ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground";
@@ -46,6 +47,9 @@ function TopBar() {
           <NavLink to="/benchmarketf" className={navCls}>
             指数ETF
           </NavLink>
+          <NavLink to="/timing" className={navCls}>
+            择时
+          </NavLink>
         </div>
         <div className="ml-auto flex items-center gap-3 font-mono text-xs text-muted-foreground">
           {dateDisplay && (
@@ -78,6 +82,7 @@ export default function App() {
         <Route path="/" element={<Overview />} />
         <Route path="/etf" element={<ETFDetail />} />
         <Route path="/benchmarketf" element={<BenchMarketETF />} />
+        <Route path="/timing" element={<Timing />} />
         {/* /analysis removed — redirect any old link/bookmark home */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

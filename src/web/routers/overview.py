@@ -8,7 +8,8 @@ from sqlalchemy import text
 
 from src.web.services.cache import _cached_persistent, _api_cache
 from src.core.db_manager_postgresql import get_conn, query, safe_json, bind_inlist
-from config.config import INDEX_ETF, SECTOR_ETF, DATA_DIR
+from config.config import INDEX_ETF, SECTOR_ETF, DATA_DIR, INDEX_ETF_FAMILY
+from src.analysis.family import aggregate_family_share
 from src.core.trading_calendar import now_beijing, get_latest_trading_date
 from src.data_fetchers.tushare_fetcher import _apply_etf_adj
 
@@ -82,11 +83,14 @@ def _compute_overview():
                         d["pct_chg"] = d.get("pct_chg", 0) or 0
                         result["sector_summary"].append(d)
 
-        # ── Share data for all ETFs ──
+        # ── Share data for all ETFs (宽基含家族成员，聚合消除工具轮动) ──
         all_codes = index_codes + sector_codes
+        fetch_codes = list(all_codes)
+        for code in index_codes:
+            fetch_codes.extend(INDEX_ETF_FAMILY.get(code, []))
         share_data = {}
-        if all_codes:
-            placeholders, params = bind_inlist(all_codes, prefix="sh_")
+        if fetch_codes:
+            placeholders, params = bind_inlist(sorted(set(fetch_codes)), prefix="sh_")
             rows = conn.execute(
                 text(f"""
                     WITH ranked AS (
@@ -108,10 +112,32 @@ def _compute_overview():
                     "share": float(row[2])
                 })
 
+        # 宽基：将家族成员份额聚合为一条序列（各成员前向填充后按日加总），
+        # 替换单只份额 —— 单只 ETF 的份额变化被同指数内申赎搬家（工具轮动）污染
+        family_member_counts = {}
+        for code in index_codes:
+            members = INDEX_ETF_FAMILY.get(code)
+            if not members:
+                continue
+            member_series = {}
+            for m in members:
+                for pt in share_data.get(m, []):
+                    member_series.setdefault(m, []).append((pt["date"], pt["share"]))
+            if len(member_series) >= 2:
+                agg = aggregate_family_share(member_series)
+                if agg:
+                    share_data[code] = [
+                        {"date": d, "share": v} for d, v in sorted(agg, reverse=True)
+                    ]
+                    family_member_counts[code] = len(member_series)
+
         def _add_share_info(items, name_map):
             for item in items:
                 code = item["ts_code"]
                 shares = share_data.get(code, [])
+                if code in family_member_counts:
+                    item["family_members"] = family_member_counts[code]
+                shares = sorted(shares, key=lambda p: p["date"], reverse=True)
                 if len(shares) >= 2:
                     latest = shares[0]["share"]
                     prev = shares[1]["share"]
@@ -318,6 +344,7 @@ def _compute_data_range():
             ("index_etf_daily", "指数ETF日线", True, "trade_date"),
             ("etf_share", "ETF份额", True, "trade_date"),
             ("sector_etf_daily", "行业ETF日线", True, "trade_date"),
+            ("index_daily_basic", "指数估值PE/PB", True, "trade_date"),
         ]
 
         for table_name, display_name, has_date, date_col in table_configs:

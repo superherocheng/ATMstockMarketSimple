@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { EChartsChart } from "@/components/EChartsChart";
-import type { DivergenceItem } from "@/types";
+import type { DivergenceItem, QuadrantStat } from "@/types";
 
 // ECharts can't read CSS variables directly; resolve --up/--down so the chart
 // follows the design system (same pattern as ETFDetail/BenchMarketETF).
@@ -60,6 +60,7 @@ export function DivergenceScatter({
   height = 340,
   labelAll = false,
   onPick,
+  quadrantStats,
 }: {
   items: DivergenceItem[];
   height?: number;
@@ -67,8 +68,13 @@ export function DivergenceScatter({
   labelAll?: boolean;
   /** 点击气泡回调（跳转 ETF 详情） */
   onPick?: (tsCode: string) => void;
+  /** 各象限近60日15日前瞻收益（四角角标，来自 quadrant_perf） */
+  quadrantStats?: Record<string, QuadrantStat>;
 }) {
-  const option = useMemo(() => buildOption(items, labelAll), [items, labelAll]);
+  const option = useMemo(
+    () => buildOption(items, labelAll, quadrantStats),
+    [items, labelAll, quadrantStats],
+  );
 
   return (
     <EChartsChart
@@ -88,7 +94,11 @@ export function DivergenceScatter({
   );
 }
 
-function buildOption(items: DivergenceItem[], labelAll: boolean): Record<string, unknown> {
+function buildOption(
+  items: DivergenceItem[],
+  labelAll: boolean,
+  quadrantStats?: Record<string, QuadrantStat>,
+): Record<string, unknown> {
   const pts = items.filter(
     (i) => i.price_chg_pct != null && i.share_chg_pct != null,
   );
@@ -107,7 +117,36 @@ function buildOption(items: DivergenceItem[], labelAll: boolean): Record<string,
     symbolSize: 8 + 26 * Math.sqrt((it.amount ?? 0) / maxAmount),
   }));
 
+  // 四角角标：各象限近60日的15日前瞻收益（quadrant_perf 聚合）
+  const graphic: unknown[] = [];
+  if (quadrantStats) {
+    const corners: Array<{ q: string; x: string; y: string; label: string }> = [
+      { q: "2", x: "left", y: "top", label: "潜伏" },
+      { q: "1", x: "right", y: "top", label: "强势" },
+      { q: "3", x: "left", y: "bottom", label: "撤离" },
+      { q: "4", x: "right", y: "bottom", label: "风险" },
+    ];
+    for (const c of corners) {
+      const st = quadrantStats[c.q];
+      if (!st) continue;
+      const v = st.avg_fwd_15d_pct;
+      graphic.push({
+        type: "text",
+        left: c.x,
+        top: c.y,
+        style: {
+          text: `${c.label} 15日${v >= 0 ? "+" : ""}${v.toFixed(1)}%`,
+          fill: v >= 0 ? up : down,
+          fontSize: 10,
+          opacity: 0.8,
+        },
+        silent: true,
+      });
+    }
+  }
+
   return {
+    graphic,
     grid: { left: 56, right: 24, top: 20, bottom: 40 },
     xAxis: {
       type: "value",
@@ -186,11 +225,19 @@ function buildOption(items: DivergenceItem[], labelAll: boolean): Record<string,
             : it.divergence === "lurk" && it.lurk_streak > 0
               ? `<br/>连续背离 ${it.lurk_streak} 日`
               : "";
-        const quad = it.quadrant != null ? ` · 相对象限 ${QUADRANT_LABEL[it.quadrant]}` : "";
+        const quad = it.quadrant != null ? ` · ${QUADRANT_LABEL[it.quadrant]}` : "";
+        const fam =
+          it.family_members && it.family_members > 1
+            ? ` · 家族聚合(${it.family_members})`
+            : "";
+        const fquad =
+          it.factor_quadrant != null && it.factor_quadrant !== it.quadrant
+            ? `<br/><span style="opacity:.7">因子象限（相对口径） ${QUADRANT_LABEL[it.factor_quadrant]}</span>`
+            : "";
         return (
-          `<b>${it.name}</b>${quad}<br/>` +
+          `<b>${it.name}</b>${quad}${fam}<br/>` +
           `价格 ${it.price_chg_pct!.toFixed(2)}% · 份额 ${it.share_chg_pct!.toFixed(2)}%<br/>` +
-          `净流入 ${flow}${streak}`
+          `净流入 ${flow}${streak}${fquad}`
         );
       },
     },

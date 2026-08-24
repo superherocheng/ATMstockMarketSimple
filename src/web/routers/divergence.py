@@ -10,7 +10,12 @@ For every tracked ETF (5 index + 32 sector) and a lookback window
                   "none" (共振或走平)
 - risk_streak / lurk_streak : consecutive trading days of that divergence
 - rank_gap      : |price-change rank − share-change rank| across the universe
-- quadrant      : RELATIVE flow×momentum quadrant from factor_daily (sector only)
+- quadrant      : ABSOLUTE quadrant from the SAME raw window as the scatter
+                  (price sign × share sign): 1 强势 / 2 潜伏 / 3 撤离 / 4 风险
+- factor_quadrant : RELATIVE flow×momentum quadrant from factor_daily (sector
+                  only) — different lens (EWMA share slope × vol-adjusted
+                  momentum), shown separately so chip and bubble position can
+                  never disagree
 
 Unlike the cross-sectional quadrant model (rank-Z by construction splits the
 universe symmetrically, e.g. 8/8/8/8 for 32 ETFs), the divergence tag here is
@@ -26,7 +31,8 @@ from sqlalchemy import text
 
 from src.web.services.cache import _cached_persistent
 from src.core.db_manager_postgresql import get_conn, bind_inlist
-from config.config import INDEX_ETF, SECTOR_ETF
+from config.config import INDEX_ETF, SECTOR_ETF, INDEX_ETF_FAMILY
+from src.analysis.family import aggregate_family_share
 from src.data_fetchers.tushare_fetcher import _apply_etf_adj
 
 logger = logging.getLogger(__name__)
@@ -139,6 +145,118 @@ def _fetch_quadrants(conn):
     return quadrants
 
 
+def _fetch_quadrant_stats(conn, window: int, days: int = 60, horizon: int = 15) -> dict:
+    """近 N 日各象限（与散点同口径：窗口价格×份额符号）的平均前瞻收益。
+
+    直接用 raw 窗口口径在面板上重算，而不是复用因子象限的 quadrant_perf——
+    后者是另一套坐标系（EWMA份额斜率×波动调整动量），贴在 raw 象限的散点
+    角上会再次产生"标签与位置两张皮"的问题。
+    """
+    stats = {}
+    try:
+        import numpy as np
+        from src.analysis.family import aggregate_family_share
+        from config.config import INDEX_ETF_FAMILY
+
+        n_need = window + horizon + days + 5
+        frames = {}
+        for table, code_map, _tag in SOURCES:
+            codes = list(code_map.keys())
+            ph, params = bind_inlist(codes, prefix="qs_")
+            params["n"] = n_need
+            rows = conn.execute(text(f"""
+                WITH ranked AS (
+                    SELECT ts_code, trade_date, close,
+                           ROW_NUMBER() OVER (PARTITION BY ts_code ORDER BY trade_date DESC) as rn
+                    FROM {table} WHERE ts_code IN ({ph})
+                )
+                SELECT r.ts_code, r.trade_date,
+                       r.close * COALESCE(a.adj_factor, 1)
+                         / COALESCE((SELECT MAX(adj_factor) FROM etf_adj_factor
+                                 WHERE ts_code = r.ts_code), 1) AS close
+                FROM ranked r
+                LEFT JOIN etf_adj_factor a
+                       ON a.ts_code = r.ts_code AND a.trade_date = r.trade_date
+                WHERE r.rn <= :n
+            """), params).fetchall()
+            for code, d, c in rows:
+                frames.setdefault(code, {})[str(d)[:10]] = float(c)
+
+        # 份额（含宽基家族聚合），前向填充对齐到价格日期
+        fam_codes = set()
+        for code in frames:
+            fam_codes.update(INDEX_ETF_FAMILY.get(code, []))
+        share_map_all = {}
+        all_share_codes = sorted(set(frames.keys()) | fam_codes)
+        if all_share_codes:
+            ph, params = bind_inlist(all_share_codes, prefix="qsh_")
+            rows = conn.execute(text(f"""
+                SELECT ts_code, trade_date, fd_share FROM etf_share
+                WHERE ts_code IN ({ph}) AND fd_share IS NOT NULL
+            """), params).fetchall()
+            member_series = {}
+            for code, d, v in rows:
+                member_series.setdefault(code, []).append((str(d)[:10], float(v)))
+            for code in frames:
+                members = INDEX_ETF_FAMILY.get(code, [code])
+                ms = {m: member_series.get(m, []) for m in members if member_series.get(m)}
+                share_map_all[code] = dict(aggregate_family_share(ms)) if len(ms) >= 2 else dict(ms.get(code, []))
+
+        # 统一交易日轴（并集升序）
+        all_dates = sorted({d for f in frames.values() for d in f})
+        if len(all_dates) < n_need // 2:
+            return stats
+
+        acc = {q: {"ret": []} for q in (1, 2, 3, 4)}
+        eval_dates = all_dates[-(days + 1):-horizon - 1]
+        d_idx = {d: i for i, d in enumerate(all_dates)}
+        for code, closes in frames.items():
+            shares = share_map_all.get(code, {})
+            closes_v = np.array(
+                [closes.get(d) if closes.get(d) is not None else np.nan for d in all_dates]
+            )
+            # 份额前向填充对齐到价格日
+            s_last = None
+            s_aligned = []
+            for d in all_dates:
+                if d in shares:
+                    s_last = shares[d]
+                s_aligned.append(s_last)
+            shares_v = np.array([s if s is not None else np.nan for s in s_aligned], dtype=float)
+
+            pchg = np.full(len(all_dates), np.nan)
+            pchg[window:] = closes_v[window:] / closes_v[:-window] - 1
+            schg = np.full(len(all_dates), np.nan)
+            schg[window:] = shares_v[window:] / shares_v[:-window] - 1
+
+            for d in eval_dates:
+                j = d_idx[d]
+                p, s = pchg[j], schg[j]
+                k_entry, k_exit = j + 1, j + 1 + horizon
+                if k_exit >= len(closes_v):
+                    continue
+                entry, exit_c = closes_v[k_entry], closes_v[k_exit]
+                if not (np.isfinite(p) and np.isfinite(s) and p != 0 and s != 0):
+                    continue
+                if not (np.isfinite(entry) and entry > 0 and np.isfinite(exit_c)):
+                    continue
+                fwd = exit_c / entry - 1
+                q = 1 if (p > 0 and s > 0) else 2 if (p < 0 and s > 0) else 4 if (p > 0 and s < 0) else 3
+                acc[q]["ret"].append(fwd)
+
+        n_dates = max(len(eval_dates), 1)
+        for q, a in acc.items():
+            if a["ret"]:
+                stats[q] = {
+                    "avg_fwd_15d_pct": round(float(np.mean(a["ret"])) * 100, 2),
+                    "avg_etf_count": round(len(a["ret"]) / n_dates, 1),
+                    "days": n_dates,
+                }
+    except Exception as exc:
+        logger.warning("Failed to compute raw quadrant stats: %s", exc)
+    return stats
+
+
 def _streaks(prices, shares):
     """Consecutive-day streaks of each absolute divergence, ending at the latest day.
 
@@ -180,8 +298,13 @@ def _compute_divergence(window: int):
 
         all_codes = list(frames.keys())
         max_date = max(str(df["trade_date"].iloc[-1]) for df, _, _ in frames.values())
-        shares = _fetch_share_series(conn, all_codes, window, max_date)
+        # 宽基ETF连同家族成员一起取份额（聚合消除工具轮动假信号）
+        fetch_codes = list(all_codes)
+        for code in all_codes:
+            fetch_codes.extend(INDEX_ETF_FAMILY.get(code, []))
+        shares = _fetch_share_series(conn, sorted(set(fetch_codes)), window, max_date)
         quadrants = _fetch_quadrants(conn)
+        quadrant_stats = _fetch_quadrant_stats(conn, window)
 
         for table, code_map, tag in SOURCES:
             for code, name in code_map.items():
@@ -190,6 +313,20 @@ def _compute_divergence(window: int):
                     continue
                 df, raw_close, amount = entry
                 share_series = shares.get(code, [])
+
+                # 宽基：用同指数家族聚合份额替换单只份额（消除轮动搬家）
+                family_members = None
+                if tag == "index" and code in INDEX_ETF_FAMILY:
+                    member_series = {
+                        m: s for m, s in (
+                            (m, shares.get(m, [])) for m in INDEX_ETF_FAMILY[code]
+                        ) if s
+                    }
+                    if len(member_series) >= 2:
+                        agg = aggregate_family_share(member_series)
+                        if agg:
+                            share_series = agg
+                            family_members = len(member_series)
 
                 price_chg_pct = None
                 if len(df) > window and df["close"].iloc[-1 - window]:
@@ -213,11 +350,23 @@ def _compute_divergence(window: int):
                     net_inflow = round(share_chg_qty * raw_close, 2)
 
                 divergence = "none"
+                quadrant = None
                 if price_chg_pct is not None and share_chg_pct is not None:
                     if price_chg_pct > 0 and share_chg_pct < 0:
                         divergence = "risk"
                     elif price_chg_pct < 0 and share_chg_pct > 0:
                         divergence = "lurk"
+                    # 与散点图同口径的绝对象限（价格符号×份额符号）
+                    if price_chg_pct != 0 and share_chg_pct != 0:
+                        p_up, s_up = price_chg_pct > 0, share_chg_pct > 0
+                        if p_up and s_up:
+                            quadrant = 1      # 强势：价涨份额增
+                        elif s_up:
+                            quadrant = 2      # 潜伏：价跌份额增
+                        elif p_up:
+                            quadrant = 4      # 风险：价涨份额缩
+                        else:
+                            quadrant = 3      # 撤离：价跌份额缩
 
                 prices = [
                     (str(r.trade_date), float(r.pct_chg) if pd.notna(r.pct_chg) else None)
@@ -239,7 +388,9 @@ def _compute_divergence(window: int):
                     "risk_streak": risk_streak,
                     "lurk_streak": lurk_streak,
                     "rank_gap": None,
-                    "quadrant": quadrants.get(code),
+                    "quadrant": quadrant,
+                    "factor_quadrant": quadrants.get(code),
+                    "family_members": family_members,
                 })
 
     # Cross-universe ranks → rank_gap (relative divergence strength)
@@ -255,7 +406,12 @@ def _compute_divergence(window: int):
                 it["rank_gap"] = abs(price_rank[it["ts_code"]] - share_rank[it["ts_code"]])
 
     items.sort(key=lambda it: (it["rank_gap"] is None, -(it["rank_gap"] or 0)))
-    return {"date": max_date.replace("-", ""), "window": window, "items": items}
+    return {
+        "date": max_date.replace("-", ""),
+        "window": window,
+        "items": items,
+        "quadrant_stats": quadrant_stats,
+    }
 
 
 @router.get("/api/divergence")

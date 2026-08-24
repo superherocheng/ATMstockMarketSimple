@@ -2,13 +2,17 @@ import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type {
+  CalendarResponse,
   DivergenceResponse,
   EtfDetail,
   EtfShareStatus,
   FetchStatus,
   HeatmapPoint,
+  LocatorResponse,
   OverviewResponse,
+  RotationResponse,
   SectorCard,
+  ThermometerResponse,
 } from "@/types";
 
 // ── Read hooks — daily-grade data, 5-min staleTime ───────────────────
@@ -68,6 +72,39 @@ export function useDivergence(window = 10) {
         .get<DivergenceResponse>("/divergence", { params: { window } })
         .then((r) => r.data),
     staleTime: 5 * 60_000,
+  });
+}
+
+// ── 择时仪表盘（/api/timing/*）— 派生指标，10 分钟 staleTime ─────────
+export function useThermometer() {
+  return useQuery({
+    queryKey: ["timing-thermometer"],
+    queryFn: () => api.get<ThermometerResponse>("/timing/thermometer").then((r) => r.data),
+    staleTime: 10 * 60_000,
+  });
+}
+
+export function useRotation() {
+  return useQuery({
+    queryKey: ["timing-rotation"],
+    queryFn: () => api.get<RotationResponse>("/timing/rotation").then((r) => r.data),
+    staleTime: 10 * 60_000,
+  });
+}
+
+export function useCalendar() {
+  return useQuery({
+    queryKey: ["timing-calendar"],
+    queryFn: () => api.get<CalendarResponse>("/timing/calendar").then((r) => r.data),
+    staleTime: 30 * 60_000,
+  });
+}
+
+export function useLocator() {
+  return useQuery({
+    queryKey: ["timing-locator"],
+    queryFn: () => api.get<LocatorResponse>("/timing/locator").then((r) => r.data),
+    staleTime: 10 * 60_000,
   });
 }
 

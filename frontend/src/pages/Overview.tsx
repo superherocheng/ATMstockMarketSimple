@@ -255,7 +255,7 @@ function DivergencePanel() {
         ) : (
           <div className="grid gap-4 lg:grid-cols-5">
             <div className="lg:col-span-3">
-              <DivergenceScatter items={items} height={320} onPick={(c) => navigate(`/etf?code=${c}`)} />
+              <DivergenceScatter items={items} height={320} quadrantStats={divergence.data?.quadrant_stats} onPick={(c) => navigate(`/etf?code=${c}`)} />
             </div>
             <div className="lg:col-span-2">
               <div className="mb-2 text-xs text-muted-foreground">背离强度榜（价格排名与份额排名差距最大）</div>

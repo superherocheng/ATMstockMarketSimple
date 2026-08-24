@@ -104,6 +104,38 @@ def _run_subprocess(fetch_script, cmd, cwd, phase_label, progress_base, progress
         return False
 
 
+def _do_factor_recompute():
+    """数据更新后自动重算因子+IC（复活"更新+回测"链）。
+
+    在 _run_fetch 后台线程内运行；失败只记日志不阻塞数据更新结果。
+    """
+    try:
+        _add_log("重算因子 (factor_daily)...")
+        with _fetch_lock:
+            _fetch_status["current_step"] = "重算因子..."
+            _fetch_status["progress"] = max(_fetch_status["progress"], 90)
+        from src.analysis.factor_engine import compute_all_factors
+        n = compute_all_factors()
+        _add_log(f"[OK] 因子重算完成: {n} rows")
+
+        _add_log("重算IC分析 (ic_daily/ic_summary)...")
+        with _fetch_lock:
+            _fetch_status["current_step"] = "重算IC分析..."
+            _fetch_status["progress"] = max(_fetch_status["progress"], 95)
+        from src.analysis.ic_analyzer import compute_all_ic
+        compute_all_ic()
+        _add_log("[OK] IC分析完成")
+
+        _cache_invalidate("analysis", "rotation")
+        with _fetch_lock:
+            _fetch_status["backtest_done"] = True
+        return True
+    except Exception as e:
+        _add_log(f"[ERROR] 因子/IC重算失败: {e}")
+        logger.error("因子/IC重算失败: %s", e, exc_info=True)
+        return False
+
+
 def _run_fetch(task_type):
     """在子线程中运行数据获取"""
     with _fetch_lock:
@@ -113,6 +145,7 @@ def _run_fetch(task_type):
         _fetch_status["finished_at"] = None
         _fetch_status["progress"] = 0
         _fetch_status["current_step"] = "初始化..."
+        _fetch_status["backtest_done"] = False
 
     # NOTE: do NOT call close_db_manager() here. The fetch runs in a subprocess
     # that does not share this process's connection pool, so disposing the pool
@@ -147,6 +180,9 @@ def _run_fetch(task_type):
         elif task_type == "etf":
             cmd = [sys.executable, "-u", tushare_script, "--etf"]
             _run_subprocess(tushare_script, cmd, work_dir, "ETF数据", 0, 100)
+
+        # ── 数据落地后自动重算因子+IC，保持 factor_daily / 投资建议与行情同步 ──
+        _do_factor_recompute()
 
         _add_log("[DONE] 数据获取完成！")
 
