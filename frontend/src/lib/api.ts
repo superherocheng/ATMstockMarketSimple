@@ -9,10 +9,21 @@ export const api = axios.create({
   timeout: 15_000,
 });
 
-// Attach the Bearer token if the build injected one (production write-ops).
-// Dev runs without API_TOKEN (internal mode), so this is a no-op there.
+// Attach the Bearer token for write-ops if one is available. Precedence:
+//   1. An admin token entered once in the browser (localStorage, prompted by
+//      useTriggerFetch) — keeps the credential OUT of the public JS bundle.
+//   2. A build-time VITE_API_TOKEN (legacy; empty in read-only builds).
+// Dev runs without either (internal mode), so this is a no-op there.
+function storedAdminToken(): string | undefined {
+  try {
+    return window.localStorage.getItem("atm_admin_token") ?? undefined;
+  } catch {
+    return undefined; // storage blocked (strict private mode) — send no token
+  }
+}
+
 api.interceptors.request.use((config) => {
-  const token = import.meta.env.VITE_API_TOKEN;
+  const token = storedAdminToken() || import.meta.env.VITE_API_TOKEN;
   if (token) config.headers.Authorization = `Bearer ${token}`;
   // Cache-buster: the backend sends Cache-Control: max-age=300 on /api GETs,
   // so the browser would otherwise serve a stale body for up to 5 min — defeating

@@ -131,13 +131,37 @@ export function useEtfShareStatus() {
   });
 }
 
+// Write-ops need the admin API token. Read-only builds no longer bake it into
+// the public bundle, so ask for it once and keep it in this browser's
+// localStorage — the request interceptor picks it up from there.
+function ensureAdminToken(): boolean {
+  if (typeof window === "undefined") return true;
+  if (window.localStorage.getItem("atm_admin_token")) return true;
+  if (import.meta.env.VITE_API_TOKEN) return true;
+  const t = window.prompt("刷新数据需要管理 Token（仅首次输入，保存在本浏览器）：");
+  if (t && t.trim()) {
+    window.localStorage.setItem("atm_admin_token", t.trim());
+    return true;
+  }
+  return false;
+}
+
 export function useTriggerFetch() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (task: "all" | "etf" | "tushare") =>
-      api.post(`/fetch/${task}`).then((r) => r.data),
+    mutationFn: async (task: "all" | "etf" | "tushare") => {
+      if (!ensureAdminToken()) throw new Error("未提供管理 Token，已取消刷新");
+      return api.post(`/fetch/${task}`).then((r) => r.data);
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["fetch-status"] }),
     onError: (e: Error) => {
+      // A rejected token (e.g. rotated server-side) must not linger in
+      // localStorage — drop it so the next click prompts for a fresh one.
+      if (typeof window !== "undefined" && e.message.includes("未授权")) {
+        try {
+          window.localStorage.removeItem("atm_admin_token");
+        } catch { /* storage blocked — nothing to clear */ }
+      }
       // No toast lib yet — console + alert so a failed refresh is not silent.
       // (The axios response interceptor already extracted a friendly message.)
       console.error("[fetch] refresh failed:", e.message);
